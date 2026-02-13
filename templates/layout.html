@@ -180,8 +180,44 @@
             island.classList.remove('visible', 'expanded');
         };
 
-        // Example trigger:
-        // showIsland("Sincronizando...", 2000, 'loading');
+        // ── PWA Installation Controller ──
+        let deferredPrompt;
+        const installBtn = document.createElement('div');
+        installBtn.id = 'pwa-install-prompt';
+        installBtn.style = 'position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: var(--primary); color: white; padding: 12px 20px; border-radius: 980px; font-size: 0.85rem; font-weight: 600; display: none; z-index: 1000; box-shadow: 0 10px 25px rgba(0,0,0,0.5); cursor: pointer; align-items: center; gap: 8px;';
+        installBtn.innerHTML = '<span>📲 Instalar Busca-todo Home</span>';
+        document.body.appendChild(installBtn);
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            installBtn.style.display = 'flex';
+        });
+
+        installBtn.addEventListener('click', async () => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                if (outcome === 'accepted') {
+                    installBtn.style.display = 'none';
+                }
+                deferredPrompt = null;
+            }
+        });
+
+        // iOS Detection
+        const isIos = () => {
+            const userAgent = window.navigator.userAgent.toLowerCase();
+            return /iphone|ipad|ipod/.test(userAgent);
+        };
+        const isInStandaloneMode = () => ('standalone' in window.navigator) && (window.navigator.standalone);
+
+        if (isIos() && !isInStandaloneMode()) {
+            // Show a small hint for iOS users every few sessions
+            setTimeout(() => {
+                showIsland("Tip: Toca 'Compartir' y 'Añadir a pantalla de inicio' 📲", 5000, 'success');
+            }, 3000);
+        }
     </script>
 </body>
 
