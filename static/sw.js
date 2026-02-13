@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ctrl-f-v3-omni';
+const CACHE_NAME = 'busca-todo-v1-stable';
 const urlsToCache = [
     '/',
     '/static/css/style.css',

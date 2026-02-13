@@ -17,6 +17,36 @@ for folder in [app.config['UPLOAD_FOLDER'], instance_path]:
     if not os.path.exists(folder):
         os.makedirs(folder)
 
+def save_and_compress_image(file_storage, folder, filename, max_width=1920, quality=85):
+    """Guarda y comprime una imagen para optimizar espacio y velocidad."""
+    from PIL import Image
+    temp_path = os.path.join(folder, f"temp_{filename}")
+    file_storage.save(temp_path)
+    
+    try:
+        with Image.open(temp_path) as img:
+            # Convertir a RGB si es necesario (ej: de RGBA)
+            if img.mode in ("RGBA", "P"):
+                img = img.convert("RGB")
+            
+            # Cambiar tamaño manteniendo aspecto si es más grande que max_width
+            if img.width > max_width:
+                height = int((max_width / img.width) * img.height)
+                img = img.resize((max_width, height), Image.Resampling.LANCZOS)
+            
+            final_path = os.path.join(folder, filename)
+            img.save(final_path, "JPEG", quality=quality, optimize=True)
+        
+        # Eliminar temporal
+        os.remove(temp_path)
+        return True
+    except Exception as e:
+        app.logger.error(f"Error comprimiendo imagen: {e}")
+        # Si falla el procesamiento, intentar mover el original como fallback
+        import shutil
+        shutil.move(temp_path, os.path.join(folder, filename))
+        return False
+
 db.init_app(app)
 
 with app.app_context():
@@ -68,6 +98,23 @@ def index():
                          avg_conf=avg_conf,
                          ultima_ubi=ultima_ubi)
 
+@app.after_request
+def add_cache_control(response):
+    """Optimización de cache para archivos estáticos."""
+    if request.path.startswith('/static/'):
+        response.cache_control.max_age = 31536000  # 1 año
+        response.cache_control.public = True
+    return response
+
+@app.errorhandler(404)
+def not_found_error(error):
+    return render_template('404.html'), 404
+
+@app.errorhandler(500)
+def internal_error(error):
+    db.session.rollback()
+    return render_template('500.html'), 500
+
 @app.context_processor
 def inject_config():
     config = Config.query.first()
@@ -107,8 +154,8 @@ def upload():
         
         if file:
             filename = secure_filename(file.filename)
+            save_and_compress_image(file, app.config['UPLOAD_FOLDER'], filename)
             filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-            file.save(filepath)
             
             ext = filename.rsplit('.', 1)[1].lower() if '.' in filename else ''
             
@@ -345,7 +392,7 @@ def nuevo_plano():
         filename = None
         if file and file.filename != '':
             filename = secure_filename(file.filename)
-            file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+            save_and_compress_image(file, app.config['UPLOAD_FOLDER'], filename)
         elif drawing_data:
             # Procesar imagen del canvas (base64)
             try:
@@ -432,8 +479,8 @@ def analizar_foto():
             return jsonify({'status': 'error', 'message': 'No se recibió imagen'}), 400
         
         filename = secure_filename(file.filename)
+        save_and_compress_image(file, app.config['UPLOAD_FOLDER'], filename)
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        file.save(filepath)
         
         # Analizar con IA mejorada
         from ai_engine import analizar_imagen_objetos
@@ -468,8 +515,8 @@ def crear_ubicacion_en_mapa():
             filename = secure_filename(file.filename)
             if not filename:
                 filename = f"ubicacion_{uuid.uuid4().hex[:8]}.jpg"
+            save_and_compress_image(file, app.config['UPLOAD_FOLDER'], filename)
             filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-            file.save(filepath)
         elif temp_filename:
             filename = temp_filename
             
@@ -548,8 +595,8 @@ def upload_plano_simple(plano_id):
     
     if file and file.filename != '':
         filename = secure_filename(file.filename)
+        save_and_compress_image(file, app.config['UPLOAD_FOLDER'], filename)
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        file.save(filepath)
         
         # Analizar con IA
         from ai_engine import analizar_imagen_objetos

@@ -1,0 +1,35 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div
+    style="height: 70vh; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: var(--space-lg);">
+    <div style="font-size: 5rem; animation: shake 0.5s ease-in-out infinite;">🛠️</div>
+    <h1
+        style="font-size: 2.5rem; background: linear-gradient(135deg, #ff4d4d, #f9cb28); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+        Error de Ingeniería</h1>
+    <p style="color: var(--text-dim); max-width: 420px; margin: 0 auto;">Tuvimos un problema técnico al procesar tu
+        solicitud. No te preocupes, tus datos están a salvo.</p>
+    <div style="display: flex; gap: var(--space-md); margin-top: var(--space-lg);">
+        <a href="{{ url_for('index') }}" class="btn btn-primary">Intentar de nuevo</a>
+        <button onclick="location.reload()" class="btn btn-secondary">Refrescar página</button>
+    </div>
+</div>
+
+<style>
+    @keyframes shake {
+
+        0%,
+        100% {
+            transform: rotate(0deg);
+        }
+
+        25% {
+            transform: rotate(5deg);
+        }
+
+        75% {
+            transform: rotate(-5deg);
+        }
+    }
+</style>
+{% endblock %}

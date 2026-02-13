@@ -16,8 +16,29 @@
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('/sw.js')
-                    .then(reg => console.log('SW Registered', reg))
+                    .then(reg => {
+                        console.log('SW Registered', reg);
+                        // Escuchar si hay una actualización esperando
+                        reg.addEventListener('updatefound', () => {
+                            const newWorker = reg.installing;
+                            newWorker.addEventListener('statechange', () => {
+                                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                    // Nuevo SW instalado, listo para tomar el control
+                                    console.log('Nueva versión disponible');
+                                    if (window.showIsland) window.showIsland('Actualizando app...', 2000, 'success');
+                                }
+                            });
+                        });
+                    })
                     .catch(err => console.log('SW Error', err));
+            });
+
+            // Recargar automáticamente cuando el nuevo SW tome el control
+            let refreshing = false;
+            navigator.serviceWorker.addEventListener('controllerchange', () => {
+                if (refreshing) return;
+                refreshing = true;
+                window.location.reload();
             });
         }
     </script>

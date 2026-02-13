@@ -36,13 +36,17 @@ class Ubicacion(db.Model):
 class Objeto(db.Model):
     __tablename__ = 'objetos'
     id = db.Column(db.Integer, primary_key=True)
-    nombre = db.Column(db.String(100), nullable=False)
-    categoria = db.Column(db.String(50), nullable=True)
-    confianza = db.Column(db.Float, default=1.0)
-    estado = db.Column(db.String(50), nullable=True)     # nuevo/usado/etc
-    prioridad = db.Column(db.String(20), nullable=True)  # alta/media/baja
-    ubicacion_id = db.Column(db.Integer, db.ForeignKey('ubicaciones.id'), nullable=False)
-    fecha_indexacion = db.Column(db.DateTime, default=datetime.utcnow)
+    nombre = db.Column(db.String(100), nullable=False, index=True)
+    categoria_principal = db.Column(db.String(50), nullable=True, index=True)
+    categoria_secundaria = db.Column(db.String(50), nullable=True)
+    descripcion = db.Column(db.Text, nullable=True)
+    color_predominante = db.Column(db.String(30), nullable=True)
+    material = db.Column(db.String(50), nullable=True)
+    confianza = db.Column(db.Float, default=0.0)
+    fecha_indexado = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    
+    # Relación con Ubicación
+    ubicacion_id = db.Column(db.Integer, db.ForeignKey('ubicaciones.id'), nullable=True, index=True)
     
     # Relación con Zona (Mapa Anotado)
     zona_id = db.Column(db.Integer, db.ForeignKey('zonas.id'), nullable=True)
