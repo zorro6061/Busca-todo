@@ -45,6 +45,25 @@ Para que la app esté encendida 24/7 sin depender de tu PC.
 
 ---
 
-### 💡 Notas Importantes
-- He creado un archivo `.gitignore` para que no subas accidentalmente tus datos privados o imágenes pesadas a la nube.
-- El archivo `requirements.txt` ya incluye todas las librerías necesarias para que la app funcione en cualquier servidor Linux.
+## 💡 Solución para el PC del Trabajo (Se Apaga)
+
+Como tu PC del trabajo se apaga al irte, la **Opción 1 (Túnel)** dejará de funcionar. Para que la app funcione **24/7 desde tu casa**:
+
+### 1. Usa Render.com (La mejor opción)
+Es un servicio gratuito donde "subes" tu código de GitHub y ellos lo mantienen encendido siempre.
+1.  Entra en [Render.com](https://render.com) y crea una cuenta.
+2.  Haz clic en **New +** > **Web Service**.
+3.  Conecta tu cuenta de GitHub y elige el repositorio `Busca-todo`.
+4.  **Configuración**:
+    - **Runtime**: `Python`
+    - **Build Command**: `pip install -r requirements.txt`
+    - **Start Command**: `gunicorn app:app`
+5.  **En "Environment Variables"**: Agrega tu clave de Gemini (`GEMINI_API_KEY`).
+
+### 2. ¿Cómo llevarme mis datos actuales?
+Como la base de datos y las fotos no se suben a GitHub (por seguridad y espacio), para tener tus datos actuales en tu casa o en la nube, debes:
+1.  Copiar la carpeta `instance` (donde está la base de datos) y la carpeta `uploads` (tus fotos) a un pendrive o Google Drive.
+2.  Si usas Render, puedes subir esas carpetas manualmente o pedírmelo y te ayudo a preparar un "Script de Migración".
+
+---
+**Ctrl+F Físico** es ahora una plataforma totalmente portable.
