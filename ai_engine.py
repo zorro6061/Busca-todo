@@ -47,7 +47,7 @@ def analizar_imagen_objetos(image_path, tipo_espacio="general"):
         
         # Prompt mejorado con few-shot examples y chain-of-thought
         prompt = f"""
-CONTEXTO: Eres un experto en catalogación de inventarios físicos. Tu trabajo es identificar y documentar objetos con máxima precisión.
+CONTEXTO: Eres un experto en organización del hogar y gestión de pertenencias personales. Tu trabajo es ayudar a las personas a encontrar sus cosas en casa con máxima precisión.
 
 TAREA: Analiza esta imagen de un espacio físico ({tipo_espacio}).
 
@@ -62,48 +62,6 @@ OBJETIVOS:
 
 EJEMPLO DE ANÁLISIS CORRECTO:
 
-Para una imagen de garaje con herramientas:
-
-{{
-  "items": [
-    {{
-      "nombre": "destornillador phillips magnético stanley",
-      "categoria_principal": "Herramientas",
-      "subcategoria": "Herramientas Manuales",
-      "tipo_especifico": "Destornilladores",
-      "descripcion": "Destornillador de mango amarillo y negro con punta phillips magnética, marca Stanley visible",
-      "bbox": [245, 120, 380, 190],
-      "confianza": 0.92,
-      "metadata": {{
-        "color_predominante": "amarillo",
-        "colores_secundarios": ["negro"],
-        "material": "plástico y metal",
-        "marca": "Stanley",
-        "estado": "usado",
-        "cantidad": 1,
-        "tamano_estimado": "mediano"
-      }}
-    }},
-    {{
-      "nombre": "caja de tornillos varios",
-      "categoria_principal": "Ferretería",
-      "subcategoria": "Fijaciones",
-      "tipo_especifico": "Tornillos",
-      "descripcion": "Caja transparente conteniendo tornillos de diferentes tamaños",
-      "bbox": [100, 450, 200, 580],
-      "confianza": 0.88,
-      "metadata": {{
-        "color_predominante": "plateado",
-        "colores_secundarios": ["transparente"],
-        "material": "metal y plástico",
-        "estado": "nuevo",
-        "cantidad": 1,
-        "tamano_estimado": "pequeño"
-      }}
-    }}
-  ],
-  "analisis_espacial": {{
-    "tipo_espacio": "garaje/taller",
     "organizacion": "semi-ordenado",
     "densidad_objetos": "media",
     "total_objetos_estimado": 12,
@@ -145,19 +103,21 @@ Ferretería
 └── Adhesivos > Cintas
 
 Electrónica
-├── Cables > HDMI/USB/Corriente
-├── Componentes > Resistencias/Capacitores
-└── Periféricos > Teclados/Ratones
+├── Cables > HDMI|USB|Cargadores
+├── Multimedia > Controles|Audio|Pantallas
+└── Computación > Laptops|Componentes
 
 Oficina
-├── Escritura > Bolígrafos/Lápices
-├── Organización > Carpetas/Archivadores
-└── Tecnología > Computadoras/Tablets
+├── Escritura > Bolígrafos|Lápices
+├── Organización > Carpetas|Archivadores
+└── Tecnología > Computadoras|Periféricos
 
 Hogar
-├── Cocina > Utensilios/Electrodomésticos
-├── Limpieza > Productos/Herramientas
-└── Decoración > Varios
+├── Cocina > Utensilios|Electrodomésticos|Vajilla
+├── Limpieza > Productos|Herramientas (Escobas/Aspiradoras)
+├── Living > Electrónica|Libros|Decoración
+├── Habitación > Ropa|Accesorios|Calzado
+└── Oficina > Papelería|Tecnología|Documentos
 
 📐 BOUNDING BOX:
 - Formato: [ymin, xmin, ymax, xmax] normalizado 0-1000

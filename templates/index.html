@@ -4,12 +4,13 @@
 <!-- ══ HERO SECTION (Apple-style) ══ -->
 <section style="text-align: center; padding: var(--space-3xl) 0 var(--space-2xl);">
     <h1 class="fade-up" style="max-width: 700px; margin: 0 auto;">
-        <span class="gradient-text">Encuentra cualquier objeto</span><br>
-        al instante.
+        <span class="gradient-text">Todo ordenado</span><br>
+        en tu hogar.
     </h1>
     <p class="fade-up fade-up-1"
         style="color: var(--text-dim); font-size: 1.1rem; max-width: 520px; margin: var(--space-lg) auto 0; line-height: 1.6; letter-spacing: -0.01em;">
-        La IA escanea tus espacios, identifica objetos y los posiciona en un mapa interactivo. Nunca más pierdas nada.
+        Escanea tus habitaciones, etiquetas tus llaves o herramientas y encuéntralas en segundos. La IA al servicio de
+        tu tranquilidad.
     </p>
 
     <!-- Search -->
@@ -50,17 +51,17 @@
                     Captura</span>
                 <h2 style="font-size: 1.8rem; margin: 0;">{{ ultima_ubi.nombre }}</h2>
                 <p style="color: var(--text-dim); font-size: 0.9rem; margin-top: 4px;">{{ ultima_ubi.objetos|length }}
-                    objetos detectados</p>
+                    objetos en esta habitación</p>
                 <a href="{{ url_for('ver_plano', plano_id=ultima_ubi.plano_id) if ultima_ubi.plano_id else url_for('gallery') }}"
-                    class="btn btn-primary" style="margin-top: var(--space-lg); width: fit-content;">Ver en Mapa →</a>
+                    class="btn btn-primary" style="margin-top: var(--space-lg); width: fit-content;">Ver en Plano →</a>
             </div>
             {% else %}
             <div
                 style="padding: var(--space-2xl); height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center;">
-                <div style="font-size: 4rem; margin-bottom: var(--space-md); opacity: 0.3;">📸</div>
-                <h2>Listo para Indexar</h2>
-                <p style="color: var(--text-dim); max-width: 280px; margin-top: 8px;">Capturá tu primer espacio para
-                    empezar a organizar tu mundo.</p>
+                <div style="font-size: 4rem; margin-bottom: var(--space-md); opacity: 0.3;">🏠</div>
+                <h2>Listo para tu Hogar</h2>
+                <p style="color: var(--text-dim); max-width: 280px; margin-top: 8px;">Capturá tu primer ambiente para
+                    empezar a organizar tu casa.</p>
                 <a href="{{ url_for('upload') }}" class="btn btn-primary" style="margin-top: var(--space-xl);">Empezar
                     Escaneo</a>
             </div>

@@ -61,33 +61,52 @@
     </div>
 
     <!-- Mobile Nav -->
-    <div class="mobile-nav">
+    <div class="mobile-nav" style="padding-bottom: env(safe-area-inset-bottom);">
         <a href="{{ url_for('index') }}" class="mobile-nav-item {% if request.endpoint == 'index' %}active{% endif %}">
             <span class="mobile-nav-icon">🏠</span>
             <span>Inicio</span>
         </a>
-        <a href="{{ url_for('search') }}"
-            class="mobile-nav-item {% if request.endpoint == 'search' %}active{% endif %}">
-            <span class="mobile-nav-icon">🔍</span>
-            <span>Buscar</span>
+        <a href="{{ url_for('gallery') }}"
+            class="mobile-nav-item {% if request.endpoint == 'gallery' %}active{% endif %}">
+            <span class="mobile-nav-icon">📦</span>
+            <span>Mis Cosas</span>
         </a>
-        <a href="{{ url_for('upload') }}" class="mobile-nav-item">
-            <div
-                style="background: linear-gradient(135deg, var(--primary), var(--accent)); width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-top: -18px; box-shadow: 0 4px 20px var(--primary-glow); border: 2px solid var(--bg);">
-                <span style="color: white; font-size: 1.4rem; font-weight: 300;">+</span>
-            </div>
-            <span>Indexar</span>
+        <a href="{{ url_for('upload') }}" class="mobile-nav-item"
+            style="transform: translateY(-10px); background: var(--primary); border-radius: 50%; width: 60px; height: 60px; color: white;">
+            <span class="mobile-nav-icon" style="font-size: 1.5rem;">📸</span>
         </a>
         <a href="{{ url_for('list_planos') }}"
-            class="mobile-nav-item {% if request.endpoint == 'list_planos' or request.endpoint == 'ver_plano' %}active{% endif %}">
+            class="mobile-nav-item {% if request.endpoint == 'list_planos' %}active{% endif %}">
             <span class="mobile-nav-icon">🗺️</span>
-            <span>Mapas</span>
+            <span>Planos</span>
         </a>
-        <a href="{{ url_for('ai_optimizer') }}"
-            class="mobile-nav-item {% if request.endpoint == 'ai_optimizer' %}active{% endif %}">
-            <span class="mobile-nav-icon">🧠</span>
-            <span>IA</span>
+        <a href="{{ url_for('pricing') }}"
+            class="mobile-nav-item {% if request.endpoint == 'pricing' %}active{% endif %}">
+            <span class="mobile-nav-icon">⭐</span>
+            <span>Pro</span>
         </a>
+    </div>
+    <a href="{{ url_for('search') }}" class="mobile-nav-item {% if request.endpoint == 'search' %}active{% endif %}">
+        <span class="mobile-nav-icon">🔍</span>
+        <span>Buscar</span>
+    </a>
+    <a href="{{ url_for('upload') }}" class="mobile-nav-item">
+        <div
+            style="background: linear-gradient(135deg, var(--primary), var(--accent)); width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-top: -18px; box-shadow: 0 4px 20px var(--primary-glow); border: 2px solid var(--bg);">
+            <span style="color: white; font-size: 1.4rem; font-weight: 300;">+</span>
+        </div>
+        <span>Indexar</span>
+    </a>
+    <a href="{{ url_for('list_planos') }}"
+        class="mobile-nav-item {% if request.endpoint == 'list_planos' or request.endpoint == 'ver_plano' %}active{% endif %}">
+        <span class="mobile-nav-icon">🗺️</span>
+        <span>Mapas</span>
+    </a>
+    <a href="{{ url_for('ai_optimizer') }}"
+        class="mobile-nav-item {% if request.endpoint == 'ai_optimizer' %}active{% endif %}">
+        <span class="mobile-nav-icon">🧠</span>
+        <span>IA</span>
+    </a>
     </div>
 
     <!-- Toast Container -->

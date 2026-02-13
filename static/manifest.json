@@ -1,11 +1,11 @@
 {
-  "name": "Ctrl+F Físico Mastermind",
-  "short_name": "Ctrl+F",
-  "description": "Buscador de objetos físicos con IA de élite.",
+  "name": "Busca-todo Home",
+  "short_name": "Busca-todo",
+  "description": "Encuentra cualquier cosa en tu casa al instante.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0f172a",
-  "theme_color": "#6366f1",
+  "background_color": "#000000",
+  "theme_color": "#8b5cf6",
   "icons": [
     {
       "src": "/static/icons/icon-192.png",
