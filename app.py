@@ -11,9 +11,11 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = os.environ.get('UPLOAD_FOLDER', 'uploads')
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev_key_ctrl_f_123456789')
 
-# Asegurar que la carpeta de uploads exista
-if not os.path.exists(app.config['UPLOAD_FOLDER']):
-    os.makedirs(app.config['UPLOAD_FOLDER'])
+# Asegurar que las carpetas necesarias existan
+instance_path = os.path.join(basedir, 'instance')
+for folder in [app.config['UPLOAD_FOLDER'], instance_path]:
+    if not os.path.exists(folder):
+        os.makedirs(folder)
 
 db.init_app(app)
 
