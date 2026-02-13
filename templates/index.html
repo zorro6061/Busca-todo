@@ -101,6 +101,10 @@
             <div style="font-size: 2rem;">🧠</div>
             <h3 style="margin-top: 12px; font-size: 1rem;">IA Brain</h3>
             <p style="color: var(--text-muted); font-size: 0.75rem; margin-top: 4px;">Optimizar organización</p>
+            {% if app_config.subscription_type == 'free' %}
+            <span class="badge badge-primary"
+                style="position: absolute; top: 12px; right: 12px; font-size: 0.5rem; padding: 2px 6px;">PRO</span>
+            {% endif %}
         </div>
 
         <!-- Widget 4: Quick Upload -->

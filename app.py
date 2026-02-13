@@ -1,6 +1,6 @@
 import os
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, send_from_directory
-from models import db, Ubicacion, Objeto, Plano
+from models import db, Ubicacion, Objeto, Plano, Config
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
@@ -62,6 +62,29 @@ def index():
                          cat_count=categorias_count,
                          avg_conf=avg_conf,
                          ultima_ubi=ultima_ubi)
+
+@app.context_processor
+def inject_config():
+    config = Config.query.first()
+    if not config:
+        config = Config(subscription_type='free')
+        db.session.add(config)
+        db.session.commit()
+    return dict(app_config=config)
+
+@app.route('/pricing')
+def pricing():
+    return render_template('pricing.html')
+
+@app.route('/upgrade')
+def upgrade():
+    plan = request.args.get('plan', 'free')
+    config = Config.query.first()
+    if config:
+        config.subscription_type = plan
+        db.session.commit()
+        flash(f'¡Bienvenido al plan {plan.upper()}! Todas las funciones premium han sido activadas.')
+    return redirect(url_for('index'))
 
 @app.route('/upload', methods=['GET', 'POST'])
 def upload():

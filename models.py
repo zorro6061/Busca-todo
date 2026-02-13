@@ -82,3 +82,10 @@ class Mueble(db.Model):
     estantes = db.Column(db.Integer, default=1) 
     material = db.Column(db.String(50), default='madera') # madera, metal, plastico
     plano_id = db.Column(db.Integer, db.ForeignKey('planos.id'), nullable=False)
+
+class Config(db.Model):
+    __tablename__ = 'config'
+    id = db.Column(db.Integer, primary_key=True)
+    subscription_type = db.Column(db.String(20), default='free') # free, pro, enterprise
+    gemini_api_key = db.Column(db.String(200), nullable=True)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

@@ -1,0 +1,87 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div class="container fade-up">
+    <div style="text-align: center; margin-bottom: var(--space-3xl);">
+        <h1 class="gradient-text">Planes de Suscripción</h1>
+        <p class="page-subtitle">Elige el plan que mejor se adapte a tus necesidades de inventario.</p>
+    </div>
+
+    <div class="grid grid-3">
+        <!-- Plan Básico (Gratis) -->
+        <div class="card reveal">
+            <div style="text-align: center; margin-bottom: var(--space-lg);">
+                <h2 style="font-size: 1.2rem; color: var(--text-dim);">Básico</h2>
+                <div style="font-size: 2.5rem; font-weight: 700; margin: 15px 0;">$0</div>
+                <p style="font-size: 0.8rem; opacity: 0.7;">Para uso personal y hobby</p>
+            </div>
+
+            <ul style="list-style: none; padding: 0; margin-bottom: var(--space-xl); font-size: 0.9rem;">
+                <li style="margin-bottom: 12px;">✅ 1 Plano Interactivo</li>
+                <li style="margin-bottom: 12px;">✅ 100 Objetos Máximo</li>
+                <li style="margin-bottom: 12px;">✅ Indexación Manual</li>
+                <li style="margin-bottom: 12px; opacity: 0.4;">❌ OmniVision (Análisis de Video)</li>
+                <li style="margin-bottom: 12px; opacity: 0.4;">❌ Tesla HUD Telemetría</li>
+                <li style="margin-bottom: 12px; opacity: 0.4;">❌ Soporte Prioritario</li>
+            </ul>
+
+            <form action="{{ url_for('upgrade', plan='free') }}" method="POST">
+                <button type="submit" class="btn btn-secondary" style="width: 100%;">Plan Actual</button>
+            </form>
+        </div>
+
+        <!-- Plan Pro (Premium) -->
+        <div class="card reveal reveal-delay-1"
+            style="border: 2px solid var(--primary); transform: scale(1.05); z-index: 10;">
+            <div
+                style="position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background: var(--primary); color: white; padding: 4px 12px; border-radius: 980px; font-size: 0.65rem; font-weight: bold; letter-spacing: 1px;">
+                MÁS POPULAR</div>
+
+            <div style="text-align: center; margin-bottom: var(--space-lg);">
+                <h2 style="font-size: 1.2rem;">Pro</h2>
+                <div style="font-size: 2.5rem; font-weight: 700; margin: 15px 0;">$19<span
+                        style="font-size: 0.9rem; font-weight: normal; opacity: 0.6;"> /mes</span></div>
+                <p style="font-size: 0.8rem; opacity: 0.7;">Para depósitos y negocios crecientes</p>
+            </div>
+
+            <ul style="list-style: none; padding: 0; margin-bottom: var(--space-xl); font-size: 0.9rem;">
+                <li style="margin-bottom: 12px;">✅ Planos Ilimitados</li>
+                <li style="margin-bottom: 12px;">✅ Objetos Ilimitados</li>
+                <li style="margin-bottom: 12px;">✅ **OmniVision (Análisis de Video)**</li>
+                <li style="margin-bottom: 12px;">✅ **Tesla HUD Telemetría**</li>
+                <li style="margin-bottom: 12px;">✅ Soporte Prioritario</li>
+                <li style="margin-bottom: 12px; opacity: 0.4;">❌ API Cloud Access</li>
+            </ul>
+
+            <form action="{{ url_for('upgrade', plan='pro') }}" method="POST">
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Canjear Pro</button>
+            </form>
+        </div>
+
+        <!-- Plan Enterprise -->
+        <div class="card reveal reveal-delay-2">
+            <div style="text-align: center; margin-bottom: var(--space-lg);">
+                <h2 style="font-size: 1.2rem; color: var(--text-dim);">Enterprise</h2>
+                <div style="font-size: 2.2rem; font-weight: 700; margin: 15px 0;">Personalizado</div>
+                <p style="font-size: 0.8rem; opacity: 0.7;">Para grandes centros logísticos</p>
+            </div>
+
+            <ul style="list-style: none; padding: 0; margin-bottom: var(--space-xl); font-size: 0.9rem;">
+                <li style="margin-bottom: 12px;">✅ Todas las funciones Pro</li>
+                <li style="margin-bottom: 12px;">✅ **API Cloud Access Full**</li>
+                <li style="margin-bottom: 12px;">✅ Implementación Personalizada</li>
+                <li style="margin-bottom: 12px;">✅ SLA 99.9% Disponibilidad</li>
+                <li style="margin-bottom: 12px;">✅ Integración con SAP/ERP</li>
+            </ul>
+
+            <a href="mailto:ventas@busca-todo.com" class="btn btn-secondary" style="width: 100%;">Contactar Ventas</a>
+        </div>
+    </div>
+
+    <!-- Comparativa / FAQ sutil -->
+    <div style="margin-top: var(--space-3xl); text-align: center;">
+        <p class="page-subtitle" style="font-size: 0.75rem;">Todas nuestras suscripciones incluyen actualizaciones
+            automáticas anuales.</p>
+    </div>
+</div>
+{% endblock %}

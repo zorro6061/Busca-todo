@@ -35,6 +35,14 @@
             <a href="{{ url_for('list_planos') }}">Mapas</a>
             <a href="{{ url_for('upload') }}">Indexar</a>
             <a href="{{ url_for('ai_optimizer') }}">IA</a>
+            <a href="{{ url_for('pricing') }}" style="display: flex; align-items: center; gap: 4px;">
+                Planes
+                <span
+                    class="badge {% if app_config.subscription_type == 'pro' %}badge-success{% else %}badge-primary{% endif %}"
+                    style="font-size: 0.55rem; padding: 2px 6px;">
+                    {{ app_config.subscription_type | upper }}
+                </span>
+            </a>
         </div>
     </nav>
 
