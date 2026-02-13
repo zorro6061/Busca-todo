@@ -45,14 +45,6 @@ def serve_sw():
 def uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
-@app.route('/manifest.json')
-def serve_manifest():
-    return send_from_directory('static', 'manifest.json')
-
-@app.route('/sw.js')
-def serve_sw():
-    return send_from_directory('static', 'sw.js')
-
 @app.route('/')
 def index():
     ubicaciones_count = Ubicacion.query.count()
