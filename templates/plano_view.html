@@ -1,0 +1,371 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div id="map-layout" style="display: flex; gap: var(--space-lg); align-items: start; min-height: calc(100vh - 120px);">
+
+    <!-- Left Sidebar: Unplaced / Directory (Premium Dock style) -->
+    <aside id="map-sidebar" class="reveal" style="width: 280px; flex-shrink: 0; position: sticky; top: 80px;">
+        <div class="card" style="padding: var(--space-lg); max-height: 80vh; display: flex; flex-direction: column;">
+            <div style="margin-bottom: var(--space-md);">
+                <h3 style="display: flex; align-items: center; justify-content: space-between;">
+                    Directorio
+                    <span id="unplaced-count" class="badge badge-primary">0</span>
+                </h3>
+                <p style="color: var(--text-dim); font-size: 0.75rem; margin-top: 4px;">Arrastrá los pines al mapa</p>
+            </div>
+
+            <div id="unplaced-list"
+                style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 4px;">
+                <!-- Pins will be injected here -->
+            </div>
+
+            <div id="save-panel"
+                style="display: none; margin-top: var(--space-lg); padding-top: var(--space-md); border-top: 1px solid var(--glass-border);">
+                <p style="font-size: 0.75rem; color: var(--success); margin-bottom: 8px; text-align: center;">✓ Cambios
+                    pendientes</p>
+                <div style="display: flex; gap: 6px;">
+                    <button onclick="cancelarCambios()" class="btn btn-sm btn-secondary"
+                        style="flex: 1;">Revertir</button>
+                    <button onclick="guardarPosiciones()" class="btn btn-sm btn-primary"
+                        style="flex: 1;">Guardar</button>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Map Panel -->
+    <main style="flex: 1; min-width: 0;">
+        <div class="page-header fade-up" style="margin-bottom: var(--space-md);">
+            <div>
+                <h2><span class="gradient-text">{{ plano.nombre }}</span></h2>
+                <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px;">
+                    <span class="badge badge-success">Interactivo</span>
+                    <p class="page-subtitle" style="margin-top: 0;">Posicioná tus descubrimientos</p>
+                </div>
+            </div>
+            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                <a href="{{ url_for('video_scanner', plano_id=plano.id) }}" class="btn btn-sm btn-secondary">📹
+                    Scanner</a>
+                <a href="{{ url_for('ver_plano_3d', plano_id=plano.id) }}" class="btn btn-sm btn-secondary">🧊 3D</a>
+                <a href="{{ url_for('editar_plano', plano_id=plano.id) }}" class="btn btn-sm btn-secondary">✏️ Zonas</a>
+                <button id="btn-nueva-ubicacion" class="btn btn-sm btn-primary">➕ Nueva</button>
+            </div>
+        </div>
+
+        <!-- Search Overlay (Google Maps style) -->
+        <div class="card reveal"
+            style="padding: 10px 16px; margin-bottom: var(--space-md); border-radius: 980px; display: flex; align-items: center; gap: 12px; background: rgba(0,0,0,0.6);">
+            <span style="opacity: 0.5;">🔍</span>
+            <input type="text" id="map-search" placeholder="Buscar en este mapa..."
+                style="background: none; border: none; padding: 0; padding-bottom: 0; box-shadow: none; font-size: 0.9rem;">
+            <div id="search-count"
+                style="font-size: 0.75rem; color: var(--text-dim); white-space: nowrap; margin-left: auto;"></div>
+        </div>
+
+        <!-- Smart Chips (Google style) -->
+        <div class="chip-container fade-up fade-up-1">
+            <div class="chip active" onclick="filterByChip('All', this)">Todos</div>
+            <div class="chip" onclick="filterByChip('Herramientas', this)">🛠️ Herramientas</div>
+            <div class="chip" onclick="filterByChip('Electrónica', this)">💻 Electrónica</div>
+            <div class="chip" onclick="filterByChip('Muebles', this)">🪑 Muebles</div>
+            <div class="chip" onclick="filterByChip('Otros', this)">📦 Otros</div>
+        </div>
+
+        <div class="card reveal visible"
+            style="padding: 0; overflow: hidden; position: relative; background: #000; border-radius: var(--radius-2xl);">
+
+            <!-- Tesla HUD Panel -->
+            <div class="hud-panel reveal">
+                <div class="hud-data">SISTEMA: <span class="hud-val">ACTIVO</span></div>
+                <div class="hud-data">OBJETOS: <span class="hud-val" id="hud-obj-count">0</span></div>
+                <div class="hud-data">ZOOM: <span class="hud-val" id="hud-zoom">100%</span></div>
+                <div class="hud-data">LATENCIA IA: <span class="hud-val">120ms</span></div>
+            </div>
+
+            <!-- Map Container -->
+            <div id="map-container"
+                style="position: relative; overflow: auto; min-height: 600px; display: flex; justify-content: center; background: #0a0a0a;">
+                <div style="position: relative; display: inline-block;">
+                    {% if plano.imagen_path %}
+                    <img id="plano-img" src="{{ url_for('uploaded_file', filename=plano.imagen_path) }}"
+                        style="display: block; max-width: none;">
+                    {% else %}
+                    <div
+                        style="width: 800px; height: 600px; display: flex; align-items: center; justify-content: center; background: #111;">
+                        <p style="color: var(--text-muted);">Sin imagen de fondo</p>
+                    </div>
+                    {% endif %}
+
+                    <!-- Pins will be rendered here via JS -->
+                    <div id="pins-layer" style="position: absolute; inset: 0; pointer-events: none;"></div>
+                </div>
+            </div>
+
+            <!-- Floating Controls (Bottom Right) -->
+            <div
+                style="position: absolute; bottom: var(--space-md); right: var(--space-md); display: flex; flex-direction: column; gap: 6px; z-index: 50;">
+                <button class="btn btn-sm btn-secondary" onclick="zoomMap(0.1)"
+                    style="width: 36px; height: 36px; padding: 0; border-radius: 50%;">＋</button>
+                <button class="btn btn-sm btn-secondary" onclick="zoomMap(-0.1)"
+                    style="width: 36px; height: 36px; padding: 0; border-radius: 50%;">－</button>
+                <button class="btn btn-sm btn-secondary" onclick="resetMap()"
+                    style="width: 36px; height: 36px; padding: 0; border-radius: 50%;">🧭</button>
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- Simple Modal for New Ubicacion -->
+<div id="modal-nueva"
+    style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 1000; align-items: center; justify-content: center; padding: var(--space-md); backdrop-filter: blur(10px);"
+    onclick="if(event.target===this) this.style.display='none'">
+    <div class="card" style="max-width: 400px; width: 100%; animation: scaleIn 0.3s var(--transition-smooth);">
+        <h3 style="margin-bottom: var(--space-lg);">Nueva Ubicación</h3>
+        <form action="{{ url_for('upload_plano_simple', plano_id=plano.id) }}" method="POST"
+            enctype="multipart/form-data">
+            <div style="margin-bottom: var(--space-md);">
+                <label>Nombre</label>
+                <input type="text" name="nombre" placeholder="Ej: Estante 4" required
+                    style="border-radius: var(--radius-md);">
+            </div>
+            <div style="margin-bottom: var(--space-xl);">
+                <label>Foto</label>
+                <input type="file" name="file" accept="image/*" class="btn btn-secondary"
+                    style="width: 100%; padding: 12px;" required>
+            </div>
+            <div style="display: flex; gap: var(--space-sm);">
+                <button type="button" onclick="document.getElementById('modal-nueva').style.display='none'"
+                    class="btn btn-secondary" style="flex: 1;">Cancelar</button>
+                <button type="submit" class="btn btn-primary" style="flex: 1;">Crear</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    let pins = {{ pins| tojson if pins else '[]' }};
+    let unplaced = {{ unplaced| tojson if unplaced else '[]' }};
+    let originalPins = JSON.parse(JSON.stringify(pins));
+    let originalUnplaced = JSON.parse(JSON.stringify(unplaced));
+    let hasChanges = false;
+    let currentZoom = 1;
+    let currentChip = 'All';
+
+    const img = document.getElementById('plano-img');
+    const pinsLayer = document.getElementById('pins-layer');
+    const unplacedList = document.getElementById('unplaced-list');
+
+    function renderPins() {
+        pinsLayer.innerHTML = '';
+        let totalObjects = 0;
+
+        pins.forEach(p => {
+            const isChipMatch = currentChip === 'All' || (p.tags && p.tags.includes(currentChip)) || (p.categoria && p.categoria.includes(currentChip));
+            if (!isChipMatch) return;
+
+            totalObjects += (p.objetos_count || 0);
+            const pin = document.createElement('div');
+            pin.className = 'map-pin';
+            pin.style.left = p.x + '%';
+            pin.style.top = p.y + '%';
+            pin.setAttribute('draggable', 'true');
+            pin.innerHTML = `
+                <div class="pin-head">📍</div>
+                <div class="pin-label">${p.nombre}</div>
+            `;
+            // ... (rest of pin logic)
+            pin.ondragstart = (e) => { e.dataTransfer.setData('text/plain', JSON.stringify({ id: p.id, type: 'placed' })); };
+            pin.onclick = (e) => { e.stopPropagation(); mostrarDetallePin(p); };
+            pinsLayer.appendChild(pin);
+        });
+
+        // Update HUD
+        document.getElementById('hud-obj-count').textContent = totalObjects;
+        document.getElementById('hud-zoom').textContent = Math.round(currentZoom * 100) + '%';
+
+        // Update unplaced List...
+
+        // Update unplaced
+        unplacedList.innerHTML = unplaced.map(p => `
+            <div class="directory-item reveal visible" draggable="true" ondragstart="event.dataTransfer.setData('text/plain', JSON.stringify({id: ${p.id}, type: 'unplaced'}))">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span style="font-size: 1.2rem;">📦</span>
+                    <div style="min-width: 0;">
+                        <p style="font-size: 0.85rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${p.nombre}</p>
+                        <p style="font-size: 0.72rem; color: var(--text-dim);">${p.is_processing ? 'Procesando...' : (p.objetos_count + ' objetos')}</p>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+
+        document.getElementById('unplaced-count').textContent = unplaced.length;
+        document.getElementById('save-panel').style.display = hasChanges ? 'block' : 'none';
+
+        applySearch();
+    }
+
+    const container = document.getElementById('map-container');
+    container.ondragover = (e) => e.preventDefault();
+    container.ondrop = (e) => {
+        e.preventDefault();
+        const data = JSON.parse(e.dataTransfer.getData('text/plain'));
+        const rect = img.getBoundingClientRect();
+        const x = ((e.clientX - rect.left) / rect.width) * 100;
+        const y = ((e.clientY - rect.top) / rect.height) * 100;
+
+        if (data.type === 'unplaced') {
+            const item = unplaced.find(p => p.id === data.id);
+            unplaced = unplaced.filter(p => p.id !== data.id);
+            pins.push({ ...item, x, y });
+        } else {
+            const item = pins.find(p => p.id === data.id);
+            item.x = x;
+            item.y = y;
+        }
+        hasChanges = true;
+        renderPins();
+    };
+
+    function zoomMap(v) {
+        currentZoom = Math.max(0.5, Math.min(3, currentZoom + v));
+        img.style.transform = `scale(${currentZoom})`;
+        img.style.transformOrigin = '0 0';
+        pinsLayer.style.transform = `scale(${currentZoom})`;
+        pinsLayer.style.transformOrigin = '0 0';
+
+        // Update HUD
+        document.getElementById('hud-zoom').textContent = Math.round(currentZoom * 100) + '%';
+    }
+
+    function resetMap() {
+        currentZoom = 1;
+        img.style.transform = '';
+        pinsLayer.style.transform = '';
+        document.getElementById('hud-zoom').textContent = '100%';
+    }
+
+    function filterByChip(chip, el) {
+        currentChip = chip;
+        document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+        el.classList.add('active');
+        renderPins();
+
+        // Dynamic Island reaction
+        window.showIsland(`Filtrando: ${chip}`, 1500, 'success');
+    }
+
+    function applySearch() {
+        const query = document.getElementById('map-search').value.toLowerCase();
+        const pinElements = document.querySelectorAll('.map-pin');
+        let count = 0;
+        pins.forEach((p, idx) => {
+            const match = p.nombre.toLowerCase().includes(query) || (p.tags && p.tags.toLowerCase().includes(query));
+            pinElements[idx].style.opacity = match ? '1' : '0.2';
+            pinElements[idx].style.pointerEvents = match ? 'auto' : 'none';
+            if (match && query) count++;
+        });
+        document.getElementById('search-count').textContent = query ? `${count} resultados` : '';
+    }
+
+    document.getElementById('map-search').oninput = applySearch;
+    document.getElementById('btn-nueva-ubicacion').onclick = () => document.getElementById('modal-nueva').style.display = 'flex';
+
+    function guardarPosiciones() {
+        fetch("{{ url_for('save_pin_positions', plano_id=plano.id) }}", {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pins })
+        }).then(r => r.json()).then(data => {
+            if (data.success) {
+                hasChanges = false;
+                originalPins = JSON.parse(JSON.stringify(pins));
+                originalUnplaced = JSON.parse(JSON.stringify(unplaced));
+                renderPins();
+                mostrarToast('Posiciones guardadas', 'success');
+            }
+        });
+    }
+
+    function cancelarCambios() {
+        pins = JSON.parse(JSON.stringify(originalPins));
+        unplaced = JSON.parse(JSON.stringify(originalUnplaced));
+        hasChanges = false;
+        renderPins();
+    }
+
+    // Scroll reveal manual trigger for directory items
+    window.onload = renderPins;
+</script>
+
+<style>
+    .map-pin {
+        position: absolute;
+        width: 32px;
+        height: 32px;
+        margin-left: -16px;
+        margin-top: -32px;
+        cursor: grab;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        z-index: 10;
+        pointer-events: auto;
+        transition: transform 0.2s;
+    }
+
+    .map-pin:hover {
+        transform: scale(1.2) translateY(-4px);
+        z-index: 11;
+    }
+
+    .pin-head {
+        font-size: 1.8rem;
+        filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.4));
+    }
+
+    .pin-label {
+        background: rgba(0, 0, 0, 0.75);
+        backdrop-filter: blur(8px);
+        color: white;
+        padding: 3px 10px;
+        border-radius: 980px;
+        font-size: 0.7rem;
+        font-weight: 600;
+        white-space: nowrap;
+        margin-top: -2px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .directory-item {
+        padding: 12px;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid var(--glass-border);
+        border-radius: var(--radius-md);
+        cursor: grab;
+        transition: all 0.3s var(--transition-smooth);
+    }
+
+    .directory-item:hover {
+        background: rgba(255, 255, 255, 0.06);
+        border-color: var(--glass-border-hover);
+        transform: translateX(4px);
+    }
+
+    .directory-item:active {
+        cursor: grabbing;
+    }
+
+    #unplaced-list::-webkit-scrollbar {
+        width: 4px;
+    }
+
+    #unplaced-list::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    #unplaced-list::-webkit-scrollbar-thumb {
+        background: var(--glass-border);
+        border-radius: 10px;
+    }
+</style>
+{% endblock %}

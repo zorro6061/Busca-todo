@@ -1,0 +1,237 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div class="fade-up" style="max-width: 900px; margin: var(--space-xl) auto;">
+    <div style="text-align: center; margin-bottom: var(--space-2xl);">
+        <h1><span class="gradient-text">Video Scanner</span></h1>
+        <p class="page-subtitle">Procesamiento cinemático de espacios con IA</p>
+    </div>
+
+    <!-- Step Pills (Premium Starlink style) -->
+    <div style="display: flex; justify-content: center; gap: 8px; margin-bottom: var(--space-2xl);">
+        <div class="step-pill {{ 'active' if step == 1 else 'done' }}" id="pill-step-1">
+            <span class="step-num">1</span> <span class="step-txt">Captura</span>
+        </div>
+        <div style="width: 30px; height: 1px; background: var(--glass-border); align-self: center;"></div>
+        <div class="step-pill {{ 'active' if step == 2 else ('done' if step > 2 else '') }}" id="pill-step-2">
+            <span class="step-num">2</span> <span class="step-txt">Análisis</span>
+        </div>
+        <div style="width: 30px; height: 1px; background: var(--glass-border); align-self: center;"></div>
+        <div class="step-pill {{ 'active' if step == 3 else '' }}" id="pill-step-3">
+            <span class="step-num">3</span> <span class="step-txt">Indexación</span>
+        </div>
+    </div>
+
+    <!-- Step 1: Upload Video -->
+    <div id="step-1" class="card reveal visible"
+        style="display: {{ 'block' if step == 1 else 'none' }}; text-align: center; padding: var(--space-3xl) var(--space-xl);">
+        <form action="{{ url_for('video_scanner', plano_id=plano.id) }}" method="POST" enctype="multipart/form-data"
+            id="video-form">
+            <div id="video-drop-zone"
+                style="border: 2px dashed rgba(255,255,255,0.08); border-radius: var(--radius-2xl); padding: var(--space-3xl) var(--space-xl); cursor: pointer; transition: all 0.4s;"
+                onclick="document.getElementById('video-input').click();">
+                <div style="font-size: 4rem; opacity: 0.3; margin-bottom: var(--space-lg);">📹</div>
+                <h2 style="margin-bottom: 8px;">Cargar Video del Recorrido</h2>
+                <p style="color: var(--text-dim); margin-bottom: var(--space-xl);">Grabá el espacio lentamente para
+                    mejores resultados.</p>
+                <button type="button" class="btn btn-secondary">Seleccionar Archivo</button>
+                <input type="file" id="video-input" name="video" accept="video/*" capture="environment"
+                    style="display: none;" onchange="submitVideo()">
+            </div>
+        </form>
+    </div>
+
+    <!-- Step 2: Processing / Analysis -->
+    <div id="step-2" class="card reveal visible"
+        style="display: {{ 'block' if step == 2 else 'none' }}; text-align: center; padding: var(--space-3xl) var(--space-xl);">
+        <div style="position: relative; width: 80px; height: 80px; margin: 0 auto var(--space-xl);">
+            <div style="position: absolute; inset: 0; border: 3px solid var(--primary-subtle); border-radius: 50%;">
+            </div>
+            <div
+                style="position: absolute; inset: 0; border: 3px solid transparent; border-top-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite;">
+            </div>
+        </div>
+        <h2 style="margin-bottom: 8px;">Analizando Recorrido</h2>
+        <p style="color: var(--text-dim); margin-bottom: var(--space-xl);">La IA está extrayendo escenas y detectando
+            objetos...</p>
+
+        <div style="max-width: 400px; margin: 0 auto;">
+            <div
+                style="height: 6px; background: rgba(255,255,255,0.05); border-radius: 10px; overflow: hidden; margin-bottom: 12px;">
+                <div id="scan-progress"
+                    style="width: 10%; height: 100%; background: linear-gradient(90deg, var(--primary), var(--accent)); transition: width 0.5s;">
+                </div>
+            </div>
+            <p id="scan-status"
+                style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted);">
+                Procesando frames...</p>
+        </div>
+    </div>
+
+    <!-- Step 3: Review Scans & Create Locations -->
+    <div id="step-3" style="display: {{ 'block' if step == 3 else 'none' }};">
+        <div class="page-header">
+            <div>
+                <h2>Escenas Detectadas</h2>
+                <p class="page-subtitle">Seleccioná las que quieras guardar como espacios</p>
+            </div>
+            <button onclick="finishScanning()" class="btn btn-primary btn-lg">Guardar Selección →</button>
+        </div>
+
+        <div class="grid grid-3">
+            {% if frames %}
+            {% for frame in frames %}
+            <div class="card frame-card reveal" style="padding: 0; overflow: hidden; cursor: pointer;"
+                onclick="toggleFrame(this, {{ loop.index0 }})">
+                <div style="position: relative;">
+                    <img src="{{ url_for('uploaded_file', filename=frame.path) }}"
+                        style="width: 100%; height: 180px; object-fit: cover;">
+                    <div class="frame-overlay"
+                        style="position: absolute; inset: 0; background: rgba(99, 102, 241, 0.4); display: none; align-items: center; justify-content: center;">
+                        <span style="font-size: 2.5rem; filter: drop-shadow(0 0 10px rgba(0,0,0,0.5));">✓</span>
+                    </div>
+                    {% if frame.objects %}
+                    <span class="badge badge-primary"
+                        style="position: absolute; bottom: 10px; right: 10px; backdrop-filter: blur(10px); background: rgba(0,0,0,0.5);">
+                        {{ frame.objects|length }} objetos
+                    </span>
+                    {% endif %}
+                </div>
+                <div style="padding: var(--space-md);">
+                    <h3 style="font-size: 0.95rem;">Escena #{{ loop.index }}</h3>
+                    <p style="color: var(--text-dim); font-size: 0.78rem; margin-top: 4px; line-height: 1.4;">
+                        {{ frame.objects|map(attribute='nombre')|join(', ')|truncate(60) }}
+                    </p>
+                </div>
+            </div>
+            {% endfor %}
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+    .step-pill {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 16px;
+        border-radius: 980px;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid var(--glass-border);
+        color: var(--text-muted);
+        transition: all 0.3s;
+    }
+
+    .step-pill.active {
+        background: var(--primary-subtle);
+        border-color: var(--primary);
+        color: var(--text-main);
+        box-shadow: 0 0 15px var(--primary-glow);
+    }
+
+    .step-pill.done {
+        color: var(--success);
+        border-color: var(--success-dim);
+    }
+
+    .step-num {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.05);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.7rem;
+        font-weight: 800;
+    }
+
+    .active .step-num {
+        background: var(--primary);
+        color: white;
+    }
+
+    .done .step-num {
+        background: var(--success);
+        color: white;
+    }
+
+    .step-txt {
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .frame-card.selected {
+        border-color: var(--primary);
+        transform: scale(0.98);
+    }
+
+    .frame-card.selected .frame-overlay {
+        display: flex;
+    }
+
+    @keyframes spin {
+        to {
+            transform: rotate(360deg);
+        }
+    }
+</style>
+
+<script>
+    function submitVideo() {
+        if (document.getElementById('video-input').files.length > 0) {
+            document.getElementById('video-form').submit();
+        }
+    }
+
+    let selectedFrames = [];
+    function toggleFrame(el, idx) {
+        el.classList.toggle('selected');
+        if (el.classList.contains('selected')) {
+            selectedFrames.push(idx);
+        } else {
+            selectedFrames = selectedFrames.filter(i => i !== idx);
+        }
+    }
+
+    function finishScanning() {
+        if (selectedFrames.length === 0) return alert('Seleccioná al menos una escena para guardar.');
+
+        const btn = event.target;
+        btn.disabled = true;
+        btn.textContent = 'Guardando...';
+
+        fetch("{{ url_for('crear_ubicaciones_desde_video') }}", {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ indices: selectedFrames })
+        }).then(r => r.json()).then(data => {
+            if (data.success) {
+                window.location.href = "{{ url_for('ver_plano', plano_id=plano.id) }}";
+            }
+        });
+    }
+
+    // Progress simulation if in step 2
+    if (document.getElementById('step-2').style.display === 'block') {
+        let p = 10;
+        const bar = document.getElementById('scan-progress');
+        const status = document.getElementById('scan-status');
+        const interval = setInterval(() => {
+            p += Math.random() * 5;
+            if (p >= 95) {
+                clearInterval(interval);
+                // The actual logic would be waiting for backend, but we'll reload after a bit in this demo/skeleton
+                setTimeout(() => location.reload(), 2000);
+            }
+            bar.style.width = p + '%';
+            if (p > 30) status.textContent = 'Analizando objetos con Gemini...';
+            if (p > 60) status.textContent = 'Mapeando trayectorias...';
+            if (p > 85) status.textContent = 'Generando escenas finales...';
+        }, 800);
+    }
+</script>
+{% endblock %}

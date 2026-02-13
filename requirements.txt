@@ -1,0 +1,8 @@
+Flask
+Flask-SQLAlchemy
+google-generativeai
+python-dotenv
+Werkzeug
+rapidfuzz
+Pillow
+opencv-python

@@ -1,0 +1,191 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div class="fade-up" style="max-width: 800px; margin: var(--space-xl) auto;">
+    <div style="text-align: center; margin-bottom: var(--space-2xl);">
+        <h1><span class="gradient-text">Nuevo Plano</span></h1>
+        <p class="page-subtitle">Creá la base para organizar tus espacios</p>
+    </div>
+
+    <form method="POST" enctype="multipart/form-data">
+        <div class="card" style="margin-bottom: var(--space-lg);">
+            <div style="margin-bottom: var(--space-lg);">
+                <label>Nombre del Plano</label>
+                <input type="text" name="nombre" placeholder="Ej: Planta Baja, Garaje, Depósito..." required
+                    style="border-radius: 980px; padding: 16px 24px;">
+            </div>
+
+            <div style="margin-bottom: var(--space-lg);">
+                <label>Método de Creación</label>
+                <div class="grid grid-2" style="gap: var(--space-sm);">
+                    <button type="button" id="btn-mode-upload" class="btn btn-primary"
+                        style="border-radius: var(--radius-md);">
+                        🖼️ Cargar Imagen
+                    </button>
+                    <button type="button" id="btn-mode-draw" class="btn btn-secondary"
+                        style="border-radius: var(--radius-md);">
+                        ✏️ Dibujar Croquis
+                    </button>
+                </div>
+                <input type="hidden" name="metodo" id="input-metodo" value="upload">
+            </div>
+
+            <!-- Upload Section -->
+            <div id="section-upload" class="reveal visible">
+                <label>Archivo de Imagen</label>
+                <input type="file" name="file" accept="image/*" class="btn btn-secondary"
+                    style="width: 100%; padding: 14px;">
+                <p style="color: var(--text-dim); font-size: 0.75rem; margin-top: 8px;">Recomendado: Plano
+                    arquitectónico o foto cenital.</p>
+            </div>
+
+            <!-- Drawing Section -->
+            <div id="section-draw" style="display: none;">
+                <div style="display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap;">
+                    <button type="button" class="btn btn-sm btn-secondary tool-btn active" data-tool="pencil"
+                        title="Lápiz">✏️</button>
+                    <button type="button" class="btn btn-sm btn-secondary tool-btn" data-tool="line"
+                        title="Línea">📏</button>
+                    <button type="button" class="btn btn-sm btn-secondary tool-btn" data-tool="rect"
+                        title="Rectángulo">⬛</button>
+                    <button type="button" class="btn btn-sm btn-secondary tool-btn" data-tool="circle"
+                        title="Círculo">⭕</button>
+                    <button type="button" class="btn btn-sm btn-secondary tool-btn" data-tool="eraser"
+                        title="Borrador">🧼</button>
+                    <div style="width: 1px; background: var(--glass-border); margin: 0 4px;"></div>
+                    <button type="button" id="btn-clear-canvas" class="btn btn-sm btn-secondary"
+                        style="color: var(--danger);">Limpiar</button>
+                </div>
+
+                <div
+                    style="background: white; border-radius: var(--radius-md); overflow: hidden; box-shadow: var(--shadow-md);">
+                    <canvas id="canvas-plano" width="800" height="500"
+                        style="display: block; cursor: crosshair; width: 100%; height: auto;"></canvas>
+                </div>
+                <input type="hidden" name="canvas_data" id="canvas-data">
+                <p style="color: var(--text-dim); font-size: 0.75rem; margin-top: 8px;">Dibujá las paredes y límites de
+                    tu espacio.</p>
+            </div>
+        </div>
+
+        <div style="display: flex; gap: var(--space-md);">
+            <a href="{{ url_for('list_planos') }}" class="btn btn-secondary btn-lg" style="flex: 1;">Cancelar</a>
+            <button type="submit" class="btn btn-primary btn-lg" style="flex: 2;">Crear Plano →</button>
+        </div>
+    </form>
+</div>
+
+<script>
+    const btnUpload = document.getElementById('btn-mode-upload');
+    const btnDraw = document.getElementById('btn-mode-draw');
+    const sectionUpload = document.getElementById('section-upload');
+    const sectionDraw = document.getElementById('section-draw');
+    const inputMetodo = document.getElementById('input-metodo');
+
+    btnUpload.onclick = () => {
+        inputMetodo.value = 'upload';
+        btnUpload.className = 'btn btn-primary';
+        btnDraw.className = 'btn btn-secondary';
+        sectionUpload.style.display = 'block';
+        sectionDraw.style.display = 'none';
+    };
+
+    btnDraw.onclick = () => {
+        inputMetodo.value = 'draw';
+        btnUpload.className = 'btn btn-secondary';
+        btnDraw.className = 'btn btn-primary';
+        sectionUpload.style.display = 'none';
+        sectionDraw.style.display = 'block';
+        resizeCanvas();
+    };
+
+    // Canvas Logic
+    const canvas = document.getElementById('canvas-plano');
+    const ctx = canvas.getContext('2d');
+    const canvasDataInput = document.getElementById('canvas-data');
+    let drawing = false;
+    let currentTool = 'pencil';
+    let startX, startY;
+    let savedData;
+
+    function resizeCanvas() {
+        const container = canvas.parentElement;
+        if (container.offsetWidth > 0 && canvas.width !== container.offsetWidth) {
+            // No resizear si ya tiene contenido para no borrarlo
+            // O guardar, resizear y restaurar
+        }
+    }
+
+    canvas.onmousedown = (e) => {
+        drawing = true;
+        const rect = canvas.getBoundingClientRect();
+        startX = (e.clientX - rect.left) * (canvas.width / rect.width);
+        startY = (e.clientY - rect.top) * (canvas.height / rect.height);
+        savedData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+        if (currentTool === 'pencil') {
+            ctx.beginPath();
+            ctx.moveTo(startX, startY);
+        }
+    };
+
+    canvas.onmousemove = (e) => {
+        if (!drawing) return;
+        const rect = canvas.getBoundingClientRect();
+        const x = (e.clientX - rect.left) * (canvas.width / rect.width);
+        const y = (e.clientY - rect.top) * (canvas.height / rect.height);
+
+        if (currentTool === 'pencil') {
+            ctx.lineTo(x, y);
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        } else if (currentTool === 'eraser') {
+            ctx.clearRect(x - 10, y - 10, 20, 20);
+        } else {
+            ctx.putImageData(savedData, 0, 0);
+            ctx.beginPath();
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 2;
+            if (currentTool === 'line') {
+                ctx.moveTo(startX, startY);
+                ctx.lineTo(x, y);
+            } else if (currentTool === 'rect') {
+                ctx.strokeRect(startX, startY, x - startX, y - startY);
+            } else if (currentTool === 'circle') {
+                const radius = Math.sqrt(Math.pow(x - startX, 2) + Math.pow(y - startY, 2));
+                ctx.arc(startX, startY, radius, 0, 2 * Math.PI);
+            }
+            ctx.stroke();
+        }
+    };
+
+    canvas.onmouseup = () => {
+        drawing = false;
+        canvasDataInput.value = canvas.toDataURL();
+    };
+
+    document.querySelectorAll('.tool-btn').forEach(btn => {
+        btn.onclick = () => {
+            document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active', 'btn-primary'));
+            document.querySelectorAll('.tool-btn').forEach(b => b.classList.add('btn-secondary'));
+            btn.classList.remove('btn-secondary');
+            btn.classList.add('btn-primary', 'active');
+            currentTool = btn.dataset.tool;
+        };
+    });
+
+    document.getElementById('btn-clear-canvas').onclick = () => {
+        if (confirm('¿Limpiar el dibujo?')) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            canvasDataInput.value = '';
+        }
+    };
+</script>
+
+<style>
+    .tool-btn.active {
+        box-shadow: 0 0 10px var(--primary-glow);
+    }
+</style>
+{% endblock %}

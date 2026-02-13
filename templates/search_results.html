@@ -1,0 +1,54 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div class="page-header fade-up">
+    <div>
+        <h2>Resultados para "<em>{{ query }}</em>"</h2>
+        <p class="page-subtitle">{{ resultados|length }} coincidencia{{ 's' if resultados|length != 1 }}</p>
+    </div>
+    <a href="{{ url_for('index') }}" class="btn btn-secondary">← Volver</a>
+</div>
+
+<div class="grid grid-3">
+    {% for r in resultados %}
+    <div class="card reveal {% if loop.index <= 3 %}reveal-delay-{{ loop.index }}{% endif %}"
+        style="padding: 0; overflow: hidden;">
+        <div style="position: relative; height: 200px; overflow: hidden;">
+            <img src="{{ url_for('uploaded_file', filename=r.imagen) }}"
+                style="width: 100%; height: 100%; object-fit: cover;">
+            {% if r.bbox %}
+            <div
+                style="position: absolute; left: {{ r.bbox[0]*100 }}%; top: {{ r.bbox[1]*100 }}%; width: {{ (r.bbox[2]-r.bbox[0])*100 }}%; height: {{ (r.bbox[3]-r.bbox[1])*100 }}%; border: 2px solid var(--primary); border-radius: 4px; box-shadow: 0 0 12px var(--primary-glow); animation: pulse 2s infinite;">
+            </div>
+            {% endif %}
+            <div
+                style="position: absolute; inset: 0; background: linear-gradient(0deg, rgba(0,0,0,0.6) 0%, transparent 50%); pointer-events: none;">
+            </div>
+        </div>
+        <div style="padding: var(--space-md) var(--space-lg) var(--space-lg);">
+            <h3 style="text-transform: capitalize;">{{ r.nombre }}</h3>
+            <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px;">
+                <span class="badge badge-primary">{{ (r.confianza*100)|int }}% match</span>
+                {% if r.categoria %}<span class="badge badge-warning">{{ r.categoria }}</span>{% endif %}
+                {% if r.estado %}<span class="badge badge-success">{{ r.estado }}</span>{% endif %}
+            </div>
+            <p style="color: var(--text-dim); font-size: 0.82rem; margin-top: 8px;">📍 {{ r.ubicacion_nombre }}</p>
+            {% if r.plano_id %}
+            <a href="{{ url_for('ver_plano', plano_id=r.plano_id) }}?highlight_ubi={{ r.ubicacion_id }}"
+                class="btn btn-sm btn-primary" style="margin-top: var(--space-md); width: 100%;">
+                📍 Ver en Mapa
+            </a>
+            {% endif %}
+        </div>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <div class="empty-state-icon">🔍</div>
+        <h3 style="margin-bottom: 6px;">Sin resultados</h3>
+        <p>No encontramos "{{ query }}". Probá con otro término.</p>
+        <a href="{{ url_for('index') }}" class="btn btn-primary" style="margin-top: var(--space-lg);">Volver al
+            Inicio</a>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

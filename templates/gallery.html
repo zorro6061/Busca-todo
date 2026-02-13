@@ -1,0 +1,117 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div class="page-header fade-up">
+    <div>
+        <h2>Galería</h2>
+        <p class="page-subtitle">{{ ubicaciones|length }} espacios indexados</p>
+    </div>
+    <a href="{{ url_for('upload') }}" class="btn btn-primary">+ Nuevo Espacio</a>
+</div>
+
+<div class="grid grid-3">
+    {% for ubi in ubicaciones %}
+    <div class="card card-interactive reveal {% if loop.index <= 3 %}reveal-delay-{{ loop.index }}{% endif %}"
+        style="padding: 0; overflow: hidden;"
+        onclick="abrirDetalle({{ ubi.id }}, '{{ ubi.nombre }}', '{{ ubi.imagen_path }}', '{{ ubi.tags|default('Sin tags', true) }}', {{ ubi.objetos|length }}, {{ ubi.plano_id or 'null' }})">
+        <div style="position: relative; overflow: hidden;">
+            <img src="{{ url_for('uploaded_file', filename=ubi.imagen_path) }}" alt="{{ ubi.nombre }}"
+                style="width: 100%; height: 210px; object-fit: cover; transition: transform 0.6s var(--transition-smooth);">
+            <div
+                style="position: absolute; inset: 0; background: linear-gradient(0deg, rgba(0,0,0,0.6) 0%, transparent 50%); pointer-events: none;">
+            </div>
+            <span class="badge badge-primary"
+                style="position: absolute; top: 12px; right: 12px; backdrop-filter: blur(10px); background: rgba(0,0,0,0.5);">📦
+                {{ ubi.objetos|length }}</span>
+        </div>
+        <div style="padding: var(--space-md) var(--space-lg) var(--space-lg);">
+            <h3>{{ ubi.nombre }}</h3>
+            <p
+                style="color: var(--text-dim); font-size: 0.82rem; line-height: 1.5; margin-top: 4px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+                {{ ubi.tags if ubi.tags else 'Sin análisis aún' }}
+            </p>
+            {% if ubi.plano_id %}
+            <div style="margin-top: 8px;"><span class="badge badge-success">🗺️ En mapa</span></div>
+            {% endif %}
+        </div>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <div class="empty-state-icon">📸</div>
+        <h3 style="margin-bottom: 6px;">Aún no indexaste ningún espacio</h3>
+        <p>Sacá una foto y la IA hará el resto.</p>
+        <a href="{{ url_for('upload') }}" class="btn btn-primary" style="margin-top: var(--space-lg);">Empezar</a>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Detail Modal -->
+<div id="modal-detalle"
+    style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 1000; align-items: center; justify-content: center; padding: var(--space-md); backdrop-filter: blur(8px);"
+    onclick="if(event.target===this) cerrarDetalle()">
+    <div class="card"
+        style="max-width: 500px; width: 100%; padding: 0; overflow: hidden; animation: scaleIn 0.3s var(--transition-smooth); max-height: 90vh; overflow-y: auto;">
+        <div style="position: relative;">
+            <img id="det-img" src="" style="width: 100%; max-height: 260px; object-fit: cover;">
+            <button onclick="cerrarDetalle()"
+                style="position: absolute; top: 12px; right: 12px; background: rgba(0,0,0,0.5); backdrop-filter: blur(10px); border: none; color: white; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; font-size: 1rem; transition: transform 0.2s;"
+                onmouseenter="this.style.transform='scale(1.1)'" onmouseleave="this.style.transform=''">✕</button>
+        </div>
+        <div style="padding: var(--space-lg) var(--space-xl);">
+            <h2 id="det-nombre" style="margin-bottom: 4px;"></h2>
+            <p id="det-tags"
+                style="color: var(--text-dim); font-size: 0.85rem; margin-bottom: var(--space-md); line-height: 1.6;">
+            </p>
+            <div style="margin-bottom: var(--space-md);"><span id="det-obj-count" class="badge badge-success"></span>
+            </div>
+            <div id="det-objetos" style="margin-bottom: var(--space-md);"></div>
+            <div style="display: flex; gap: var(--space-sm);">
+                <a id="det-link-mapa" href="#" class="btn btn-success" style="flex: 1; display: none;">📍 Ver en
+                    Mapa</a>
+                <button onclick="cerrarDetalle()" class="btn btn-secondary" style="flex: 1;">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .card-interactive:hover img {
+        transform: scale(1.06);
+    }
+</style>
+
+<script>
+    const objetosPorUbi = {
+        {% for ubi in ubicaciones %}
+    { { ubi.id } }: [
+        {% for obj in ubi.objetos %}
+    { nombre: "{{ obj.nombre }}", categoria: "{{ obj.categoria or '' }}", confianza: { { (obj.confianza * 100) | int } } },
+    {% endfor %}
+        ],
+    {% endfor %}
+    };
+
+    function abrirDetalle(id, nombre, imagen, tags, objCount, planoId) {
+        document.getElementById('det-img').src = '/uploads/' + imagen;
+        document.getElementById('det-nombre').textContent = nombre;
+        document.getElementById('det-tags').textContent = tags;
+        document.getElementById('det-obj-count').textContent = '📦 ' + objCount + ' objetos';
+        const objetos = objetosPorUbi[id] || [];
+        const cont = document.getElementById('det-objetos');
+        if (objetos.length > 0) {
+            cont.innerHTML = '<h4 style="margin-bottom: 8px;">Objetos detectados</h4>' +
+                objetos.map(o => `
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: rgba(255,255,255,0.03); border-radius: var(--radius-sm); margin-bottom: 4px; font-size: 0.85rem;">
+                        <span style="text-transform: capitalize;">📦 ${o.nombre}</span>
+                        <span class="badge badge-primary">${o.confianza}%</span>
+                    </div>`).join('');
+        } else { cont.innerHTML = '<p style="color: var(--text-dim); font-size: 0.85rem;">Sin objetos detectados</p>'; }
+        const link = document.getElementById('det-link-mapa');
+        if (planoId) { link.href = '/plano/' + planoId + '?highlight_ubi=' + id; link.style.display = 'flex'; }
+        else { link.style.display = 'none'; }
+        document.getElementById('modal-detalle').style.display = 'flex';
+    }
+    function cerrarDetalle() { document.getElementById('modal-detalle').style.display = 'none'; }
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') cerrarDetalle(); });
+</script>
+{% endblock %}

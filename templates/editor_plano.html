@@ -1,0 +1,204 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div class="page-header fade-up">
+    <div>
+        <h2>Editor de Zonas</h2>
+        <p class="page-subtitle">{{ plano.nombre }} · Definí áreas para organizar tus espacios</p>
+    </div>
+    <div style="display: flex; gap: var(--space-sm);">
+        <button id="btn-nueva-zona" class="btn btn-primary">➕ Nueva Zona</button>
+        <a href="{{ url_for('ver_plano', plano_id=plano.id) }}" class="btn btn-secondary">Terminar</a>
+    </div>
+</div>
+
+<div class="card reveal visible" style="padding: 0; overflow: hidden; position: relative; background: #000;">
+    <div id="editor-container"
+        style="position: relative; overflow: auto; max-height: 75vh; display: flex; justify-content: center; background: #111;">
+        <canvas id="editor-canvas" style="display: block; cursor: crosshair;"></canvas>
+    </div>
+
+    <!-- Zone Legend / Sidebar (Overlay) -->
+    <div id="zone-legend"
+        style="position: absolute; top: var(--space-md); right: var(--space-md); width: 220px; max-height: calc(100% - 2rem); overflow-y: auto; z-index: 10; display: flex; flex-direction: column; gap: 8px;">
+        <!-- Legend items will be injected here -->
+    </div>
+</div>
+
+<!-- Modal: Nueva Zona (Tesla/Apple style) -->
+<div id="modal-zona"
+    style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 1000; align-items: center; justify-content: center; padding: var(--space-md); backdrop-filter: blur(10px);"
+    onclick="if(event.target===this) cerrarModal()">
+    <div class="card" style="max-width: 440px; width: 100%; animation: fadeUp 0.3s var(--transition-smooth);">
+        <h3 style="margin-bottom: var(--space-lg);">Configurar Zona</h3>
+
+        <div style="margin-bottom: var(--space-md);">
+            <label>Nombre de la Zona</label>
+            <input type="text" id="zona-nombre" placeholder="Ej: Herramientas, Estantería A..."
+                style="border-radius: var(--radius-md);">
+        </div>
+
+        <div style="margin-bottom: var(--space-xl);">
+            <label>Color de Referencia</label>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;" id="color-options">
+                {% for color, hex in [('Azul', '#6366f1'), ('Verde', '#10b981'), ('Naranja', '#f59e0b'), ('Rojo',
+                '#ef4444'), ('Violeta', '#8b5cf6'), ('Gris', '#64748b')] %}
+                <div class="color-option" data-color="{{ hex }}"
+                    style="width: 32px; height: 32px; border-radius: 50%; background: {{ hex }}; cursor: pointer; border: 2px solid transparent; transition: all 0.2s;">
+                </div>
+                {% endfor %}
+            </div>
+            <input type="hidden" id="zona-color" value="#6366f1">
+        </div>
+
+        <div style="display: flex; gap: var(--space-md);">
+            <button onclick="cerrarModal()" class="btn btn-secondary" style="flex: 1;">Cancelar</button>
+            <button id="btn-save-zona" class="btn btn-primary" style="flex: 1;">Guardar Zona</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('editor-canvas');
+    const ctx = canvas.getContext('2d');
+    const img = new Image();
+    img.src = "{{ url_for('uploaded_file', filename=plano.imagen_path) }}";
+
+    let zonas = {{ original_zonas| tojson if original_zonas else '[]' }};
+    let isDrawing = false;
+    let startX, startY, currentX, currentY;
+    let scale = 1;
+
+    img.onload = () => {
+        const container = document.getElementById('editor-container');
+        const maxWidth = container.offsetWidth - 40;
+        scale = Math.min(1, maxWidth / img.width);
+        canvas.width = img.width * scale;
+        canvas.height = img.height * scale;
+        draw();
+    };
+
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+        // Draw existing zones
+        zonas.forEach(z => {
+            ctx.strokeStyle = z.color || '#6366f1';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(z.x * scale, z.y * scale, z.w * scale, z.h * scale);
+            ctx.fillStyle = (z.color || '#6366f1') + '22';
+            ctx.fillRect(z.x * scale, z.y * scale, z.w * scale, z.h * scale);
+
+            // Label
+            ctx.fillStyle = z.color || '#6366f1';
+            ctx.font = 'bold 12px Inter';
+            ctx.fillText(z.nombre, z.x * scale, (z.y * scale) - 5);
+        });
+
+        // Draw current rectangle
+        if (isDrawing) {
+            ctx.strokeStyle = '#fff';
+            ctx.setLineDash([5, 5]);
+            ctx.strokeRect(startX, startY, currentX - startX, currentY - startY);
+            ctx.setLineDash([]);
+        }
+
+        updateLegend();
+    }
+
+    canvas.onmousedown = (e) => {
+        if (document.getElementById('modal-zona').style.display === 'flex') return;
+        isDrawing = true;
+        const rect = canvas.getBoundingClientRect();
+        startX = e.clientX - rect.left;
+        startY = e.clientY - rect.top;
+        currentX = startX;
+        currentY = startY;
+    };
+
+    canvas.onmousemove = (e) => {
+        if (!isDrawing) return;
+        const rect = canvas.getBoundingClientRect();
+        currentX = e.clientX - rect.left;
+        currentY = e.clientY - rect.top;
+        draw();
+    };
+
+    canvas.onmouseup = () => {
+        if (!isDrawing) return;
+        isDrawing = false;
+
+        // Show modal to name the zone
+        if (Math.abs(currentX - startX) > 10 && Math.abs(currentY - startY) > 10) {
+            document.getElementById('modal-zona').style.display = 'flex';
+            document.getElementById('zona-nombre').focus();
+        }
+    };
+
+    function updateLegend() {
+        const legend = document.getElementById('zone-legend');
+        legend.innerHTML = zonas.map((z, idx) => `
+            <div class="card" style="padding: 10px 14px; background: rgba(0,0,0,0.6); backdrop-filter: blur(10px); display: flex; justify-content: space-between; align-items: center; border-left: 3px solid ${z.color};">
+                <span style="font-size: 0.8rem; font-weight: 600;">${z.nombre}</span>
+                <button onclick="eliminarZona(${idx})" style="background: none; border: none; color: #fca5a5; cursor: pointer; font-size: 0.8rem;">✕</button>
+            </div>
+        `).join('');
+    }
+
+    window.eliminarZona = (idx) => {
+        if (confirm('¿Eliminar esta zona?')) {
+            zonas.splice(idx, 1);
+            draw();
+            saveZonas();
+        }
+    };
+
+    document.getElementById('btn-save-zona').onclick = () => {
+        const nombre = document.getElementById('zona-nombre').value;
+        const color = document.getElementById('zona-color').value;
+        if (!nombre) return alert('Ponéle un nombre a la zona');
+
+        const x1 = Math.min(startX, currentX) / scale;
+        const y1 = Math.min(startY, currentY) / scale;
+        const w = Math.abs(currentX - startX) / scale;
+        const h = Math.abs(currentY - startY) / scale;
+
+        zonas.push({ nombre, color, x: x1, y: y1, w, h });
+        cerrarModal();
+        draw();
+        saveZonas();
+    };
+
+    function saveZonas() {
+        fetch("{{ url_for('save_zonas', plano_id=plano.id) }}", {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ zonas })
+        });
+    }
+
+    function cerrarModal() {
+        document.getElementById('modal-zona').style.display = 'none';
+        document.getElementById('zona-nombre').value = '';
+        draw();
+    }
+
+    // Color picker logic
+    document.querySelectorAll('.color-option').forEach(opt => {
+        opt.onclick = () => {
+            document.querySelectorAll('.color-option').forEach(o => o.style.borderColor = 'transparent');
+            opt.style.borderColor = '#fff';
+            document.getElementById('zona-color').value = opt.dataset.color;
+        };
+    });
+    // Init first color
+    document.querySelector('.color-option').style.borderColor = '#fff';
+</script>
+
+<style>
+    .color-option:hover {
+        transform: scale(1.1);
+    }
+</style>
+{% endblock %}

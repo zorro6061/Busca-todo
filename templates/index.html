@@ -1,0 +1,182 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<!-- ══ HERO SECTION (Apple-style) ══ -->
+<section style="text-align: center; padding: var(--space-3xl) 0 var(--space-2xl);">
+    <h1 class="fade-up" style="max-width: 700px; margin: 0 auto;">
+        <span class="gradient-text">Encuentra cualquier objeto</span><br>
+        al instante.
+    </h1>
+    <p class="fade-up fade-up-1"
+        style="color: var(--text-dim); font-size: 1.1rem; max-width: 520px; margin: var(--space-lg) auto 0; line-height: 1.6; letter-spacing: -0.01em;">
+        La IA escanea tus espacios, identifica objetos y los posiciona en un mapa interactivo. Nunca más pierdas nada.
+    </p>
+
+    <!-- Search -->
+    <div class="fade-up fade-up-2" style="max-width: 580px; margin: var(--space-xl) auto 0;">
+        <form id="search-form" action="{{ url_for('search') }}" method="GET"
+            style="display: flex; gap: 8px; position: relative;">
+            <div style="flex: 1; position: relative;">
+                <input type="text" id="search-input" name="q" placeholder="¿Qué estás buscando?" autocomplete="off"
+                    style="padding: 16px 22px; font-size: 1rem; border-radius: 980px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08);">
+                <div id="suggestions-dropdown"
+                    style="position: absolute; top: calc(100% + 8px); left: 0; right: 0; background: rgba(0,0,0,0.95); border: 1px solid rgba(255,255,255,0.08); border-radius: var(--radius-lg); max-height: 320px; overflow-y: auto; display: none; z-index: 1000; backdrop-filter: blur(30px); box-shadow: var(--shadow-lg);">
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary btn-lg" style="border-radius: 980px;">Buscar</button>
+        </form>
+    </div>
+
+    <!-- Actions -->
+    <div class="fade-up fade-up-3"
+        style="display: flex; justify-content: center; gap: var(--space-md); margin-top: var(--space-xl); flex-wrap: wrap;">
+        <a href="{{ url_for('upload') }}" class="btn btn-primary btn-lg">📸 Indexar Espacio</a>
+        <a href="{{ url_for('gallery') }}" class="btn btn-secondary btn-lg">Ver Galería →</a>
+    </div>
+</section>
+
+<!-- ══ BENTO DASHBOARD (Apple-style) ══ -->
+<section style="padding: var(--space-xl) 0;">
+    <div class="bento-grid">
+        <!-- Widget 1: Last Scan / Hero (Big) -->
+        <div class="card bento-item bento-p-2 reveal"
+            style="padding: 0; background: #050505; border-color: rgba(255,255,255,0.05);">
+            {% if ultima_ubi %}
+            <img src="{{ url_for('uploaded_file', filename=ultima_ubi.imagen_path) }}"
+                style="position: absolute; inset:0; width:100%; height:100%; object-fit: cover; opacity: 0.4;">
+            <div
+                style="position: absolute; inset:0; background: linear-gradient(to top, rgba(0,0,0,0.9), transparent); padding: var(--space-xl); display: flex; flex-direction: column; justify-content: flex-end;">
+                <span class="badge badge-primary" style="align-self: flex-start; margin-bottom: 8px;">Última
+                    Captura</span>
+                <h2 style="font-size: 1.8rem; margin: 0;">{{ ultima_ubi.nombre }}</h2>
+                <p style="color: var(--text-dim); font-size: 0.9rem; margin-top: 4px;">{{ ultima_ubi.objetos|length }}
+                    objetos detectados</p>
+                <a href="{{ url_for('ver_plano', plano_id=ultima_ubi.plano_id) if ultima_ubi.plano_id else url_for('gallery') }}"
+                    class="btn btn-primary" style="margin-top: var(--space-lg); width: fit-content;">Ver en Mapa →</a>
+            </div>
+            {% else %}
+            <div
+                style="padding: var(--space-2xl); height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center;">
+                <div style="font-size: 4rem; margin-bottom: var(--space-md); opacity: 0.3;">📸</div>
+                <h2>Listo para Indexar</h2>
+                <p style="color: var(--text-dim); max-width: 280px; margin-top: 8px;">Capturá tu primer espacio para
+                    empezar a organizar tu mundo.</p>
+                <a href="{{ url_for('upload') }}" class="btn btn-primary" style="margin-top: var(--space-xl);">Empezar
+                    Escaneo</a>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Widget 2: Stats (Compact) -->
+        <div class="card bento-item bento-h-2 reveal reveal-delay-1"
+            style="display: flex; flex-direction: column; justify-content: center; background: rgba(255,255,255,0.02);">
+            <div style="display: flex; justify-content: space-around; text-align: center;">
+                <div>
+                    <p
+                        style="font-size: 0.7rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px;">
+                        Objetos</p>
+                    <p style="font-size: 2rem; font-weight: 800; color: var(--primary);" data-count="{{ obj_count }}">{{
+                        obj_count }}</p>
+                </div>
+                <div>
+                    <p
+                        style="font-size: 0.7rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px;">
+                        Mapas</p>
+                    <p style="font-size: 2rem; font-weight: 800;" data-count="{{ plano_count }}">{{ plano_count }}</p>
+                </div>
+                <div>
+                    <p
+                        style="font-size: 0.7rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px;">
+                        Confianza</p>
+                    <p style="font-size: 2rem; font-weight: 800; color: var(--success);"><span
+                            data-count="{{ avg_conf }}">{{ avg_conf }}</span>%</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Widget 3: AI Tool -->
+        <div class="card bento-item reveal reveal-delay-2 card-interactive"
+            onclick="window.location='{{ url_for('ai_optimizer') }}'"
+            style="background: linear-gradient(135deg, rgba(99,102,241,0.1), transparent);">
+            <div style="font-size: 2rem;">🧠</div>
+            <h3 style="margin-top: 12px; font-size: 1rem;">IA Brain</h3>
+            <p style="color: var(--text-muted); font-size: 0.75rem; margin-top: 4px;">Optimizar organización</p>
+        </div>
+
+        <!-- Widget 4: Quick Upload -->
+        <div class="card bento-item reveal reveal-delay-3 card-interactive"
+            onclick="window.location='{{ url_for('upload') }}'"
+            style="display: flex; align-items: center; justify-content: center; background: var(--primary); border: none;">
+            <div style="text-align: center;">
+                <span style="font-size: 2.5rem; color: white;">+</span>
+                <p style="color: white; font-weight: 700; font-size: 0.8rem; margin-top: -4px;">NUEVO</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Autocomplete JS -->
+<script>
+    (function () {
+        const si = document.getElementById('search-input');
+        const dd = document.getElementById('suggestions-dropdown');
+        let timer;
+        function debounce(fn, d) { return (...a) => { clearTimeout(timer); timer = setTimeout(() => fn(...a), d); }; }
+
+        async function fetch_sug(q) {
+            if (q.length < 2) { dd.style.display = 'none'; return; }
+            try {
+                const r = await fetch(`/api/sugerencias?q=${encodeURIComponent(q)}`);
+                const s = await r.json();
+                if (s.length === 0) { dd.style.display = 'none'; return; }
+                dd.innerHTML = s.map(sug => `
+                    <div style="padding: 14px 20px; cursor: pointer; transition: background 0.15s; border-bottom: 1px solid rgba(255,255,255,0.04); display: flex; justify-content: space-between; align-items: center;"
+                         onmouseenter="this.style.background='rgba(99,102,241,0.08)'"
+                         onmouseleave="this.style.background=''"
+                         onclick="si.value='${sug.texto}'; dd.style.display='none'; document.getElementById('search-form').submit();">
+                        <span style="font-size: 0.9rem; text-transform: capitalize;">${highlight(sug.texto, q)}</span>
+                        <span class="badge badge-primary">${sug.score}%</span>
+                    </div>`).join('');
+                dd.style.display = 'block';
+            } catch (e) { console.error(e); }
+        }
+
+        function highlight(t, q) { return t.replace(new RegExp(`(${q})`, 'gi'), '<span style="color: var(--primary); font-weight: 700;">$1</span>'); }
+
+        si.addEventListener('input', debounce(e => fetch_sug(e.target.value.trim()), 300));
+        document.addEventListener('click', e => { if (!si.contains(e.target) && !dd.contains(e.target)) dd.style.display = 'none'; });
+        si.addEventListener('keydown', e => { if (e.key === 'Escape') dd.style.display = 'none'; });
+    })();
+
+    // ── Animated Counters (Tesla-style) ──
+    document.querySelectorAll('[data-count]').forEach(el => {
+        const target = parseInt(el.dataset.count);
+        if (isNaN(target) || target === 0) return;
+        const duration = 1200;
+        const start = performance.now();
+        el.textContent = '0';
+
+        const io = new IntersectionObserver(entries => {
+            if (entries[0].isIntersecting) {
+                function tick(now) {
+                    const p = Math.min((now - start) / duration, 1);
+                    const ease = 1 - Math.pow(1 - p, 3);
+                    el.textContent = Math.round(target * ease);
+                    if (p < 1) requestAnimationFrame(tick);
+                }
+                requestAnimationFrame(tick);
+                io.disconnect();
+            }
+        }, { threshold: 0.5 });
+        io.observe(el.closest('.stat-card'));
+    });
+</script>
+
+<style>
+    @media (max-width: 768px) {
+        .grid[style*="repeat(4"] {
+            grid-template-columns: repeat(2, 1fr) !important;
+        }
+    }
+</style>
+{% endblock %}

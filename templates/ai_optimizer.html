@@ -1,0 +1,38 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<section style="text-align: center; padding: var(--space-2xl) 0 var(--space-xl);">
+    <h1 class="fade-up"><span class="gradient-text">IA Organizer</span></h1>
+    <p class="fade-up fade-up-1 page-subtitle" style="font-size: 1rem; max-width: 480px; margin: 8px auto 0;">
+        Consejos inteligentes de Gemini para optimizar tus espacios.
+    </p>
+</section>
+
+<div style="max-width: 680px; margin: 0 auto;">
+    {% if tips %}
+    {% for tip in tips %}
+    <div class="card reveal {% if loop.index <= 3 %}reveal-delay-{{ loop.index }}{% endif %}"
+        style="margin-bottom: var(--space-lg); border-left: 3px solid var(--success); padding: var(--space-xl);">
+        <div style="display: flex; align-items: flex-start; gap: var(--space-md);">
+            <span style="font-size: 1.5rem; flex-shrink: 0;">💡</span>
+            <div>
+                <h3 style="margin-bottom: 6px;">{{ tip.titulo }}</h3>
+                <p style="color: var(--text-dim); font-size: 0.9rem; line-height: 1.7;">{{ tip.contenido }}</p>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+    {% else %}
+    <div class="card" style="text-align: center; padding: var(--space-2xl);">
+        <div style="font-size: 2.5rem; opacity: 0.3; margin-bottom: var(--space-md);">🧠</div>
+        <h3>Sin tips aún</h3>
+        <p style="color: var(--text-dim); margin-top: 6px; font-size: 0.9rem;">Indexá algunos espacios para recibir
+            sugerencias de organización.</p>
+    </div>
+    {% endif %}
+
+    <div class="reveal" style="text-align: center; margin-top: var(--space-xl);">
+        <a href="{{ url_for('upload') }}" class="btn btn-primary btn-lg">📸 Indexar Espacio</a>
+    </div>
+</div>
+{% endblock %}

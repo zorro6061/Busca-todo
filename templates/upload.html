@@ -1,0 +1,131 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div class="fade-up" style="max-width: 540px; margin: var(--space-2xl) auto;">
+
+    <div style="text-align: center; margin-bottom: var(--space-2xl);">
+        <h1><span class="gradient-text">Indexar</span></h1>
+        <p class="page-subtitle" style="font-size: 1rem; margin-top: 8px;">
+            Sacá una foto y la IA identifica todo.
+        </p>
+    </div>
+
+    <div class="card" style="padding: var(--space-xl);">
+        <form action="{{ url_for('upload') }}" method="POST" enctype="multipart/form-data" id="upload-form">
+            <div style="margin-bottom: var(--space-xl);">
+                <label>Nombre de la Ubicación</label>
+                <input type="text" name="nombre_ubicacion" placeholder="Ej: Cajón del Escritorio, Estante Cocina..."
+                    required style="border-radius: 980px;">
+            </div>
+
+            <div style="margin-bottom: var(--space-xl);">
+                <label>Foto o Video</label>
+                <div id="drop-zone"
+                    style="border: 2px dashed rgba(255,255,255,0.08); border-radius: var(--radius-xl); padding: var(--space-2xl) var(--space-lg); text-align: center; cursor: pointer; transition: all 0.4s var(--transition-smooth);"
+                    onclick="document.getElementById('file-input').click();"
+                    ondragover="event.preventDefault(); this.style.borderColor='var(--primary)'; this.style.background='rgba(99,102,241,0.04)';"
+                    ondragleave="this.style.borderColor='rgba(255,255,255,0.08)'; this.style.background='';"
+                    ondrop="handleFileDrop(event)">
+                    <div id="upload-placeholder">
+                        <div style="font-size: 2.5rem; margin-bottom: 8px; opacity: 0.4;">📸</div>
+                        <p style="font-weight: 600; font-size: 0.9rem; margin-bottom: 4px;">Toca para capturar</p>
+                        <p style="font-size: 0.78rem; color: var(--text-dim);">Fotos y videos · Máx 50MB</p>
+                    </div>
+                    <input type="file" id="file-input" name="file" accept="image/*,video/*" capture="environment"
+                        style="display: none;" onchange="previewFile(this)">
+                </div>
+                <div id="file-preview" style="display: none; margin-top: var(--space-sm);">
+                    <div
+                        style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: var(--radius-lg); overflow: hidden;">
+                        <img id="preview-image" src=""
+                            style="width: 100%; max-height: 200px; object-fit: cover; display: none;">
+                        <video id="preview-video" src="" style="width: 100%; max-height: 200px; display: none;" controls
+                            muted></video>
+                        <div
+                            style="padding: 12px 16px; display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <p id="preview-name" style="font-weight: 600; font-size: 0.82rem;"></p>
+                                <p id="preview-size"
+                                    style="color: var(--text-dim); font-size: 0.72rem; margin-top: 2px;"></p>
+                            </div>
+                            <button type="button" onclick="clearPreview()" class="btn btn-sm"
+                                style="background: var(--danger-dim); color: #fca5a5; border: 1px solid rgba(239,68,68,0.15);">✕</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-lg" style="width: 100%; border-radius: 980px;">
+                Subir e Indexar con IA →
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- Loading Overlay -->
+<div id="loading-overlay"
+    style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 1000; align-items: center; justify-content: center; flex-direction: column; backdrop-filter: blur(20px);">
+    <div
+        style="position: relative; width: 140px; height: 140px; border: 1px solid rgba(99,102,241,0.3); border-radius: var(--radius-xl); overflow: hidden;">
+        <div class="scanner-line"></div>
+    </div>
+    <h3
+        style="margin-top: var(--space-xl); letter-spacing: 3px; text-transform: uppercase; font-size: 0.78rem; color: var(--text-dim);">
+        Analizando...</h3>
+    <p style="color: var(--text-muted); margin-top: 6px; font-size: 0.78rem;">Gemini Vision identificando objetos</p>
+</div>
+
+<style>
+    .scanner-line {
+        position: absolute;
+        width: 100%;
+        height: 2px;
+        background: var(--primary);
+        box-shadow: 0 0 20px var(--primary);
+        animation: scan 2s ease-in-out infinite;
+    }
+
+    @keyframes scan {
+
+        0%,
+        100% {
+            top: 0;
+        }
+
+        50% {
+            top: 100%;
+        }
+    }
+</style>
+
+<script>
+    function previewFile(input) {
+        const file = input.files[0]; if (!file) return;
+        const dz = document.getElementById('drop-zone');
+        dz.style.borderStyle = 'solid'; dz.style.borderColor = 'var(--primary)'; dz.style.padding = '12px 16px';
+        dz.innerHTML = '<p style="font-size: 0.8rem; color: var(--primary);">✓ Archivo seleccionado</p><input type="file" id="file-input" name="file" accept="image/*,video/*" capture="environment" style="display:none;" onchange="previewFile(this)">';
+        document.getElementById('file-preview').style.display = 'block';
+        document.getElementById('preview-name').textContent = file.name;
+        document.getElementById('preview-size').textContent = (file.size / 1048576).toFixed(1) + ' MB';
+        if (file.type.startsWith('image/')) {
+            const r = new FileReader(); r.onload = e => { const img = document.getElementById('preview-image'); img.src = e.target.result; img.style.display = 'block'; }; r.readAsDataURL(file);
+            document.getElementById('preview-video').style.display = 'none';
+        } else if (file.type.startsWith('video/')) {
+            const v = document.getElementById('preview-video'); v.src = URL.createObjectURL(file); v.style.display = 'block';
+            document.getElementById('preview-image').style.display = 'none';
+        }
+    }
+    function clearPreview() {
+        document.getElementById('file-input').value = '';
+        document.getElementById('file-preview').style.display = 'none';
+        const dz = document.getElementById('drop-zone');
+        dz.style.borderStyle = 'dashed'; dz.style.borderColor = 'rgba(255,255,255,0.08)'; dz.style.padding = 'var(--space-2xl) var(--space-lg)';
+        dz.innerHTML = '<div id="upload-placeholder"><div style="font-size: 2.5rem; margin-bottom: 8px; opacity: 0.4;">📸</div><p style="font-weight: 600; font-size: 0.9rem; margin-bottom: 4px;">Toca para capturar</p><p style="font-size: 0.78rem; color: var(--text-dim);">Fotos y videos · Máx 50MB</p></div><input type="file" id="file-input" name="file" accept="image/*,video/*" capture="environment" style="display:none;" onchange="previewFile(this)">';
+    }
+    function handleFileDrop(e) {
+        e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) { const i = document.getElementById('file-input'); const dt = new DataTransfer(); dt.items.add(f); i.files = dt.files; previewFile(i); }
+        document.getElementById('drop-zone').style.borderColor = 'rgba(255,255,255,0.08)'; document.getElementById('drop-zone').style.background = '';
+    }
+    document.getElementById('upload-form').onsubmit = function () { document.getElementById('loading-overlay').style.display = 'flex'; };
+</script>
+{% endblock %}

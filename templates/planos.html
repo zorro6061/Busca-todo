@@ -1,0 +1,64 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div class="page-header fade-up">
+    <div>
+        <h2>Mapas</h2>
+        <p class="page-subtitle">{{ planos|length }} plano{{ 's' if planos|length != 1 }}</p>
+    </div>
+    <a href="{{ url_for('nuevo_plano') }}" class="btn btn-primary">+ Nuevo Plano</a>
+</div>
+
+<div class="grid grid-3">
+    {% for plano in planos %}
+    <div class="card card-interactive reveal {% if loop.index <= 3 %}reveal-delay-{{ loop.index }}{% endif %}"
+        style="padding: 0; overflow: hidden;" onclick="window.location='{{ url_for('ver_plano', plano_id=plano.id) }}'">
+        <div
+            style="height: 180px; background: linear-gradient(135deg, rgba(99,102,241,0.08), rgba(139,92,246,0.08)); display: flex; align-items: center; justify-content: center; position: relative;">
+            {% if plano.imagen_path %}
+            <img src="{{ url_for('uploaded_file', filename=plano.imagen_path) }}"
+                style="width: 100%; height: 100%; object-fit: cover; transition: transform 0.6s var(--transition-smooth);">
+            {% else %}
+            <span style="font-size: 3.5rem; opacity: 0.3;">🗺️</span>
+            {% endif %}
+            <span class="badge badge-primary"
+                style="position: absolute; top: 12px; right: 12px; backdrop-filter: blur(10px); background: rgba(0,0,0,0.5);">
+                📍 {{ plano.ubicaciones|length }} ubicaciones
+            </span>
+        </div>
+        <div style="padding: var(--space-md) var(--space-lg) var(--space-lg);">
+            <h3>{{ plano.nombre }}</h3>
+            <p style="color: var(--text-dim); font-size: 0.82rem; margin-top: 4px;">
+                {{ plano.ubicaciones|length }} espacios ubicados
+            </p>
+            <div style="display: flex; gap: 6px; margin-top: var(--space-md);">
+                <a href="{{ url_for('ver_plano', plano_id=plano.id) }}" class="btn btn-sm btn-secondary"
+                    onclick="event.stopPropagation();">Ver Mapa</a>
+                <a href="{{ url_for('editar_plano', plano_id=plano.id) }}" class="btn btn-sm btn-secondary"
+                    onclick="event.stopPropagation();">✏️</a>
+                <form action="{{ url_for('eliminar_plano', plano_id=plano.id) }}" method="POST" style="margin: 0;"
+                    onclick="event.stopPropagation();">
+                    <button type="submit" class="btn btn-sm"
+                        style="background: var(--danger-dim); color: #fca5a5; border: 1px solid rgba(239,68,68,0.15);"
+                        onclick="return confirm('¿Eliminar este plano?');">🗑️</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <div class="empty-state-icon">🗺️</div>
+        <h3 style="margin-bottom: 6px;">Aún no creaste ningún plano</h3>
+        <p>Creá un plano maestro para organizar tus espacios.</p>
+        <a href="{{ url_for('nuevo_plano') }}" class="btn btn-primary" style="margin-top: var(--space-lg);">Crear
+            Plano</a>
+    </div>
+    {% endfor %}
+</div>
+
+<style>
+    .card-interactive:hover img {
+        transform: scale(1.06);
+    }
+</style>
+{% endblock %}

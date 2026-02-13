@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ctrl+F Físico | Buscador de Objetos Reales</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/toasts.css') }}">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#000000">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+</head>
+
+<body>
+    <div class="island-container">
+        <div id="dynamic-island" class="dynamic-island">
+            <div id="island-content"
+                style="display: flex; align-items: center; gap: 12px; font-size: 0.85rem; font-weight: 600;">
+                <div class="island-spinner"></div>
+                <span id="island-text">Analizando...</span>
+            </div>
+        </div>
+    </div>
+
+    <nav class="navbar" id="main-nav">
+        <a href="{{ url_for('index') }}" class="logo">Ctrl+F Físico</a>
+        <div class="nav-links">
+            <a href="{{ url_for('gallery') }}">Galería</a>
+            <a href="{{ url_for('list_planos') }}">Mapas</a>
+            <a href="{{ url_for('upload') }}">Indexar</a>
+            <a href="{{ url_for('ai_optimizer') }}">IA</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        {% with messages = get_flashed_messages() %}
+        {% if messages %}
+        <div class="flash-messages">
+            {% for message in messages %}
+            <div class="flash">{{ message }}</div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </div>
+
+    <!-- Mobile Nav -->
+    <div class="mobile-nav">
+        <a href="{{ url_for('index') }}" class="mobile-nav-item {% if request.endpoint == 'index' %}active{% endif %}">
+            <span class="mobile-nav-icon">🏠</span>
+            <span>Inicio</span>
+        </a>
+        <a href="{{ url_for('search') }}"
+            class="mobile-nav-item {% if request.endpoint == 'search' %}active{% endif %}">
+            <span class="mobile-nav-icon">🔍</span>
+            <span>Buscar</span>
+        </a>
+        <a href="{{ url_for('upload') }}" class="mobile-nav-item">
+            <div
+                style="background: linear-gradient(135deg, var(--primary), var(--accent)); width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-top: -18px; box-shadow: 0 4px 20px var(--primary-glow); border: 2px solid var(--bg);">
+                <span style="color: white; font-size: 1.4rem; font-weight: 300;">+</span>
+            </div>
+            <span>Indexar</span>
+        </a>
+        <a href="{{ url_for('list_planos') }}"
+            class="mobile-nav-item {% if request.endpoint == 'list_planos' or request.endpoint == 'ver_plano' %}active{% endif %}">
+            <span class="mobile-nav-icon">🗺️</span>
+            <span>Mapas</span>
+        </a>
+        <a href="{{ url_for('ai_optimizer') }}"
+            class="mobile-nav-item {% if request.endpoint == 'ai_optimizer' %}active{% endif %}">
+            <span class="mobile-nav-icon">🧠</span>
+            <span>IA</span>
+        </a>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toast-container"></div>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+
+    <script>
+        // ── Scroll-triggered navbar (Tesla-style) ──
+        const nav = document.getElementById('main-nav');
+        window.addEventListener('scroll', () => {
+            nav.classList.toggle('scrolled', window.scrollY > 20);
+        }, { passive: true });
+
+        // ── IntersectionObserver for scroll reveal (Apple-style) ──
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+
+        document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+        // Re-observe after page content loads (for dynamic content)
+        document.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('.reveal:not(.visible)').forEach(el => observer.observe(el));
+        });
+
+        // ── Flash toast integration ──
+        document.addEventListener('DOMContentLoaded', () => {
+            {% with messages = get_flashed_messages(with_categories = true) %}
+            {% if messages %}
+            {% for category, message in messages %}
+            let type = '{{ category }}';
+            if (type === 'message') type = 'success';
+            if (!['success', 'error', 'warning', 'info'].includes(type)) type = 'info';
+            mostrarToast("{{ message }}", type);
+            {% endfor %}
+            {% endif %}
+            {% endwith %}
+        });
+
+        // ── Dynamic Island Controller (Apple-style) ──
+        const island = document.getElementById('dynamic-island');
+        const islandText = document.getElementById('island-text');
+
+        window.showIsland = function (text, duration = 3000, type = 'loading') {
+            islandText.textContent = text;
+            island.classList.add('visible');
+
+            const spinner = island.querySelector('.island-spinner');
+            if (type === 'loading') {
+                spinner.style.display = 'block';
+                island.classList.add('expanded');
+            } else {
+                spinner.style.display = 'none';
+                island.classList.remove('expanded');
+                if (type === 'success') islandText.innerHTML = `✓ ${text}`;
+                if (type === 'error') islandText.innerHTML = `✕ ${text}`;
+            }
+
+            if (duration > 0) {
+                setTimeout(() => window.hideIsland(), duration);
+            }
+        };
+
+        window.hideIsland = function () {
+            island.classList.remove('visible', 'expanded');
+        };
+
+        // Example trigger:
+        // showIsland("Sincronizando...", 2000, 'loading');
+    </script>
+</body>
+
+</html>
