@@ -49,16 +49,29 @@ Para que la app esté encendida 24/7 sin depender de tu PC.
 
 Como tu PC del trabajo se apaga al irte, la **Opción 1 (Túnel)** dejará de funcionar. Para que la app funcione **24/7 desde tu casa**:
 
-### 1. Usa Render.com (La mejor opción)
-Es un servicio gratuito donde "subes" tu código de GitHub y ellos lo mantienen encendido siempre.
-1.  Entra en [Render.com](https://render.com) y crea una cuenta.
-2.  Haz clic en **New +** > **Web Service**.
-3.  Conecta tu cuenta de GitHub y elige el repositorio `Busca-todo`.
-4.  **Configuración**:
+### 1. Usa Render.com (Recomendado 🌟)
+Render es gratuito y mantiene tu aplicación encendida 24/7.
+
+1.  **Crea una cuenta** en [Render.com](https://render.com).
+2.  **Nuevo Web Service**: Conecta tu repositorio de GitHub `Busca-todo`.
+3.  **Configuración**:
     - **Runtime**: `Python`
     - **Build Command**: `pip install -r requirements.txt`
-    - **Start Command**: `gunicorn app:app`
-5.  **En "Environment Variables"**: Agrega tu clave de Gemini (`GEMINI_API_KEY`).
+    - **Start Command**: `gunicorn app:app` (Ya configuré el `Procfile` para esto).
+4.  **Variables de Entorno (Advanced > Environment Variables)**:
+    - `GEMINI_API_KEY`: Tu clave de Google AI.
+    - `SECRET_KEY`: Una frase larga y secreta para proteger las sesiones.
+5.  **Persistencia (¡MUY IMPORTANTE! 💾)**:
+    - En el menú de la izquierda, ve a **Disks**.
+    - Crea un disco de **1GB** (gratis).
+    - **Mount Path**: `/instance`
+    - Esto asegura que cuando subas nuevas versiones, **no se borre tu base de datos**.
+
+### 2. ¿Cómo llevarme mis datos actuales al servidor?
+Para que el servidor empiece con tus fotos y datos reales:
+1.  En tu panel de Render, ve a la pestaña **Shell**.
+2.  Allí puedes subir tu carpeta `instance` y `uploads`.
+3.  Si prefieres empezar de cero en la nube, simplemente ignora este paso.
 
 ### 2. ¿Cómo llevarme mis datos actuales?
 Como la base de datos y las fotos no se suben a GitHub (por seguridad y espacio), para tener tus datos actuales en tu casa o en la nube, debes:

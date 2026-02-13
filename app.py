@@ -4,10 +4,12 @@ from models import db, Ubicacion, Objeto, Plano, Config
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///ctrl_f.db'
+# Configuración robusta para producción (SQLite en /instance para persistencia en Render)
+basedir = os.path.abspath(os.path.dirname(__file__))
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///' + os.path.join(basedir, 'instance', 'ctrl_f.db'))
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['UPLOAD_FOLDER'] = 'uploads'
-app.config['SECRET_KEY'] = 'dev_key_ctrl_f'
+app.config['UPLOAD_FOLDER'] = os.environ.get('UPLOAD_FOLDER', 'uploads')
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev_key_ctrl_f_123456789')
 
 # Asegurar que la carpeta de uploads exista
 if not os.path.exists(app.config['UPLOAD_FOLDER']):
