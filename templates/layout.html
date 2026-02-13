@@ -95,28 +95,6 @@
             <span>Pro</span>
         </a>
     </div>
-    <a href="{{ url_for('search') }}" class="mobile-nav-item {% if request.endpoint == 'search' %}active{% endif %}">
-        <span class="mobile-nav-icon">🔍</span>
-        <span>Buscar</span>
-    </a>
-    <a href="{{ url_for('upload') }}" class="mobile-nav-item">
-        <div
-            style="background: linear-gradient(135deg, var(--primary), var(--accent)); width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-top: -18px; box-shadow: 0 4px 20px var(--primary-glow); border: 2px solid var(--bg);">
-            <span style="color: white; font-size: 1.4rem; font-weight: 300;">+</span>
-        </div>
-        <span>Indexar</span>
-    </a>
-    <a href="{{ url_for('list_planos') }}"
-        class="mobile-nav-item {% if request.endpoint == 'list_planos' or request.endpoint == 'ver_plano' %}active{% endif %}">
-        <span class="mobile-nav-icon">🗺️</span>
-        <span>Mapas</span>
-    </a>
-    <a href="{{ url_for('ai_optimizer') }}"
-        class="mobile-nav-item {% if request.endpoint == 'ai_optimizer' %}active{% endif %}">
-        <span class="mobile-nav-icon">🧠</span>
-        <span>IA</span>
-    </a>
-    </div>
 
     <!-- Toast Container -->
     <div id="toast-container"></div>
