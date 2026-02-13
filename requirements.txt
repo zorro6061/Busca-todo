@@ -6,3 +6,4 @@ Werkzeug
 rapidfuzz
 Pillow
 opencv-python
+gunicorn
