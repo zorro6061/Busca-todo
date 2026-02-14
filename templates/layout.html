@@ -59,7 +59,18 @@
     </div>
 
     <nav class="navbar" id="main-nav">
-        <a href="{{ url_for('index') }}" class="logo">Ctrl+F Físico</a>
+        <a href="{{ url_for('index') }}" class="logo-premium">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+                stroke-linejoin="round" class="logo-svg">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                <circle cx="12" cy="13" r="4"></circle>
+                <path d="M12 9v1"></path>
+                <path d="M12 16v1"></path>
+                <path d="M8 13h1"></path>
+                <path d="M15 13h1"></path>
+            </svg>
+            <span class="logo-text">BUSCA-TODO <span class="logo-subtext">HOME</span></span>
+        </a>
         <div class="nav-links">
             <a href="{{ url_for('gallery') }}">Galería</a>
             <a href="{{ url_for('list_planos') }}">Mapas</a>

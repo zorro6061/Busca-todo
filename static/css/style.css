@@ -158,6 +158,39 @@ h4 {
     letter-spacing: 0.08em;
 }
 
+h4.logo-premium {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    text-decoration: none;
+    color: var(--text-main);
+    transition: all 0.3s ease;
+}
+
+.logo-premium:hover {
+    opacity: 0.8;
+}
+
+.logo-svg {
+    width: 28px;
+    height: 28px;
+    color: var(--primary);
+    filter: drop-shadow(0 0 8px rgba(139, 92, 246, 0.4));
+}
+
+.logo-text {
+    font-size: 0.9rem;
+    font-weight: 700;
+    letter-spacing: 0.25em;
+    color: var(--text-main);
+    text-transform: uppercase;
+}
+
+.logo-subtext {
+    font-weight: 300;
+    color: var(--text-muted);
+}
+
 a {
     color: inherit;
     text-decoration: none;
