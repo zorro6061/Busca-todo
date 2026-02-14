@@ -39,8 +39,7 @@ def save_and_compress_image(file_storage, folder, filename, max_width=1920, qual
             
             # Cambiar tamaño manteniendo aspecto si es más grande que max_width
             if img.width > max_width:
-                height = int((max_width / img.width) * img.height)
-                img = img.resize((max_width, height), Image.Resampling.LANCZOS)
+                img.thumbnail((max_width, max_width), Image.Resampling.LANCZOS)
             
             final_path = os.path.join(folder, filename)
             img.save(final_path, "JPEG", quality=quality, optimize=True)
@@ -63,6 +62,19 @@ with app.app_context():
     from sqlalchemy import text
     try:
         db.session.execute(text('ALTER TABLE muebles ADD COLUMN nombre VARCHAR(100) DEFAULT "Mueble Sin Nombre"'))
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+    
+    # Auto-migración para Objeto y Ubicacion (Fase 20)
+    try:
+        db.session.execute(text('ALTER TABLE objetos ADD COLUMN tags_semanticos TEXT'))
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        
+    try:
+        db.session.execute(text('ALTER TABLE ubicaciones ADD COLUMN items_json TEXT'))
         db.session.commit()
     except Exception:
         db.session.rollback()
@@ -90,7 +102,7 @@ def index():
     
     # Categorías únicas y confianza promedio
     objetos = Objeto.query.all()
-    categorias = set(obj.categoria for obj in objetos if obj.categoria)
+    categorias = set(obj.categoria_principal for obj in objetos if obj.categoria_principal)
     categorias_count = len(categorias)
     
     avg_conf = 0
@@ -161,45 +173,47 @@ def upload():
             return redirect(request.url)
         
         if file:
-            filename = secure_filename(file.filename)
-            save_and_compress_image(file, app.config['UPLOAD_FOLDER'], filename)
-            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-            
-            ext = filename.rsplit('.', 1)[1].lower() if '.' in filename else ''
-            
-            # Motor de Video OmniVision
-            if ext in ['mp4', 'mov', 'avi']:
-                from video_processor import extraer_fotogramas
-                from ai_engine import analizar_imagen_objetos
+            try:
+                filename = secure_filename(file.filename)
+                save_and_compress_image(file, app.config['UPLOAD_FOLDER'], filename)
+                filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
                 
-                frames = extraer_fotogramas(filepath, app.config['UPLOAD_FOLDER'])
-                for i, frame_filename in enumerate(frames):
-                    frame_path = os.path.join(app.config['UPLOAD_FOLDER'], frame_filename)
-                    resultado = analizar_imagen_objetos(frame_path)
+                ext = filename.rsplit('.', 1)[1].lower() if '.' in filename else ''
+                
+                # Motor de Video OmniVision
+                if ext in ['mp4', 'mov', 'avi']:
+                    from video_processor import extraer_fotogramas
+                    from ai_engine import analizar_imagen_objetos
                     
-                    nueva_ubi = Ubicacion(
-                        nombre=f"{nombre_ubicacion} (Puntual {i+1})", 
-                        imagen_path=frame_filename,
-                        tags=resultado.get('tags', '')
-                    )
-                    db.session.add(nueva_ubi)
-                    db.session.flush()
-
-                    for item in resultado.get('items', []):
-                        nuevo_obj = Objeto(
-                            nombre=item.get('nombre', 'Objeto detectado'),
-                            categoria=item.get('categoria', 'General'),
-                            confianza=item.get('confianza', 1.0),
-                            ubicacion_id=nueva_ubi.id
+                    frames = extraer_fotogramas(filepath, app.config['UPLOAD_FOLDER'])
+                    for i, frame_filename in enumerate(frames):
+                        frame_path = os.path.join(app.config['UPLOAD_FOLDER'], frame_filename)
+                        resultado = analizar_imagen_objetos(frame_path)
+                        
+                        nueva_ubi = Ubicacion(
+                            nombre=f"{nombre_ubicacion} (Puntual {i+1})", 
+                            imagen_path=frame_filename,
+                            tags=resultado.get('tags', '')
                         )
-                        db.session.add(nuevo_obj)
+                        db.session.add(nueva_ubi)
+                        db.session.flush()
+
+                        for item in resultado.get('items', []):
+                            nuevo_obj = Objeto(
+                                nombre=item.get('nombre', 'Objeto detectado'),
+                                categoria_principal=item.get('categoria_principal', 'General'),
+                                categoria_secundaria=item.get('subcategoria', ''),
+                                confianza=item.get('confianza', 0.8),
+                                ubicacion_id=nueva_ubi.id,
+                                tags_semanticos=item.get('tags_semanticos', '')
+                            )
+                            db.session.add(nuevo_obj)
+                    
+                    db.session.commit()
+                    flash(f'OmniVision procesó el video. Se crearon {len(frames)} espacios automáticamente.')
+                    return redirect(url_for('gallery'))
                 
-                db.session.commit()
-                flash(f'OmniVision procesó el video. Se crearon {len(frames)} espacios automáticamente.')
-                return redirect(url_for('gallery'))
-            
-            else:
-                try:
+                else:
                     # Procesamiento de imagen estándar con IA mejorada
                     from ai_engine import analizar_imagen_objetos
                     import json
@@ -214,7 +228,7 @@ def upload():
                         items_json=json.dumps(resultado.get('items', []))  # JSON completo con metadata
                     )
                     db.session.add(nueva_ubicacion)
-                    db.session.commit()
+                    db.session.flush() # Flush para obtener ID
                     
                     # Crear objetos con categorización mejorada
                     for item in resultado.get('items', []):
@@ -226,7 +240,7 @@ def upload():
                         if not categoria_completa:
                             categoria_completa = item.get('categoria', 'General')
                         
-                        # Tags semánticos pre-generados en un solo paso (Eficiencia Máxima)
+                        # Tags semánticos pre-generados
                         tags_semanticos = item.get('tags_semanticos', '')
 
                         nuevo_objeto = Objeto(
@@ -244,11 +258,13 @@ def upload():
                     flash(f'✓ "{nombre_ubicacion}" blindado con éxito. {len(resultado.get("items", []))} objetos indexados.')
                     return redirect(url_for('gallery'))
 
-                except Exception as e:
-                    app.logger.error(f"FALLO CRÍTICO EN UPLOAD: {e}")
-                    db.session.rollback()
-                    flash('⚠️ Error procesando la imagen. Reintente en un momento.')
-                    return redirect(request.url)
+            except Exception as e:
+                import traceback
+                error_details = traceback.format_exc()
+                app.logger.error(f"FALLO CRÍTICO EN UPLOAD:\n{error_details}")
+                db.session.rollback()
+                flash('⚠️ Error procesando la imagen o video. Verifique que no sea demasiado pesado o inválido.')
+                return redirect(request.url)
             
     return render_template('upload.html')
 

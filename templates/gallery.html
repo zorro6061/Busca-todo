@@ -85,7 +85,7 @@
         {% for ubi in ubicaciones %}
     "{{ ubi.id }}": [
         {% for obj in ubi.objetos %}
-    { nombre: "{{ obj.nombre|escape }}", categoria: "{{ (obj.categoria or '')|escape }}", confianza: { { (obj.confianza * 100) | int } } },
+    { nombre: "{{ obj.nombre|escape }}", categoria: "{{ (obj.categoria_principal or '')|escape }}", confianza: { { (obj.confianza * 100) | int } } },
     {% endfor %}
         ],
     {% endfor %}
