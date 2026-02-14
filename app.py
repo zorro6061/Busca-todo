@@ -911,7 +911,7 @@ def save_video_scans(plano_id):
                 for obj in frame['objects']:
                     nuevo_obj = Objeto(
                         nombre=obj['nombre'],
-                        categoria=obj.get('categoria', 'General'),
+                        categoria_principal=obj.get('categoria', 'General'),
                         confianza=obj.get('confianza', 0.8),
                         ubicacion_id=nueva_ubi.id
                     )
