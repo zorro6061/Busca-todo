@@ -3,6 +3,13 @@ from flask import Flask, render_template, request, redirect, url_for, flash, jso
 from models import db, Ubicacion, Objeto, Plano, Config
 from werkzeug.utils import secure_filename
 import google.generativeai as genai
+from dotenv import load_dotenv
+
+# Cargar variables de entorno al inicio (Fase 20)
+load_dotenv()
+GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
+if GEMINI_API_KEY:
+    genai.configure(api_key=GEMINI_API_KEY)
 
 app = Flask(__name__)
 # Configuración robusta para producción (SQLite en /instance para persistencia en Render)
@@ -223,13 +230,16 @@ def upload():
                     
                     # --- Inteligencia Semántica (Fase 19) ---
                     tags_semanticos = ""
-                    try:
-                        model_intent = genai.GenerativeModel('gemini-flash-latest')
-                        intent_prompt = f"Genera 10 etiquetas semánticas (sinónimos, usos, contextos) para un objeto llamado '{item.get('nombre')}' en la categoría '{categoria_completa}'. Responde solo las palabras separadas por comas."
-                        intent_response = model_intent.generate_content(intent_prompt)
-                        tags_semanticos = intent_response.text.strip().lower()
-                    except Exception as e:
-                        app.logger.error(f"Error generando tags semánticos: {e}")
+                    if GEMINI_API_KEY:
+                        try:
+                            model_intent = genai.GenerativeModel('gemini-flash-latest')
+                            intent_prompt = f"Genera 10 etiquetas semánticas (sinónimos, usos, contextos) para un objeto llamado '{item.get('nombre')}' en la categoría '{categoria_completa}'. Responde solo las palabras separadas por comas."
+                            intent_response = model_intent.generate_content(intent_prompt)
+                            tags_semanticos = intent_response.text.strip().lower()
+                        except Exception as e:
+                            app.logger.error(f"Error generando tags semánticos: {e}")
+                    else:
+                        app.logger.warning("Falta GEMINI_API_KEY para tags semánticos")
 
                     nuevo_objeto = Objeto(
                         nombre=item.get('nombre', 'Objeto detectado'),
@@ -743,14 +753,15 @@ def buscar_en_mapa():
         
         # Análisis Semántico (Intent Expansion)
         expanded_queries = [query]
-        try:
-            model_exp = genai.GenerativeModel('gemini-flash-latest')
-            exp_prompt = f"Actúa como un buscador semántico. Para la consulta '{query}', devuelve una lista de 5 objetos o categorías relacionadas que el usuario podría estar buscando. Responde solo las palabras separadas por comas."
-            exp_res = model_exp.generate_content(exp_prompt)
-            expanded_queries.extend([x.strip().lower() for x in exp_res.text.split(',')])
-        except Exception as e:
-            app.logger.error(f"Error en expansión semántica: {e}")
-            pass
+        if GEMINI_API_KEY:
+            try:
+                model_exp = genai.GenerativeModel('gemini-flash-latest')
+                exp_prompt = f"Actúa como un buscador semántico. Para la consulta '{query}', devuelve una lista de 5 objetos o categorías relacionadas que el usuario podría estar buscando. Responde solo las palabras separadas por comas."
+                exp_res = model_exp.generate_content(exp_prompt)
+                expanded_queries.extend([x.strip().lower() for x in exp_res.text.split(',')])
+            except Exception as e:
+                app.logger.error(f"Error en expansión semántica: {e}")
+                pass
 
         for q_expanded in expanded_queries:
             for obj in ubi.objetos:
