@@ -1279,5 +1279,6 @@ def asignar_zona_objeto(obj_id):
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 if __name__ == '__main__':
-    # Escuchar en 0.0.0.0 permite acceso desde Android en la misma red
-    app.run(debug=True, host='0.0.0.0', port=5001)
+    # Usar el puerto de la variable de entorno PORT para Render
+    port = int(os.environ.get('PORT', 5001))
+    app.run(debug=False, host='0.0.0.0', port=port)
