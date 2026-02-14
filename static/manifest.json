@@ -2,7 +2,7 @@
   "name": "Busca-todo Home",
   "short_name": "Busca-todo",
   "description": "Encuentra cualquier cosa en tu casa al instante.",
-  "start_url": "/",
+  "start_url": "/?v=4",
   "display": "standalone",
   "background_color": "#000000",
   "theme_color": "#8b5cf6",

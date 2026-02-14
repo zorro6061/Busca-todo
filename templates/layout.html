@@ -9,9 +9,9 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/toasts.css') }}">
-    <link rel="manifest" href="/manifest.json">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=4">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/toasts.css') }}?v=4">
+    <link rel="manifest" href="/manifest.json?v=4">
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
@@ -120,7 +120,7 @@
     <!-- Toast Container -->
     <div id="toast-container"></div>
 
-    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}?v=4"></script>
 
     <script>
         // ── Scroll-triggered navbar (Tesla-style) ──
