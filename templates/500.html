@@ -1,35 +1,73 @@
-{% extends 'layout.html' %}
+<!DOCTYPE html>
+<html lang="es">
 
-{% block content %}
-<div
-    style="height: 70vh; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: var(--space-lg);">
-    <div style="font-size: 5rem; animation: shake 0.5s ease-in-out infinite;">🛠️</div>
-    <h1
-        style="font-size: 2.5rem; background: linear-gradient(135deg, #ff4d4d, #f9cb28); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
-        Error de Ingeniería</h1>
-    <p style="color: var(--text-dim); max-width: 420px; margin: 0 auto;">Tuvimos un problema técnico al procesar tu
-        solicitud. No te preocupes, tus datos están a salvo.</p>
-    <div style="display: flex; gap: var(--space-md); margin-top: var(--space-lg);">
-        <a href="{{ url_for('index') }}" class="btn btn-primary">Intentar de nuevo</a>
-        <button onclick="location.reload()" class="btn btn-secondary">Refrescar página</button>
+<head>
+    <meta charset="UTF-8">
+    <title>Error 500 | Aperture Home</title>
+    <style>
+        :root {
+            --bg: #000;
+            --text: #fff;
+            --primary: #6366f1;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: sans-serif;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
+        }
+
+        .container {
+            text-align: center;
+            padding: 20px;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            background: linear-gradient(135deg, #ff4d4d, #f9cb28);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 1rem;
+        }
+
+        p {
+            color: #888;
+            margin-bottom: 2rem;
+        }
+
+        .btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            text-decoration: none;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+
+        .btn:hover {
+            opacity: 0.9;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div style="font-size: 4rem; margin-bottom: 20px;">🛠️</div>
+        <h1>Error de Ingeniería</h1>
+        <p>Tuvimos un problema técnico crítico. El sistema de recuperación ha sido activado.</p>
+        <p style="font-size: 0.8rem; color: #555;">Si esto persiste, por favor contacta al administrador.</p>
+        <div style="display: flex; gap: 10px; justify-content: center;">
+            <a href="/" class="btn">Reintentar Inicio</a>
+            <button onclick="location.reload()" class="btn" style="background: #333;">Refrescar</button>
+        </div>
     </div>
-</div>
+</body>
 
-<style>
-    @keyframes shake {
-
-        0%,
-        100% {
-            transform: rotate(0deg);
-        }
-
-        25% {
-            transform: rotate(5deg);
-        }
-
-        75% {
-            transform: rotate(-5deg);
-        }
-    }
-</style>
-{% endblock %}
+</html>

@@ -160,7 +160,7 @@
         let totalObjects = 0;
 
         pins.forEach(p => {
-            const isChipMatch = currentChip === 'All' || (p.tags && p.tags.includes(currentChip)) || (p.categoria && p.categoria.includes(currentChip));
+            const isChipMatch = currentChip === 'All' || (p.tags && p.tags.includes(currentChip)) || (p.categoria_principal && p.categoria_principal.includes(currentChip));
             if (!isChipMatch) return;
 
             totalObjects += (p.objetos_count || 0);

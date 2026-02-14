@@ -31,8 +31,10 @@
                 <span class="badge" style="background: linear-gradient(90deg, #6366f1, #a855f7); color: white;">✨ AI
                     SMART MATCH</span>
                 {% endif %}
-                {% if r.categoria %}<span class="badge badge-warning">{{ r.categoria }}</span>{% endif %}
-                {% if r.estado %}<span class="badge badge-success">{{ r.estado }}</span>{% endif %}
+                {% if r.categoria_principal %}<span class="badge badge-warning">{{ r.categoria_principal }}</span>{%
+                endif %}
+                {% if r.categoria_principal %}<span class="badge badge-warning">{{ r.categoria_principal }}</span>{%
+                endif %}
             </div>
             <p style="color: var(--text-dim); font-size: 0.82rem; margin-top: 8px;">📍 {{ r.ubicacion_nombre }}</p>
             {% if r.plano_id %}

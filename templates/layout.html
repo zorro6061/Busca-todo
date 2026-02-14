@@ -47,7 +47,19 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 </head>
 
-<body>
+<body class="loading">
+    <!-- Splash Screen (Restored) -->
+    <div id="splash-screen"
+        style="position: fixed; inset: 0; background: #000; z-index: 9999; display: flex; align-items: center; justify-content: center; transition: opacity 0.8s ease-out;">
+        <div style="text-align: center;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+                style="width: 64px; height: 64px; color: white; animation: pulse 2s infinite;">
+                <circle cx="12" cy="12" r="9"></circle>
+                <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+        </div>
+    </div>
+
     <div class="island-container">
         <div id="dynamic-island" class="dynamic-island">
             <div id="island-content"
@@ -197,15 +209,15 @@
             }, 1200);
         });
 
-        // Hard fail-safe (3.5s)
+        // Super-aggressive fail-safe (2s)
         setTimeout(() => {
             const splash = document.getElementById('splash-screen');
-            if (splash && !splash.classList.contains('fade-out')) {
+            if (splash) {
                 splash.classList.add('fade-out');
                 document.body.classList.remove('loading');
-                document.querySelectorAll('.reveal:not(.visible)').forEach(el => el.classList.add('visible'));
+                document.querySelectorAll('.reveal').forEach(el => el.classList.add('visible'));
             }
-        }, 3500);
+        }, 2000);
 
         document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
 
@@ -221,8 +233,8 @@
             {% for category, message in messages %}
             let type = '{{ category }}';
             if (type === 'message') type = 'success';
-            mostrarToast("{{ message }}", type || 'info');
-            {% endfor %}
+            mostrarToast({{ message | tojson }}, type || 'info');
+        {% endfor %}
         });
         {% endif %}
         {% endwith %}

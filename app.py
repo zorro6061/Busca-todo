@@ -12,6 +12,8 @@ if GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)
 
 app = Flask(__name__)
+# DEBUG MODE ENABLED FOR DIAGNOSTICS
+app.debug = True
 # Configuración robusta para producción (SQLite en /instance para persistencia en Render)
 basedir = os.path.abspath(os.path.dirname(__file__))
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///' + os.path.join(basedir, 'instance', 'ctrl_f.db'))
@@ -66,7 +68,6 @@ with app.app_context():
     except Exception:
         db.session.rollback()
     
-    # Auto-migración para Objeto y Ubicacion (Fase 20)
     try:
         db.session.execute(text('ALTER TABLE objetos ADD COLUMN tags_semanticos TEXT'))
         db.session.commit()
@@ -78,6 +79,19 @@ with app.app_context():
         db.session.commit()
     except Exception:
         db.session.rollback()
+
+    # Migración de categoría (Fase 21)
+    try:
+        db.session.execute(text('ALTER TABLE objetos RENAME COLUMN categoria TO categoria_principal'))
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        # Si ya existe o falló, asegurar que al menos la columna existe
+        try:
+            db.session.execute(text('ALTER TABLE objetos ADD COLUMN categoria_principal VARCHAR(50)'))
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
 
 import base64
 import uuid
@@ -102,7 +116,15 @@ def index():
     
     # Categorías únicas y confianza promedio
     objetos = Objeto.query.all()
-    categorias = set(obj.categoria_principal for obj in objetos if obj.categoria_principal)
+    # Categorías únicas y confianza promedio (Defensive)
+    try:
+        if hasattr(Objeto, 'categoria_principal'):
+             categorias = set(obj.categoria_principal for obj in objetos if obj.categoria_principal)
+        else:
+             # Fallback temporarily
+             categorias = set(getattr(obj, 'categoria', 'General') for obj in objetos)
+    except Exception:
+        categorias = set()
     categorias_count = len(categorias)
     
     avg_conf = 0
@@ -132,17 +154,25 @@ def not_found_error(error):
 
 @app.errorhandler(500)
 def internal_error(error):
+    import traceback
+    print("CRITICAL 500 ERROR CAUGHT:")
+    print(traceback.format_exc())
     db.session.rollback()
-    return render_template('500.html'), 500
+    return render_template('500.html', error=error), 500
 
 @app.context_processor
 def inject_config():
-    config = Config.query.first()
-    if not config:
-        config = Config(subscription_type='free')
-        db.session.add(config)
-        db.session.commit()
-    return dict(app_config=config)
+    try:
+        config = Config.query.first()
+        if not config:
+            print("Creating default config...")
+            config = Config(subscription_type='free')
+            db.session.add(config)
+            db.session.commit()
+        return dict(app_config=config)
+    except Exception as e:
+        print(f"ERROR IN INJECT_CONFIG: {e}")
+        return dict(app_config={'subscription_type': 'free'})
 
 @app.route('/pricing')
 def pricing():
@@ -290,7 +320,7 @@ def search():
         
         for obj in todos_objetos:
             nombre_lower = obj.nombre.lower()
-            categoria_lower = (obj.categoria or "").lower()
+            categoria_lower = (obj.categoria_principal or "").lower()
             
             # 1. Similitud exacta (Ratio) - PESO MAYOR
             ratio_nombre = fuzz.ratio(query, nombre_lower)
@@ -351,7 +381,7 @@ def search():
             resultados.append({
                 'id': obj.id,
                 'objeto': obj.nombre,
-                'categoria': obj.categoria,
+                'categoria_principal': obj.categoria_principal,
                 'confianza': int(obj.confianza * 100),
                 'estado': obj.estado,
                 'prioridad': obj.prioridad,
@@ -383,8 +413,8 @@ def sugerencias():
     nombres_set = set()
     for obj in todos_objetos:
         nombres_set.add(obj.nombre.lower())
-        if obj.categoria:
-            nombres_set.add(obj.categoria.lower())
+        if obj.categoria_principal:
+            nombres_set.add(obj.categoria_principal.lower())
     
     opciones = list(nombres_set)
     
@@ -705,7 +735,7 @@ def ai_optimizer():
     # Crear un resumen para la IA
     resumen = []
     for obj in objetos:
-        resumen.append(f"- {obj.nombre} (Categoría: {obj.categoria}) en {obj.ubicacion.nombre}")
+        resumen.append(f"- {obj.nombre} (Categoría: {obj.categoria_principal or 'General'}) en {obj.ubicacion.nombre}")
     
     resumen_texto = "\n".join(resumen)
     
@@ -1006,7 +1036,7 @@ def crear_ubicaciones_desde_video():
                 categoria = item.get('categoria_principal', item.get('categoria', 'General'))
                 nuevo_obj = Objeto(
                     nombre=item.get('nombre', 'Objeto'),
-                    categoria=categoria,
+                    categoria_principal=categoria,
                     confianza=item.get('confianza', 0.8),
                     estado=item.get('estado', 'N/A'),
                     prioridad=item.get('prioridad', 'media'),
@@ -1166,7 +1196,7 @@ def get_ubicacion_full(ubi_id):
             objetos_data.append({
                 'id': obj.id,
                 'nombre': obj.nombre,
-                'categoria': obj.categoria,
+                'categoria_principal': obj.categoria_principal,
                 'zona_id': obj.zona_id
             })
             
