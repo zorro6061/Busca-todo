@@ -24,7 +24,7 @@
             </div>
         </div>
         <div style="padding: var(--space-md) var(--space-lg) var(--space-lg);">
-            <h3 style="text-transform: capitalize;">{{ r.nombre }}</h3>
+            <h3 style="text-transform: capitalize;">{{ r.objeto }}</h3>
             <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px;">
                 <span class="badge badge-primary">{{ (r.confianza*100)|int }}% match</span>
                 {% if r.es_semantico %}
@@ -33,10 +33,8 @@
                 {% endif %}
                 {% if r.categoria_principal %}<span class="badge badge-warning">{{ r.categoria_principal }}</span>{%
                 endif %}
-                {% if r.categoria_principal %}<span class="badge badge-warning">{{ r.categoria_principal }}</span>{%
-                endif %}
             </div>
-            <p style="color: var(--text-dim); font-size: 0.82rem; margin-top: 8px;">📍 {{ r.ubicacion_nombre }}</p>
+            <p style="color: var(--text-dim); font-size: 0.82rem; margin-top: 8px;">📍 {{ r.ubicacion }}</p>
             {% if r.plano_id %}
             <a href="{{ url_for('ver_plano', plano_id=r.plano_id) }}?highlight_ubi={{ r.ubicacion_id }}"
                 class="btn btn-sm btn-primary" style="margin-top: var(--space-md); width: 100%;">

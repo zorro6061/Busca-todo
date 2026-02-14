@@ -15,7 +15,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js')
+                navigator.serviceWorker.register('/static/sw-v7.js')
                     .then(reg => {
                         console.log('SW Registered', reg);
                         // Escuchar si hay una actualización esperando
