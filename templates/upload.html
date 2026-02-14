@@ -20,20 +20,39 @@
 
             <div style="margin-bottom: var(--space-xl);">
                 <label>Foto o Video</label>
+
+                <!-- Botones Duales Premium -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px;">
+                    <button type="button" class="btn btn-secondary"
+                        style="display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 20px 10px; border-radius: 16px; background: rgba(255,255,255,0.03);"
+                        onclick="document.getElementById('camera-input').click();">
+                        <span style="font-size: 1.5rem;">📸</span>
+                        <span
+                            style="font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">Capturar</span>
+                    </button>
+                    <button type="button" class="btn btn-secondary"
+                        style="display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 20px 10px; border-radius: 16px; background: rgba(255,255,255,0.03);"
+                        onclick="document.getElementById('gallery-input').click();">
+                        <span style="font-size: 1.5rem;">🖼️</span>
+                        <span
+                            style="font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">Galería</span>
+                    </button>
+                </div>
+
+                <!-- Inputs Ocultos -->
+                <input type="file" id="camera-input" name="file" accept="image/*,video/*" capture="environment"
+                    style="display: none;" onchange="handleFileSelection(this)">
+                <input type="file" id="gallery-input" name="file" accept="image/*,video/*" style="display: none;"
+                    onchange="handleFileSelection(this)">
+
                 <div id="drop-zone"
-                    style="border: 2px dashed rgba(255,255,255,0.08); border-radius: var(--radius-xl); padding: var(--space-2xl) var(--space-lg); text-align: center; cursor: pointer; transition: all 0.4s var(--transition-smooth); position: relative;"
-                    onclick="document.getElementById('file-input').click();">
+                    style="border: 2px dashed rgba(255,255,255,0.08); border-radius: var(--radius-xl); padding: var(--space-xl); text-align: center; transition: all 0.4s var(--transition-smooth); position: relative;">
 
                     <div id="upload-placeholder">
-                        <div style="font-size: 2.5rem; margin-bottom: 8px; opacity: 0.4;">📸</div>
-                        <p id="upload-status-text" style="font-weight: 600; font-size: 0.9rem; margin-bottom: 4px;">Toca
-                            para capturar</p>
-                        <p id="upload-status-subtext" style="font-size: 0.78rem; color: var(--text-dim);">Fotos y videos
-                            · Máx 50MB</p>
+                        <p id="upload-status-text"
+                            style="font-weight: 600; font-size: 0.85rem; color: var(--text-dim);">Arrastra o espera la
+                            carga...</p>
                     </div>
-
-                    <input type="file" id="file-input" name="file" accept="image/*,video/*" capture="environment"
-                        style="display: none;" onchange="previewFile(this)">
                 </div>
                 <div id="file-preview" style="display: none; margin-top: var(--space-sm);">
                     <div
@@ -100,22 +119,21 @@
 </style>
 
 <script>
-    function previewFile(input) {
+    function handleFileSelection(input) {
         const file = input.files[0];
         if (!file) return;
 
-        const dz = document.getElementById('drop-zone');
-        const placeholder = document.getElementById('upload-placeholder');
-        const statusText = document.getElementById('upload-status-text');
-        const statusSubtext = document.getElementById('upload-status-subtext');
+        // Desactivar el otro input para que no se envíen duplicados o vacíos
+        const otherId = input.id === 'camera-input' ? 'gallery-input' : 'camera-input';
+        document.getElementById(otherId).disabled = true;
 
-        // UI Update without replacing the input
+        const dz = document.getElementById('drop-zone');
+        const statusText = document.getElementById('upload-status-text');
+
         dz.style.borderStyle = 'solid';
         dz.style.borderColor = 'var(--primary)';
         dz.style.background = 'rgba(99,102,241,0.05)';
-
-        statusText.innerHTML = '<span style="color: var(--primary);">✓ Archivo seleccionado</span>';
-        statusSubtext.textContent = file.name;
+        statusText.innerHTML = '<span style="color: var(--primary);">✓ ' + file.name + ' seleccionado</span>';
 
         document.getElementById('file-preview').style.display = 'block';
         document.getElementById('preview-name').textContent = file.name;
@@ -139,19 +157,18 @@
     }
 
     function clearPreview() {
-        // Reset input value
-        document.getElementById('file-input').value = '';
+        document.getElementById('camera-input').value = '';
+        document.getElementById('gallery-input').value = '';
+        document.getElementById('camera-input').disabled = false;
+        document.getElementById('gallery-input').disabled = false;
 
         const dz = document.getElementById('drop-zone');
         const statusText = document.getElementById('upload-status-text');
-        const statusSubtext = document.getElementById('upload-status-subtext');
 
         dz.style.borderStyle = 'dashed';
         dz.style.borderColor = 'rgba(255,255,255,0.08)';
         dz.style.background = '';
-
-        statusText.textContent = 'Toca para capturar';
-        statusSubtext.textContent = 'Fotos y videos · Máx 50MB';
+        statusText.textContent = 'Arrastra o espera la carga...';
 
         document.getElementById('file-preview').style.display = 'none';
     }
@@ -173,9 +190,9 @@
         e.preventDefault();
         const files = e.dataTransfer.files;
         if (files.length) {
-            const input = document.getElementById('file-input');
+            const input = document.getElementById('gallery-input');
             input.files = files;
-            previewFile(input);
+            handleFileSelection(input);
         }
     });
 
