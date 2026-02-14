@@ -51,6 +51,12 @@
     <!-- Splash Screen (Restored) -->
     <div id="splash-screen"
         style="position: fixed; inset: 0; background: #000; z-index: 9999; display: flex; align-items: center; justify-content: center; transition: opacity 0.8s ease-out;">
+        <style>
+            .fade-out {
+                opacity: 0 !important;
+                pointer-events: none !important;
+            }
+        </style>
         <div style="text-align: center;">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
                 style="width: 64px; height: 64px; color: white; animation: pulse 2s infinite;">
@@ -58,6 +64,20 @@
                 <circle cx="12" cy="12" r="3"></circle>
             </svg>
         </div>
+        <script>
+            // Inline Critical Fail-safe
+            window.addEventListener('load', () => {
+                setTimeout(() => {
+                    document.getElementById('splash-screen').classList.add('fade-out');
+                    document.body.classList.remove('loading');
+                }, 800);
+            });
+            // Backup Timer (runs even if load event fails)
+            setTimeout(() => {
+                const s = document.getElementById('splash-screen');
+                if (s) { s.classList.add('fade-out'); document.body.classList.remove('loading'); }
+            }, 3000);
+        </script>
     </div>
 
     <div class="island-container">
