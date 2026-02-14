@@ -878,10 +878,16 @@ def video_scanner(plano_id):
                     'objects': res.get('items', [])
                 })
             
-            # Guardar frames en sesión para el siguiente paso (demo simple)
+            # Guardar frames en archivo temporal (evitar cookie overflow)
             import json
             from flask import session
-            session['video_frames'] = frames
+            temp_frames_file = f"frames_{uuid.uuid4().hex}.json"
+            temp_frames_path = os.path.join(app.config['UPLOAD_FOLDER'], temp_frames_file)
+            
+            with open(temp_frames_path, 'w') as f:
+                json.dump(frames, f)
+                
+            session['temp_frames_file'] = temp_frames_file
             step = 3
             
     return render_template('video_scanner.html', plano=plano, step=step, frames=frames)
@@ -893,8 +899,19 @@ def save_video_scans(plano_id):
     import json
     data = request.json
     indices = data.get('indices', [])
-    frames = session.get('video_frames', [])
     
+    # Recuperar frames del archivo temporal
+    temp_file = session.get('temp_frames_file')
+    frames = []
+    
+    if temp_file:
+        temp_path = os.path.join(app.config['UPLOAD_FOLDER'], temp_file)
+        if os.path.exists(temp_path):
+            with open(temp_path, 'r') as f:
+                frames = json.load(f)
+            # Limpiar archivo después de uso
+            # os.remove(temp_path) # Comentado para debug por ahora
+            
     try:
         for idx in indices:
             if idx < len(frames):
@@ -918,7 +935,16 @@ def save_video_scans(plano_id):
                     db.session.add(nuevo_obj)
         
         db.session.commit()
-        session.pop('video_frames', None)
+        db.session.commit()
+        
+        # Limpiar sesión y archivo
+        if temp_file:
+            try:
+                os.remove(os.path.join(app.config['UPLOAD_FOLDER'], temp_file))
+            except:
+                pass
+        session.pop('temp_frames_file', None)
+        
         return jsonify({'success': True})
     except Exception as e:
         db.session.rollback()

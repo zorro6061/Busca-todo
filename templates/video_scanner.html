@@ -204,7 +204,7 @@
         btn.disabled = true;
         btn.textContent = 'Guardando...';
 
-        fetch("{{ url_for('crear_ubicaciones_desde_video') }}", {
+        fetch("{{ url_for('save_video_scans', plano_id=plano.id) }}", {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ indices: selectedFrames })
