@@ -220,13 +220,25 @@ def upload():
                     if not categoria_completa:
                         categoria_completa = item.get('categoria', 'General')
                     
+                    # --- Inteligencia Semántica (Fase 19) ---
+                    # Usamos Gemini para generar tags semánticos (sinónimos e intenciones)
+                    tags_semanticos = ""
+                    try:
+                        model_intent = genai.GenerativeModel('gemini-flash-latest')
+                        intent_prompt = f"Genera 10 etiquetas semánticas (sinónimos, usos, contextos) para un objeto llamado '{item.get('nombre')}' en la categoría '{categoria_completa}'. Responde solo las palabras separadas por comas."
+                        intent_response = model_intent.generate_content(intent_prompt)
+                        tags_semanticos = intent_response.text.strip().lower()
+                    except Exception as e:
+                        app.logger.error(f"Error generando tags semánticos: {e}")
+
                     nuevo_objeto = Objeto(
                         nombre=item.get('nombre', 'Objeto detectado'),
-                        categoria=categoria_completa,
+                        categoria_principal=item.get('categoria_principal', 'General'),
+                        categoria_secundaria=item.get('subcategoria', ''),
+                        descripcion=item.get('descripcion', ''),
                         confianza=item.get('confianza', 0.8),
-                        estado=item.get('metadata', {}).get('estado', item.get('estado', 'N/A')),
-                        prioridad=item.get('prioridad', 'media'),
-                        ubicacion_id=nueva_ubicacion.id
+                        ubicacion_id=nueva_ubicacion.id,
+                        tags_semanticos=tags_semanticos
                     )
                     db.session.add(nuevo_objeto)
                 db.session.commit()
@@ -718,7 +730,7 @@ def buscar_en_mapa():
         if ubi.pos_x is None or ubi.pos_y is None:
             continue
         
-        # Busca-todo Home - v1.0.6 Premium Branding Update
+        # Busca-todo Home - v1.0.7 Semantic Intelligence Vanguard
         score_ubi = max(
             fuzz.ratio(query, ubi.nombre.lower()),
             fuzz.partial_ratio(query, ubi.nombre.lower()),
@@ -729,23 +741,44 @@ def buscar_en_mapa():
         objetos_match = []
         max_obj_score = 0
         
-        for obj in ubi.objetos:
-            score_obj = max(
-                fuzz.ratio(query, obj.nombre.lower()),
-                fuzz.partial_ratio(query, obj.nombre.lower()),
-                fuzz.token_sort_ratio(query, obj.nombre.lower())
-            )
-            if obj.categoria:
-                score_cat = fuzz.partial_ratio(query, obj.categoria.lower())
-                score_obj = max(score_obj, score_cat)
-            
-            if score_obj >= 60:
-                objetos_match.append({
-                    'nombre': obj.nombre,
-                    'categoria': obj.categoria,
-                    'score': int(score_obj)
-                })
-                max_obj_score = max(max_obj_score, score_obj)
+        # Análisis Semántico (Intent Expansion)
+        # Si no hay matches perfectos, expandimos la consulta con IA
+        expanded_queries = [query]
+        try:
+            from ai_engine import genai
+            model_exp = genai.GenerativeModel('gemini-flash-latest')
+            exp_prompt = f"Actúa como un buscador semántico. Para la consulta '{query}', devuelve una lista de 5 objetos o categorías relacionadas que el usuario podría estar buscando. Responde solo las palabras separadas por comas."
+            exp_res = model_exp.generate_content(exp_prompt)
+            expanded_queries.extend([x.strip().lower() for x in exp_res.text.split(',')])
+        except Exception as e:
+            print(f"Error en expansión semántica: {e}")
+            pass
+
+        for q_expanded in expanded_queries:
+            for obj in ubi.objetos:
+                score_obj = max(
+                    fuzz.ratio(q_expanded, obj.nombre.lower()),
+                    fuzz.partial_ratio(q_expanded, obj.nombre.lower()),
+                    fuzz.token_sort_ratio(q_expanded, obj.nombre.lower())
+                )
+                
+                # Buscar en tags semánticos (VANGUARD)
+                if obj.tags_semanticos:
+                    score_semantico = fuzz.partial_ratio(q_expanded, obj.tags_semanticos.lower())
+                    score_obj = max(score_obj, score_semantico)
+
+                if obj.categoria_principal:
+                    score_cat = fuzz.partial_ratio(q_expanded, obj.categoria_principal.lower())
+                    score_obj = max(score_obj, score_cat)
+                
+                if score_obj > 70:
+                    objetos_match.append({
+                        "id": obj.id,
+                        "nombre": obj.nombre,
+                        "score": score_obj,
+                        "es_semantico": q_expanded != query # Marcar si fue hallado por IA
+                    })
+                    max_obj_score = max(max_obj_score, score_obj)
         
         # Score final: el mejor entre ubicación y sus objetos
         final_score = max(score_ubi, max_obj_score)

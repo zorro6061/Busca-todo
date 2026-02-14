@@ -29,6 +29,10 @@
             <h3 style="text-transform: capitalize;">{{ r.nombre }}</h3>
             <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px;">
                 <span class="badge badge-primary">{{ (r.confianza*100)|int }}% match</span>
+                {% if r.es_semantico %}
+                <span class="badge" style="background: linear-gradient(90deg, #6366f1, #a855f7); color: white;">✨ AI
+                    SMART MATCH</span>
+                {% endif %}
                 {% if r.categoria %}<span class="badge badge-warning">{{ r.categoria }}</span>{% endif %}
                 {% if r.estado %}<span class="badge badge-success">{{ r.estado }}</span>{% endif %}
             </div>

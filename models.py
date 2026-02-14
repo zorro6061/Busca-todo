@@ -50,6 +50,9 @@ class Objeto(db.Model):
     
     # Relación con Zona (Mapa Anotado)
     zona_id = db.Column(db.Integer, db.ForeignKey('zonas.id'), nullable=True)
+    
+    # Campo para Inteligencia Semántica (Fase 19)
+    tags_semanticos = db.Column(db.Text, nullable=True) # Sinónimos, usos y contextos (IA)
 
     def __repr__(self):
         return f'<Objeto {self.nombre}>'
