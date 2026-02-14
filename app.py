@@ -626,7 +626,7 @@ def crear_ubicacion_en_mapa():
             
             nuevo_objeto = Objeto(
                 nombre=item.get('nombre', 'Objeto detectado'),
-                categoria=categoria_completa,
+                categoria_principal=categoria_completa,
                 confianza=item.get('confianza', 0.8),
                 estado=item.get('metadata', {}).get('estado', item.get('estado', 'N/A')),
                 prioridad=item.get('prioridad', 'media'),
@@ -677,7 +677,7 @@ def upload_plano_simple(plano_id):
         for item in resultado.get('items', []):
             nuevo_obj = Objeto(
                 nombre=item.get('nombre', 'Objeto'),
-                categoria=item.get('categoria', 'General'),
+                categoria_principal=item.get('categoria', 'General'),
                 confianza=item.get('confianza', 0.8),
                 ubicacion_id=nueva_ubi.id
             )
