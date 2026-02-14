@@ -199,62 +199,56 @@ def upload():
                 return redirect(url_for('gallery'))
             
             else:
-                # Procesamiento de imagen estándar con IA mejorada
-                from ai_engine import analizar_imagen_objetos
-                import json
-                
-                resultado = analizar_imagen_objetos(filepath, tipo_espacio="general")
-                
-                # Crear ubicación con datos mejorados
-                nueva_ubicacion = Ubicacion(
-                    nombre=nombre_ubicacion, 
-                    imagen_path=filename,
-                    tags=resultado.get('tags', ''),
-                    items_json=json.dumps(resultado.get('items', []))  # JSON completo con metadata
-                )
-                db.session.add(nueva_ubicacion)
-                db.session.commit()
-                
-                # Crear objetos con categorización mejorada
-                for item in resultado.get('items', []):
-                    # Construir categoría con jerarquía (backwards compatible)
-                    categoria_completa = item.get('categoria_principal', '')
-                    if 'subcategoria' in item:
-                        categoria_completa += f" > {item['subcategoria']}"
-                    if 'tipo_especifico' in item:
-                        categoria_completa += f" > {item['tipo_especifico']}"
+                try:
+                    # Procesamiento de imagen estándar con IA mejorada
+                    from ai_engine import analizar_imagen_objetos
+                    import json
                     
-                    # Si no hay categorización jerárquica, usar la simple (backwards compatible)
-                    if not categoria_completa:
-                        categoria_completa = item.get('categoria', 'General')
+                    resultado = analizar_imagen_objetos(filepath, tipo_espacio="general")
                     
-                    # --- Inteligencia Semántica (Fase 19) ---
-                    tags_semanticos = ""
-                    if GEMINI_API_KEY:
-                        try:
-                            model_intent = genai.GenerativeModel('gemini-flash-latest')
-                            intent_prompt = f"Genera 10 etiquetas semánticas (sinónimos, usos, contextos) para un objeto llamado '{item.get('nombre')}' en la categoría '{categoria_completa}'. Responde solo las palabras separadas por comas."
-                            intent_response = model_intent.generate_content(intent_prompt)
-                            tags_semanticos = intent_response.text.strip().lower()
-                        except Exception as e:
-                            app.logger.error(f"Error generando tags semánticos: {e}")
-                    else:
-                        app.logger.warning("Falta GEMINI_API_KEY para tags semánticos")
-
-                    nuevo_objeto = Objeto(
-                        nombre=item.get('nombre', 'Objeto detectado'),
-                        categoria_principal=item.get('categoria_principal', 'General'),
-                        categoria_secundaria=item.get('subcategoria', ''),
-                        descripcion=item.get('descripcion', ''),
-                        confianza=item.get('confianza', 0.8),
-                        ubicacion_id=nueva_ubicacion.id,
-                        tags_semanticos=tags_semanticos
+                    # Crear ubicación con datos mejorados
+                    nueva_ubicacion = Ubicacion(
+                        nombre=nombre_ubicacion, 
+                        imagen_path=filename,
+                        tags=resultado.get('tags', ''),
+                        items_json=json.dumps(resultado.get('items', []))  # JSON completo con metadata
                     )
-                    db.session.add(nuevo_objeto)
-                db.session.commit()
-                
-                flash(f'Ubicación "{nombre_ubicacion}" analizada con éxito. Detectados {len(resultado.get("items", []))} objetos.')
-                return redirect(url_for('gallery'))
+                    db.session.add(nueva_ubicacion)
+                    db.session.commit()
+                    
+                    # Crear objetos con categorización mejorada
+                    for item in resultado.get('items', []):
+                        # Categoría jerárquica
+                        categoria_completa = item.get('categoria_principal', '')
+                        if item.get('subcategoria'):
+                            categoria_completa += f" > {item['subcategoria']}"
+                        
+                        if not categoria_completa:
+                            categoria_completa = item.get('categoria', 'General')
+                        
+                        # Tags semánticos pre-generados en un solo paso (Eficiencia Máxima)
+                        tags_semanticos = item.get('tags_semanticos', '')
+
+                        nuevo_objeto = Objeto(
+                            nombre=item.get('nombre', 'Objeto detectado'),
+                            categoria_principal=item.get('categoria_principal', 'General'),
+                            categoria_secundaria=item.get('subcategoria', ''),
+                            descripcion=item.get('descripcion', ''),
+                            confianza=item.get('confianza', 0.8),
+                            ubicacion_id=nueva_ubicacion.id,
+                            tags_semanticos=tags_semanticos
+                        )
+                        db.session.add(nuevo_objeto)
+                    
+                    db.session.commit()
+                    flash(f'✓ "{nombre_ubicacion}" blindado con éxito. {len(resultado.get("items", []))} objetos indexados.')
+                    return redirect(url_for('gallery'))
+
+                except Exception as e:
+                    app.logger.error(f"FALLO CRÍTICO EN UPLOAD: {e}")
+                    db.session.rollback()
+                    flash('⚠️ Error procesando la imagen. Reintente en un momento.')
+                    return redirect(request.url)
             
     return render_template('upload.html')
 

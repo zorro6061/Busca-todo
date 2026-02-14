@@ -166,6 +166,7 @@ FORMATO DE RESPUESTA (JSON ESTRICTO):
       "subcategoria": "...",
       "tipo_especifico": "...",
       "descripcion": "...",
+      "tags_semanticos": "10 palabras clave, sinónimos y usos separados por comas",
       "bbox": [ymin, xmin, ymax, xmax],
       "confianza": 0.XX,
       "metadata": {{
