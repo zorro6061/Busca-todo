@@ -60,16 +60,13 @@
 
     <nav class="navbar" id="main-nav">
         <a href="{{ url_for('index') }}" class="logo-premium">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
                 stroke-linejoin="round" class="logo-svg">
-                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-                <circle cx="12" cy="13" r="4"></circle>
-                <path d="M12 9v1"></path>
-                <path d="M12 16v1"></path>
-                <path d="M8 13h1"></path>
-                <path d="M15 13h1"></path>
+                <circle cx="12" cy="12" r="9"></circle>
+                <circle cx="12" cy="12" r="3"></circle>
+                <path d="M12 12h.01"></path>
             </svg>
-            <span class="logo-text">BUSCA-TODO <span class="logo-subtext">HOME</span></span>
+            <span class="logo-text">APERTURE<span class="logo-subtext">HOME</span></span>
         </a>
         <div class="nav-links">
             <a href="{{ url_for('gallery') }}">Galería</a>
@@ -183,6 +180,32 @@
                 }
             });
         }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+
+        // ── Splash & Fail-safe Initialization ──
+        window.addEventListener('load', () => {
+            const splash = document.getElementById('splash-screen');
+            if (!splash) return;
+
+            setTimeout(() => {
+                splash.classList.add('fade-out');
+                document.body.classList.remove('loading');
+
+                // Force reveal if animations stall
+                setTimeout(() => {
+                    document.querySelectorAll('.reveal:not(.visible)').forEach(el => el.classList.add('visible'));
+                }, 1000);
+            }, 1200);
+        });
+
+        // Hard fail-safe (3.5s)
+        setTimeout(() => {
+            const splash = document.getElementById('splash-screen');
+            if (splash && !splash.classList.contains('fade-out')) {
+                splash.classList.add('fade-out');
+                document.body.classList.remove('loading');
+                document.querySelectorAll('.reveal:not(.visible)').forEach(el => el.classList.add('visible'));
+            }
+        }, 3500);
 
         document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
 
