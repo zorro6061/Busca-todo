@@ -97,7 +97,7 @@
 
         <!-- Widget 3: AI Tool -->
         <div class="card bento-item reveal reveal-delay-2 card-interactive"
-            onclick="window.location='{{ url_for('ai_optimizer') }}'"
+            onclick="window.location.href='{{ url_for('ai_optimizer') }}';"
             style="background: linear-gradient(135deg, rgba(99,102,241,0.1), transparent);">
             <div style="font-size: 2rem;">🧠</div>
             <h3 style="margin-top: 12px; font-size: 1rem;">IA Brain</h3>
@@ -110,7 +110,7 @@
 
         <!-- Widget 4: Quick Upload -->
         <div class="card bento-item reveal reveal-delay-3 card-interactive"
-            onclick="window.location='{{ url_for('upload') }}'"
+            onclick="window.location.href='{{ url_for('upload') }}';"
             style="display: flex; align-items: center; justify-content: center; background: var(--primary); border: none;">
             <div style="text-align: center;">
                 <span style="font-size: 2.5rem; color: white;">+</span>
@@ -173,7 +173,7 @@
                 io.disconnect();
             }
         }, { threshold: 0.5 });
-        io.observe(el.closest('.stat-card'));
+        io.observe(el.closest('.bento-item') || el.parentElement);
     });
 </script>
 
