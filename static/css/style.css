@@ -318,8 +318,23 @@ a {
     inset: 0;
     border-radius: inherit;
     background: linear-gradient(135deg, rgba(255, 255, 255, 0.2), transparent);
+
     opacity: 0;
     transition: opacity 0.3s;
+}
+
+/* --- Bounding Box Highlight --- */
+.bbox-highlight {
+    position: absolute;
+    left: calc(var(--left) * 100%);
+    top: calc(var(--top) * 100%);
+    width: calc(var(--width) * 100%);
+    height: calc(var(--height) * 100%);
+    border: 2px solid var(--primary);
+    border-radius: 4px;
+    box-shadow: 0 0 12px var(--primary-glow);
+    animation: pulse 2s infinite;
+    pointer-events: none;
 }
 
 .btn:hover {

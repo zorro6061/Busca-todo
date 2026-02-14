@@ -192,18 +192,17 @@
         });
 
         // ── Flash toast integration ──
-        document.addEventListener('DOMContentLoaded', () => {
-            {% with messages = get_flashed_messages(with_categories = true) %}
-            {% if messages %}
+        {% with messages = get_flashed_messages(with_categories = true) %}
+        {% if messages %}
+        window.addEventListener('DOMContentLoaded', () => {
             {% for category, message in messages %}
             let type = '{{ category }}';
             if (type === 'message') type = 'success';
-            if (!['success', 'error', 'warning', 'info'].includes(type)) type = 'info';
-            mostrarToast("{{ message }}", type);
+            mostrarToast("{{ message }}", type || 'info');
             {% endfor %}
-            {% endif %}
-            {% endwith %}
         });
+        {% endif %}
+        {% endwith %}
 
         // ── Dynamic Island Controller (Apple-style) ──
         const island = document.getElementById('dynamic-island');

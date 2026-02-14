@@ -2,6 +2,7 @@ import os
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, send_from_directory
 from models import db, Ubicacion, Objeto, Plano, Config
 from werkzeug.utils import secure_filename
+import google.generativeai as genai
 
 app = Flask(__name__)
 # Configuración robusta para producción (SQLite en /instance para persistencia en Render)
@@ -221,7 +222,6 @@ def upload():
                         categoria_completa = item.get('categoria', 'General')
                     
                     # --- Inteligencia Semántica (Fase 19) ---
-                    # Usamos Gemini para generar tags semánticos (sinónimos e intenciones)
                     tags_semanticos = ""
                     try:
                         model_intent = genai.GenerativeModel('gemini-flash-latest')
@@ -742,16 +742,14 @@ def buscar_en_mapa():
         max_obj_score = 0
         
         # Análisis Semántico (Intent Expansion)
-        # Si no hay matches perfectos, expandimos la consulta con IA
         expanded_queries = [query]
         try:
-            from ai_engine import genai
             model_exp = genai.GenerativeModel('gemini-flash-latest')
             exp_prompt = f"Actúa como un buscador semántico. Para la consulta '{query}', devuelve una lista de 5 objetos o categorías relacionadas que el usuario podría estar buscando. Responde solo las palabras separadas por comas."
             exp_res = model_exp.generate_content(exp_prompt)
             expanded_queries.extend([x.strip().lower() for x in exp_res.text.split(',')])
         except Exception as e:
-            print(f"Error en expansión semántica: {e}")
+            app.logger.error(f"Error en expansión semántica: {e}")
             pass
 
         for q_expanded in expanded_queries:
