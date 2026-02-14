@@ -656,7 +656,47 @@ label {
 }
 
 .mobile-nav-icon {
-    font-size: 1.15rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.mobile-nav-icon svg {
+    width: 24px;
+    height: 24px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.mobile-nav-item.active .mobile-nav-icon svg {
+    transform: scale(1.1);
+    stroke: var(--primary);
+    filter: drop-shadow(0 0 8px rgba(139, 92, 246, 0.4));
+}
+
+.center-scan {
+    position: relative;
+    top: -12px;
+    background: var(--primary);
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    color: white !important;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 8px 20px rgba(139, 92, 246, 0.5);
+    border: 3px solid rgba(0, 0, 0, 0.8);
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.center-scan:active {
+    transform: scale(0.9) translateY(2px);
+    box-shadow: 0 4px 10px rgba(139, 92, 246, 0.3);
+}
+
+.center-scan .mobile-nav-icon svg {
+    width: 28px;
+    height: 28px;
 }
 
 /* ── Responsive ── */

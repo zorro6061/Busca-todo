@@ -718,7 +718,7 @@ def buscar_en_mapa():
         if ubi.pos_x is None or ubi.pos_y is None:
             continue
         
-        # Score de la ubicación por nombre
+        # Busca-todo Home - v1.0.5 Premium Icons Refined
         score_ubi = max(
             fuzz.ratio(query, ubi.nombre.lower()),
             fuzz.partial_ratio(query, ubi.nombre.lower()),
