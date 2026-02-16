@@ -1017,8 +1017,12 @@ def procesar_video():
             os.remove(video_path)
             return jsonify({'status': 'error', 'message': 'No se pudieron extraer frames del video'}), 400
         
-        # Analizar cada frame con IA
+        # Analizar cada frame con IA y aplicar estabilización (Tracking)
         from ai_engine import analizar_imagen_objetos
+        from stabilization_engine import SimpleTracker
+        
+        # Inicializar tracker con parámetros optimizados para mobile (alpha=0.6 para suavizado)
+        tracker = SimpleTracker(max_age=3, min_hits=1, alpha=0.6)
         escenas = []
         
         for i, frame_filename in enumerate(frames):
@@ -1026,19 +1030,46 @@ def procesar_video():
             
             try:
                 resultado = analizar_imagen_objetos(frame_path, tipo_espacio="general")
-                items = resultado.get('items', [])
+                items_raw = resultado.get('items', [])
                 
+                # Estabilizar detecciones (Transformar raw detections a tracks suavizados)
+                # Formatear para el tracker
+                detecciones_formateadas = []
+                for item in items_raw:
+                    if 'bbox' in item:
+                        detecciones_formateadas.append({
+                            'bbox': item['bbox'],
+                            'nombre': item.get('nombre', 'Objeto'),
+                            'confianza': item.get('confianza', 0.8),
+                            'metadata': item.get('metadata', {})
+                        })
+                
+                # El tracker actualiza su estado interno y devuelve tracks activos
+                tracks_estabilizados = tracker.update(detecciones_formateadas)
+                
+                # Re-formatear tracks estabilizados para la respuesta final
+                items_finales = []
+                for track in tracks_estabilizados:
+                    items_finales.append({
+                        'id': track['id'],
+                        'nombre': track['label'],
+                        'bbox': track['bbox'],
+                        'confianza': track['confianza'],
+                        'metadata': track['metadata'],
+                        'categoria_principal': track['metadata'].get('categoria_principal', 'General')
+                    })
+
                 escenas.append({
                     'frame_index': i + 1,
                     'filename': frame_filename,
                     'imagen_url': f'/uploads/{frame_filename}',
-                    'objetos': items,
-                    'total_objetos': len(items),
+                    'objetos': items_finales,
+                    'total_objetos': len(items_finales),
                     'nombre_sugerido': f'Escena {i + 1}',
-                    'seleccionada': len(items) > 0  # Auto-seleccionar si tiene objetos
+                    'seleccionada': len(items_finales) > 0
                 })
             except Exception as e:
-                print(f"Error analizando frame {i}: {e}")
+                app.logger.error(f"Error analizando frame {i}: {e}")
                 escenas.append({
                     'frame_index': i + 1,
                     'filename': frame_filename,
