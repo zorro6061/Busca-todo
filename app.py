@@ -104,10 +104,13 @@ with app.app_context():
     
     for tabla, col, tipo in columnas_nuevas:
         try:
+            # Primero intentar añadir la columna
             db.session.execute(text(f'ALTER TABLE {tabla} ADD COLUMN {col} {tipo}'))
             db.session.commit()
+            app.logger.info(f"Columna {col} añadida a {tabla}")
         except Exception:
             db.session.rollback()
+            # Si falla, probablemente ya existe, lo cual está bien
 
 import base64
 import uuid
@@ -127,25 +130,24 @@ def uploaded_file(filename):
 
 @app.route('/')
 def index():
+    from sqlalchemy import func
     ubicaciones_count = Ubicacion.query.count()
     objetos_count = Objeto.query.count()
     
-    # Categorías únicas y confianza promedio
-    objetos = Objeto.query.all()
-    # Categorías únicas y confianza promedio (Defensive)
-    try:
-        if hasattr(Objeto, 'categoria_principal'):
-             categorias = set(obj.categoria_principal for obj in objetos if obj.categoria_principal)
-        else:
-             # Fallback temporarily
-             categorias = set(getattr(obj, 'categoria', 'General') for obj in objetos)
-    except Exception:
-        categorias = set()
-    categorias_count = len(categorias)
-    
+    # Categorías únicas y confianza promedio (Eficiente)
+    categorias_count = 0
     avg_conf = 0
-    if objetos_count > 0:
-        avg_conf = int(sum(obj.confianza for obj in objetos) / objetos_count * 100)
+    
+    try:
+        # Contar categorías únicas directamente en SQL
+        categorias_count = db.session.query(func.count(func.distinct(Objeto.categoria_principal))).scalar() or 0
+        
+        # Calcular promedio directamente en SQL
+        if objetos_count > 0:
+            avg_conf = db.session.query(func.avg(Objeto.confianza)).scalar() or 0
+            avg_conf = int(avg_conf * 100)
+    except Exception as e:
+        app.logger.warning(f"Error en dashboard stats: {e}")
     
     ultima_ubi = Ubicacion.query.order_by(Ubicacion.id.desc()).first()
     

@@ -247,13 +247,13 @@
         });
 
         // ── Flash toast integration ──
-        {% with messages = get_flashed_messages(with_categories = true) %}
+        {% with messages = get_flashed_messages(with_categories = True) %}
         {% if messages %}
         window.addEventListener('DOMContentLoaded', () => {
             {% for category, message in messages %}
             let type = '{{ category }}';
             if (type === 'message') type = 'success';
-            mostrarToast({{ message | tojson }}, type || 'info');
+            mostrarToast({{ message | tojson | safe }}, type || 'info');
         {% endfor %}
         });
         {% endif %}
