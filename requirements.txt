@@ -6,4 +6,5 @@ Werkzeug
 rapidfuzz
 Pillow
 pillow-heif
-openc-python-headless
+opencv-python-headless
+gunicorn
