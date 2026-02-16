@@ -41,9 +41,14 @@ def analizar_imagen_objetos(image_path, tipo_espacio="general"):
         }
 
     try:
-        # Usar gemini-1.5-flash (rápido y con mayor ventana de contexto y robustez)
-        model_name = 'gemini-1.5-flash-latest'
-        model = genai.GenerativeModel(model_name)
+        # Usar gemini-1.5-flash (rápido y robusto)
+        # Cambiado de gemini-1.5-flash-latest a gemini-1.5-flash para evitar 404
+        model_name = 'gemini-1.5-flash'
+        try:
+            model = genai.GenerativeModel(model_name)
+        except Exception as model_err:
+            logger.warning(f"Error inicializando {model_name}: {model_err}. Reintentando con fallback.")
+            model = genai.GenerativeModel('gemini-1.5-pro')
         
         # Validar si el archivo existe
         if not os.path.exists(image_path):
