@@ -27,13 +27,18 @@
             <h3 style="text-transform: capitalize;">{{ r.objeto }}</h3>
             <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px;">
                 <span class="badge badge-primary">{{ (r.confianza*100)|int }}% match</span>
-                {% if r.es_semantico %}
-                <span class="badge" style="background: linear-gradient(90deg, #6366f1, #a855f7); color: white;">✨ AI
-                    SMART MATCH</span>
-                {% endif %}
                 {% if r.categoria_principal %}<span class="badge badge-warning">{{ r.categoria_principal }}</span>{%
                 endif %}
+                {% if r.categoria_secundaria %}<span class="badge" style="background: rgba(255,255,255,0.1);">{{
+                    r.categoria_secundaria }}</span>{% endif %}
+                {% if r.prioridad == 'alta' %}<span class="badge badge-danger">🔥 Prioridad Alta</span>{% endif %}
+                {% if r.estado %}<span class="badge" style="border: 1px solid var(--primary);">✨ {{ r.estado }}</span>{%
+                endif %}
             </div>
+            {% if r.descripcion %}
+            <p style="color: var(--text-dim); font-size: 0.8rem; margin-top: 8px; font-style: italic;">"{{ r.descripcion
+                }}"</p>
+            {% endif %}
             <p style="color: var(--text-dim); font-size: 0.82rem; margin-top: 8px;">📍 {{ r.ubicacion }}</p>
             {% if r.plano_id %}
             <a href="{{ url_for('ver_plano', plano_id=r.plano_id) }}?highlight_ubi={{ r.ubicacion_id }}"

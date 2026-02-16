@@ -1,73 +1,13 @@
-<!DOCTYPE html>
-<html lang="es">
-
-<head>
-    <meta charset="UTF-8">
-    <title>Error 500 | Aperture Home</title>
-    <style>
-        :root {
-            --bg: #000;
-            --text: #fff;
-            --primary: #6366f1;
-        }
-
-        body {
-            background: var(--bg);
-            color: var(--text);
-            font-family: sans-serif;
-            height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0;
-        }
-
-        .container {
-            text-align: center;
-            padding: 20px;
-        }
-
-        h1 {
-            font-size: 2.5rem;
-            background: linear-gradient(135deg, #ff4d4d, #f9cb28);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            margin-bottom: 1rem;
-        }
-
-        p {
-            color: #888;
-            margin-bottom: 2rem;
-        }
-
-        .btn {
-            background: var(--primary);
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 8px;
-            text-decoration: none;
-            cursor: pointer;
-            font-size: 1rem;
-        }
-
-        .btn:hover {
-            opacity: 0.9;
-        }
-    </style>
-</head>
-
-<body>
-    <div class="container">
-        <div style="font-size: 4rem; margin-bottom: 20px;">🛠️</div>
-        <h1>Error de Ingeniería</h1>
-        <p>Tuvimos un problema técnico crítico. El sistema de recuperación ha sido activado.</p>
-        <p style="font-size: 0.8rem; color: #555;">Si esto persiste, por favor contacta al administrador.</p>
-        <div style="display: flex; gap: 10px; justify-content: center;">
-            <a href="/" class="btn">Reintentar Inicio</a>
-            <button onclick="location.reload()" class="btn" style="background: #333;">Refrescar</button>
-        </div>
+{% extends 'layout.html' %}
+{% block content %}
+<div class="empty-state reveal">
+    <div class="empty-state-icon" style="font-size: 5rem;">⚠️</div>
+    <h1>500</h1>
+    <h3>Error Interno del Servidor</h3>
+    <p>Algo salió mal en el escaneo. Nuestros ingenieros están revisando los circuitos.</p>
+    <div style="margin-top: var(--space-xl);">
+        <a href="{{ url_for('index') }}" class="btn btn-primary">Volver al Inicio</a>
+        <button onclick="location.reload()" class="btn btn-secondary">Reintentar</button>
     </div>
-</body>
-
-</html>
+</div>
+{% endblock %}

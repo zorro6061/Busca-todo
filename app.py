@@ -128,6 +128,17 @@ def serve_sw():
 def uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
+
+@app.errorhandler(404)
+def page_not_found(e):
+    return render_template('404.html'), 404
+
+@app.errorhandler(500)
+def internal_server_error(e):
+    import traceback
+    app.logger.error(f"Error 500: {str(e)}\n{traceback.format_exc()}")
+    return render_template('500.html'), 500
+
 @app.route('/')
 def index():
     from sqlalchemy import func
@@ -394,29 +405,32 @@ def search():
                             bbox = item.get('bbox')
                             break
             except Exception as e:
-                print(f"Error al parsear items_json: {e}")
+                app.logger.error(f"Error parseando items_json: {e}")
             
             resultados.append({
                 'id': obj.id,
                 'objeto': obj.nombre,
                 'categoria_principal': obj.categoria_principal,
-                'confianza': int(obj.confianza * 100),
+                'categoria_secundaria': obj.categoria_secundaria,
+                'descripcion': obj.descripcion,
+                'material': obj.material,
                 'estado': obj.estado,
                 'prioridad': obj.prioridad,
+                'confianza': obj.confianza,
                 'ubicacion': obj.ubicacion.nombre,
+                'ubicacion_id': obj.ubicacion.id,
                 'plano_id': obj.ubicacion.plano_id,
-                'ubi_id': obj.ubicacion.id,
                 'imagen': obj.ubicacion.imagen_path,
-                'fecha': obj.fecha_indexacion.strftime('%d/%m/%Y'),
+                'timestamp': obj.fecha_indexado.strftime('%Y-%m-%d %H:%M'),
                 'bbox': bbox,
-                'similitud': int(score)  # Score ponderado (0-100)
+                'score': score
             })
     
     return render_template('search_results.html', query=query, resultados=resultados)
 
 @app.route('/api/sugerencias')
 def sugerencias():
-    """API para auto-complete con fuzzy matching"""
+    """API para auto-complete con fuzzy matching mejorado"""
     from rapidfuzz import process, fuzz
     
     query = request.args.get('q', '').lower().strip()
@@ -424,15 +438,13 @@ def sugerencias():
     if not query or len(query) < 2:
         return jsonify([])
     
-    # Obtener todos los objetos
-    todos_objetos = Objeto.query.all()
-    
-    # Extraer nombres únicos y categorías
+    # Obtener nombres únicos de objetos y categorías
     nombres_set = set()
-    for obj in todos_objetos:
-        nombres_set.add(obj.nombre.lower())
+    objetos = Objeto.query.all()
+    for obj in objetos:
+        nombres_set.add(obj.nombre.capitalize())
         if obj.categoria_principal:
-            nombres_set.add(obj.categoria_principal.lower())
+            nombres_set.add(obj.categoria_principal.capitalize())
     
     opciones = list(nombres_set)
     
