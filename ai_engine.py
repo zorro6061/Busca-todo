@@ -41,9 +41,23 @@ def analizar_imagen_objetos(image_path, tipo_espacio="general"):
         }
 
     try:
-        # Usar gemini-flash-latest (rápido y preciso para nuestro caso)
-        model = genai.GenerativeModel('gemini-flash-latest')
-        img = Image.open(image_path)
+        # Usar gemini-1.5-flash (rápido y con mayor ventana de contexto y robustez)
+        model_name = 'gemini-1.5-flash-latest'
+        model = genai.GenerativeModel(model_name)
+        
+        # Validar si el archivo existe
+        if not os.path.exists(image_path):
+            logger.error(f"Archivo no encontrado para IA: {image_path}")
+            return {"items": [], "tags": "Error: Archivo no encontrado", "analisis_espacial": {}}
+
+        try:
+            img = Image.open(image_path)
+            # Validar integridad mínima de la imagen
+            img.verify() 
+            img = Image.open(image_path) # Re-abrir después de verify()
+        except Exception as img_err:
+            logger.error(f"Pillow no pudo abrir la imagen {image_path}: {img_err}")
+            return {"items": [], "tags": f"Error: Imagen corrupta o formato inválido ({img_err})", "analisis_espacial": {}}
         
         # Prompt mejorado con few-shot examples y chain-of-thought
         prompt = f"""

@@ -5,5 +5,5 @@ python-dotenv
 Werkzeug
 rapidfuzz
 Pillow
-opencv-python-headless
-gunicorn
+pillow-heif
+openc-python-headless

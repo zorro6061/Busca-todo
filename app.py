@@ -28,33 +28,44 @@ for folder in [app.config['UPLOAD_FOLDER'], instance_path]:
         os.makedirs(folder)
 
 def save_and_compress_image(file_storage, folder, filename, max_width=1920, quality=85):
-    """Guarda y comprime una imagen para optimizar espacio y velocidad."""
+    """Guarda y comprime una imagen para optimizar espacio y velocidad. Soporta HEIC."""
     from PIL import Image
+    try:
+        from pillow_heif import register_heif_opener
+        register_heif_opener()
+    except ImportError:
+        pass
+
     temp_path = os.path.join(folder, f"temp_{filename}")
     file_storage.save(temp_path)
     
     try:
         with Image.open(temp_path) as img:
-            # Convertir a RGB si es necesario (ej: de RGBA)
-            if img.mode in ("RGBA", "P"):
+            # Convertir a RGB si es necesario (ej: de RGBA o HEIC)
+            if img.mode in ("RGBA", "P") or filename.lower().endswith(('.heic', '.heif')):
                 img = img.convert("RGB")
             
             # Cambiar tamaño manteniendo aspecto si es más grande que max_width
             if img.width > max_width:
                 img.thumbnail((max_width, max_width), Image.Resampling.LANCZOS)
             
-            final_path = os.path.join(folder, filename)
+            # Forzar extensión .jpg para consistencia si es necesario
+            final_filename = filename
+            if filename.lower().endswith(('.heic', '.heif')):
+                final_filename = filename.rsplit('.', 1)[0] + ".jpg"
+                
+            final_path = os.path.join(folder, final_filename)
             img.save(final_path, "JPEG", quality=quality, optimize=True)
         
         # Eliminar temporal
         os.remove(temp_path)
-        return True
+        return final_filename
     except Exception as e:
         app.logger.error(f"Error comprimiendo imagen: {e}")
         # Si falla el procesamiento, intentar mover el original como fallback
         import shutil
         shutil.move(temp_path, os.path.join(folder, filename))
-        return False
+        return filename
 
 db.init_app(app)
 
@@ -234,7 +245,8 @@ def upload():
         if file:
             try:
                 filename = secure_filename(file.filename)
-                save_and_compress_image(file, app.config['UPLOAD_FOLDER'], filename)
+                # La compresión puede cambiar el nombre (ej: .heic -> .jpg)
+                filename = save_and_compress_image(file, app.config['UPLOAD_FOLDER'], filename)
                 filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
                 
                 ext = filename.rsplit('.', 1)[1].lower() if '.' in filename else ''
