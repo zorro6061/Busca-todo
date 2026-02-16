@@ -11,6 +11,7 @@ GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
 # La configuración de Gemini se ha movido a ai_engine.py para usar la nueva SDK google-genai
 
 app = Flask(__name__)
+app.url_map.strict_slashes = False
 
 @app.route('/debug-models')
 def debug_models():
@@ -169,7 +170,9 @@ def uploaded_file(filename):
 
 
 @app.errorhandler(404)
-def page_not_found(e):
+def handle_404(e):
+    """Manejador centralizado de 404 con diagnóstico de logs."""
+    app.logger.warning(f"[404-DIAGNOSTIC] Ruta no encontrada: {request.path} | Method: {request.method}")
     return render_template('404.html'), 404
 
 @app.route('/')
@@ -210,9 +213,7 @@ def add_cache_control(response):
         response.cache_control.public = True
     return response
 
-@app.errorhandler(404)
-def not_found_error(error):
-    return render_template('404.html'), 404
+# Error handler 500 consolidado abajo
 
 @app.errorhandler(500)
 def internal_server_error(e):
