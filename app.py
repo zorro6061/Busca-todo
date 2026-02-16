@@ -550,9 +550,47 @@ def ver_plano(plano_id):
         Ubicacion.plano_id == plano_id,
         (Ubicacion.pos_x == None) | (Ubicacion.pos_y == None)
     ).all()
-    return render_template('plano_view.html', plano=plano, 
-                           ubicaciones_sin_plano=ubicaciones_sin_plano,
-                           ubicaciones_sin_posicion=ubicaciones_sin_posicion)
+    # Preparar PINS (Ubicaciones con posición)
+    pins_data = []
+    for ubi in plano.ubicaciones:
+        if ubi.pos_x is not None and ubi.pos_y is not None:
+            # Incluir objetos con sus posiciones relativas si existen
+            obj_list = []
+            for obj in ubi.objetos:
+                obj_list.append({
+                    'id': obj.id,
+                    'nombre': obj.nombre,
+                    'x': obj.pos_x,
+                    'y': obj.pos_y,
+                    'categoria': obj.categoria_principal
+                })
+                
+            pins_data.append({
+                'id': ubi.id,
+                'nombre': ubi.nombre,
+                'x': ubi.pos_x,
+                'y': ubi.pos_y,
+                'tags': ubi.tags,
+                'objetos_count': len(ubi.objetos),
+                'objetos': obj_list,
+                'imagen_path': ubi.imagen_path
+            })
+            
+    # Preparar UNPLACED (Ubicaciones sin posición en este plano)
+    unplaced_data = []
+    for ubi in ubicaciones_sin_posicion:
+        unplaced_data.append({
+            'id': ubi.id,
+            'nombre': ubi.nombre,
+            'objetos_count': len(ubi.objetos),
+            'imagen_path': ubi.imagen_path
+        })
+
+    return render_template('plano_view.html', 
+                         plano=plano, 
+                         pins=pins_data,
+                         unplaced=unplaced_data,
+                         ubicaciones_sin_plano=ubicaciones_sin_plano)
 
     return jsonify({'status': 'error', 'message': 'Ubicación no encontrada'}), 404
 
@@ -599,6 +637,37 @@ def analizar_foto():
             'texto_detectado': resultado.get('texto_detectado', [])
         })
     except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/api/calibrar_plano', methods=['POST'])
+def calibrar_plano():
+    """Calcula y guarda la matriz de homografía para un plano"""
+    try:
+        data = request.json
+        plano_id = data.get('plano_id')
+        src_pts = data.get('src_pts') # 4 puntos en imagen [[x,y], ...]
+        dst_pts = data.get('dst_pts') # 4 puntos en mapa [[x,y], ...]
+        
+        if not plano_id or not src_pts or not dst_pts:
+            return jsonify({'status': 'error', 'message': 'Datos incompletos'}), 400
+            
+        plano = Plano.query.get(plano_id)
+        if not plano:
+            return jsonify({'status': 'error', 'message': 'Plano no encontrado'}), 404
+            
+        from spatial_engine import SpatialEngine, serialize_h
+        import json
+        
+        # Calcular Homografía
+        H = SpatialEngine.solve_homography(src_pts, dst_pts)
+        
+        # Guardar en el plano
+        plano.homografia_json = json.dumps(serialize_h(H))
+        db.session.commit()
+        
+        return jsonify({'status': 'success', 'message': 'Calibración guardada'})
+    except Exception as e:
+        db.session.rollback()
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 @app.route('/api/crear_ubicacion_en_mapa', methods=['POST'])
@@ -652,27 +721,56 @@ def crear_ubicacion_en_mapa():
             resultado = analizar_imagen_objetos(filepath, tipo_espacio="general")
             objetos_finales = resultado.get('items', [])
 
+        # Preparar proyección espacial (Homografía)
+        h_matrix = None
+        if plano_id:
+            plano = Plano.query.get(plano_id)
+            if plano and plano.homografia_json:
+                from spatial_engine import SpatialEngine, deserialize_h
+                try:
+                    h_matrix = deserialize_h(json.loads(plano.homografia_json))
+                except Exception as e:
+                    app.logger.error(f"Error deserializando homografía: {e}")
+
         # Crear objetos asociados con categorización mejorada
         nombres_para_tags = []
         for item in objetos_finales:
-            # Construir categoría jerárquica (backwards compatible)
+            # ... (se mantiene categorización anterior)
             categoria_completa = item.get('categoria_principal', '')
             if 'subcategoria' in item:
                 categoria_completa += f" > {item['subcategoria']}"
             if 'tipo_especifico' in item:
                 categoria_completa += f" > {item['tipo_especifico']}"
             
-            # Fallback a categoría simple si no hay jerárquica
             if not categoria_completa:
                 categoria_completa = item.get('categoria', 'General')
             
+            # PROYECCIÓN ESPACIAL
+            obj_pos_x = None
+            obj_pos_y = None
+            
+            bbox = item.get('bbox') # [ymin, xmin, ymax, xmax]
+            if h_matrix is not None and bbox:
+                from spatial_engine import SpatialEngine
+                anchor = SpatialEngine.get_object_anchor(bbox) # (x, y) en imagen
+                # Proyectar punto de imagen -> mapa
+                proj_x, proj_y = SpatialEngine.project_point(h_matrix, anchor)
+                obj_pos_x = proj_x
+                obj_pos_y = proj_y
+            else:
+                # Fallback: Usar la posición del Pin general si no hay homografía
+                obj_pos_x = float(pos_x) if pos_x else None
+                obj_pos_y = float(pos_y) if pos_y else None
+
             nuevo_objeto = Objeto(
                 nombre=item.get('nombre', 'Objeto detectado'),
                 categoria_principal=categoria_completa,
                 confianza=item.get('confianza', 0.8),
                 estado=item.get('metadata', {}).get('estado', item.get('estado', 'N/A')),
                 prioridad=item.get('prioridad', 'media'),
-                ubicacion_id=nueva_ubicacion.id
+                ubicacion_id=nueva_ubicacion.id,
+                pos_x=obj_pos_x,
+                pos_y=obj_pos_y
             )
             db.session.add(nuevo_objeto)
             nombres_para_tags.append(item.get('nombre', 'Objeto'))
@@ -1017,6 +1115,17 @@ def procesar_video():
             os.remove(video_path)
             return jsonify({'status': 'error', 'message': 'No se pudieron extraer frames del video'}), 400
         
+        # Preparar proyección espacial (Homografía)
+        h_matrix = None
+        if plano_id:
+            plano = Plano.query.get(plano_id)
+            if plano and plano.homografia_json:
+                from spatial_engine import SpatialEngine, deserialize_h
+                try:
+                    h_matrix = deserialize_h(json.loads(plano.homografia_json))
+                except Exception as e:
+                    app.logger.error(f"Error deserializando homografía en video: {e}")
+
         # Analizar cada frame con IA y aplicar estabilización (Tracking)
         from ai_engine import analizar_imagen_objetos
         from stabilization_engine import SimpleTracker
@@ -1050,13 +1159,26 @@ def procesar_video():
                 # Re-formatear tracks estabilizados para la respuesta final
                 items_finales = []
                 for track in tracks_estabilizados:
+                    # PROYECCIÓN ESPACIAL PARA CADA TRACK
+                    track_pos_x = None
+                    track_pos_y = None
+                    
+                    if h_matrix is not None and 'bbox' in track:
+                        from spatial_engine import SpatialEngine
+                        anchor = SpatialEngine.get_object_anchor(track['bbox'])
+                        proj_x, proj_y = SpatialEngine.project_point(h_matrix, anchor)
+                        track_pos_x = proj_x
+                        track_pos_y = proj_y
+
                     items_finales.append({
                         'id': track['id'],
                         'nombre': track['label'],
                         'bbox': track['bbox'],
                         'confianza': track['confianza'],
                         'metadata': track['metadata'],
-                        'categoria_principal': track['metadata'].get('categoria_principal', 'General')
+                        'categoria_principal': track['metadata'].get('categoria_principal', 'General'),
+                        'pos_x': track_pos_x,
+                        'pos_y': track_pos_y
                     })
 
                 escenas.append({

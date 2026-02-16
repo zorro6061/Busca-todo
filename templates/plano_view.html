@@ -48,6 +48,8 @@
                     Scanner</a>
                 <a href="{{ url_for('ver_plano_3d', plano_id=plano.id) }}" class="btn btn-sm btn-secondary">🧊 3D</a>
                 <a href="{{ url_for('editar_plano', plano_id=plano.id) }}" class="btn btn-sm btn-secondary">✏️ Zonas</a>
+                <button id="btn-calibrar" class="btn btn-sm btn-secondary" onclick="startCalibration()">⚖️
+                    Calibrar</button>
                 <button id="btn-nueva-ubicacion" class="btn btn-sm btn-primary">➕ Nueva</button>
             </div>
         </div>
@@ -115,36 +117,54 @@
     </main>
 </div>
 
-<!-- Simple Modal for New Ubicacion -->
-<div id="modal-nueva"
-    style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 1000; align-items: center; justify-content: center; padding: var(--space-md); backdrop-filter: blur(10px);"
-    onclick="if(event.target===this) this.style.display='none'">
-    <div class="card" style="max-width: 400px; width: 100%; animation: scaleIn 0.3s var(--transition-smooth);">
-        <h3 style="margin-bottom: var(--space-lg);">Nueva Ubicación</h3>
-        <form action="{{ url_for('upload_plano_simple', plano_id=plano.id) }}" method="POST"
-            enctype="multipart/form-data">
-            <div style="margin-bottom: var(--space-md);">
-                <label>Nombre</label>
-                <input type="text" name="nombre" placeholder="Ej: Estante 4" required
-                    style="border-radius: var(--radius-md);">
+<!-- Modal de Calibración Estratégica -->
+<div id="modal-calibrar"
+    style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 2000; flex-direction: column; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(15px);">
+    <div class="card"
+        style="max-width: 900px; width: 100%; height: 90vh; display: flex; flex-direction: column; overflow: hidden; border: 2px solid var(--primary); box-shadow: 0 0 50px rgba(99, 102, 241, 0.3);">
+        <div
+            style="padding: 20px; border-bottom: 1px solid var(--glass-border); display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <h3 style="margin: 0; display: flex; align-items: center; gap: 8px;">⚖️ Calibración Espacial <span
+                        class="badge badge-primary" id="calib-step-badge">Paso 1/2</span></h3>
+                <p id="calib-instruction" style="font-size: 0.8rem; color: var(--text-dim); margin-top: 4px;">Selecciona
+                    4 puntos de referencia en la foto.</p>
             </div>
-            <div style="margin-bottom: var(--space-xl);">
-                <label>Foto</label>
-                <input type="file" name="file" accept="image/*" class="btn btn-secondary"
-                    style="width: 100%; padding: 12px;" required>
+            <button onclick="stopCalibration()" class="btn btn-sm btn-secondary">Cancelar</button>
+        </div>
+
+        <div id="calib-view-container"
+            style="flex: 1; position: relative; overflow: hidden; background: #000; cursor: crosshair; display: flex; align-items: center; justify-content: center;">
+            <!-- La imagen o el mapa se cargarán aquí -->
+            <img id="calib-img" style="max-width: 100%; max-height: 100%; display: block; user-select: none;">
+            <div id="calib-pts-layer" style="position: absolute; inset: 0; pointer-events: none;"></div>
+        </div>
+
+        <div
+            style="padding: 20px; border-top: 1px solid var(--glass-border); display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.02);">
+            <div id="calib-pts-counter" style="font-weight: 800; color: var(--primary);">Puntos: 0/4</div>
+            <div style="display: flex; gap: 10px;">
+                <button id="btn-calib-prev" onclick="calibPrev()" class="btn btn-secondary"
+                    style="display: none;">Anterior</button>
+                <button id="btn-calib-next" onclick="calibNext()" class="btn btn-primary" disabled>Siguiente</button>
             </div>
-            <div style="display: flex; gap: var(--space-sm);">
-                <button type="button" onclick="document.getElementById('modal-nueva').style.display='none'"
-                    class="btn btn-secondary" style="flex: 1;">Cancelar</button>
-                <button type="submit" class="btn btn-primary" style="flex: 1;">Crear</button>
-            </div>
-        </form>
+        </div>
+    </div>
+</div>
+
+<!-- Overlay de Puntos en el Mapa (para el Paso 2) -->
+<div id="map-calib-overlay"
+    style="display: none; position: absolute; inset: 0; z-index: 100; cursor: crosshair; background: rgba(99, 102, 241, 0.1); border: 2px dashed var(--primary);">
+    <div
+        style="position: sticky; top: 10px; left: 50%; transform: translateX(-50%); background: var(--primary); color: white; padding: 8px 20px; border-radius: 980px; font-weight: 700; font-size: 0.9rem; pointer-events: none; white-space: nowrap;">
+        PASO 2: Marca los mismos 4 puntos en el plano
     </div>
 </div>
 
 <script>
-    let pins = {{ pins| tojson if pins else '[]' }};
-    let unplaced = {{ unplaced| tojson if unplaced else '[]' }};
+    // ── DATA INITIALIZATION ──
+    let pins = JSON.parse('{{ pins|tojson | safe }}') || [];
+    let unplaced = JSON.parse('{{ unplaced|tojson | safe }}') || [];
     let originalPins = JSON.parse(JSON.stringify(pins));
     let originalUnplaced = JSON.parse(JSON.stringify(unplaced));
     let hasChanges = false;
@@ -164,6 +184,8 @@
             if (!isChipMatch) return;
 
             totalObjects += (p.objetos_count || 0);
+
+            // Renderizado de la Ubicación (Pin Principal)
             const pin = document.createElement('div');
             pin.className = 'map-pin';
             pin.style.left = p.x + '%';
@@ -173,26 +195,37 @@
                 <div class="pin-head">📍</div>
                 <div class="pin-label">${p.nombre}</div>
             `;
-            // ... (rest of pin logic)
             pin.ondragstart = (e) => { e.dataTransfer.setData('text/plain', JSON.stringify({ id: p.id, type: 'placed' })); };
             pin.onclick = (e) => { e.stopPropagation(); mostrarDetallePin(p); };
             pinsLayer.appendChild(pin);
+
+            // Renderizado de Objetos Individuales (si tienen posición proyectada)
+            if (p.objetos && p.objetos.length > 0) {
+                p.objetos.forEach(obj => {
+                    if (obj.x !== null && obj.y !== null) {
+                        const objDot = document.createElement('div');
+                        objDot.className = 'obj-dot';
+                        objDot.style.left = obj.x + '%';
+                        objDot.style.top = obj.y + '%';
+                        objDot.title = `${obj.nombre} (${obj.categoria})`;
+                        pinsLayer.appendChild(objDot);
+                    }
+                });
+            }
         });
 
         // Update HUD
         document.getElementById('hud-obj-count').textContent = totalObjects;
         document.getElementById('hud-zoom').textContent = Math.round(currentZoom * 100) + '%';
 
-        // Update unplaced List...
-
-        // Update unplaced
+        // Update unplaced list
         unplacedList.innerHTML = unplaced.map(p => `
             <div class="directory-item reveal visible" draggable="true" ondragstart="event.dataTransfer.setData('text/plain', JSON.stringify({id: ${p.id}, type: 'unplaced'}))">
                 <div style="display: flex; align-items: center; gap: 10px;">
                     <span style="font-size: 1.2rem;">📦</span>
                     <div style="min-width: 0;">
                         <p style="font-size: 0.85rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${p.nombre}</p>
-                        <p style="font-size: 0.72rem; color: var(--text-dim);">${p.is_processing ? 'Procesando...' : (p.objetos_count + ' objetos')}</p>
+                        <p style="font-size: 0.72rem; color: var(--text-dim);">${p.objetos_count} objetos</p>
                     </div>
                 </div>
             </div>
@@ -200,10 +233,10 @@
 
         document.getElementById('unplaced-count').textContent = unplaced.length;
         document.getElementById('save-panel').style.display = hasChanges ? 'block' : 'none';
-
         applySearch();
     }
 
+    // ── MAP INTERACTIONS ──
     const container = document.getElementById('map-container');
     container.ondragover = (e) => e.preventDefault();
     container.ondrop = (e) => {
@@ -232,8 +265,6 @@
         img.style.transformOrigin = '0 0';
         pinsLayer.style.transform = `scale(${currentZoom})`;
         pinsLayer.style.transformOrigin = '0 0';
-
-        // Update HUD
         document.getElementById('hud-zoom').textContent = Math.round(currentZoom * 100) + '%';
     }
 
@@ -249,8 +280,6 @@
         document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
         el.classList.add('active');
         renderPins();
-
-        // Dynamic Island reaction
         window.showIsland(`Filtrando: ${chip}`, 1500, 'success');
     }
 
@@ -259,16 +288,15 @@
         const pinElements = document.querySelectorAll('.map-pin');
         let count = 0;
         pins.forEach((p, idx) => {
-            const match = p.nombre.toLowerCase().includes(query) || (p.tags && p.tags.toLowerCase().includes(query));
-            pinElements[idx].style.opacity = match ? '1' : '0.2';
-            pinElements[idx].style.pointerEvents = match ? 'auto' : 'none';
-            if (match && query) count++;
+            if (pinElements[idx]) {
+                const match = p.nombre.toLowerCase().includes(query) || (p.tags && p.tags.toLowerCase().includes(query));
+                pinElements[idx].style.opacity = match ? '1' : '0.2';
+                pinElements[idx].style.pointerEvents = match ? 'auto' : 'none';
+                if (match && query) count++;
+            }
         });
         document.getElementById('search-count').textContent = query ? `${count} resultados` : '';
     }
-
-    document.getElementById('map-search').oninput = applySearch;
-    document.getElementById('btn-nueva-ubicacion').onclick = () => document.getElementById('modal-nueva').style.display = 'flex';
 
     function guardarPosiciones() {
         fetch("{{ url_for('save_pin_positions', plano_id=plano.id) }}", {
@@ -293,7 +321,131 @@
         renderPins();
     }
 
-    // Scroll reveal manual trigger for directory items
+    // ── CALIBRACIÓN ESPACIAL ──
+    let isCalibrating = false;
+    let calibStep = 1;
+    let calibSrcPts = [];
+    let calibDstPts = [];
+
+    function startCalibration() {
+        const lastUbi = pins.length > 0 ? pins[pins.length - 1] : (unplaced.length > 0 ? unplaced[unplaced.length - 1] : null);
+        if (!lastUbi || !lastUbi.imagen_path) {
+            mostrarToast("Sube una foto primero para referencia", "info");
+            return;
+        }
+        isCalibrating = true;
+        calibStep = 1;
+        calibSrcPts = [];
+        calibDstPts = [];
+        document.getElementById('modal-calibrar').style.display = 'flex';
+        document.getElementById('calib-img').src = `/uploads/${lastUbi.imagen_path}`;
+        updateCalibUI();
+    }
+
+    function stopCalibration() {
+        isCalibrating = false;
+        document.getElementById('modal-calibrar').style.display = 'none';
+        document.getElementById('map-calib-overlay').style.display = 'none';
+        updateCalibUI();
+    }
+
+    function updateCalibUI() {
+        const badge = document.getElementById('calib-step-badge');
+        const instruction = document.getElementById('calib-instruction');
+        const counter = document.getElementById('calib-pts-counter');
+        const ptsLayer = document.getElementById('calib-pts-layer');
+        const btnNext = document.getElementById('btn-calib-next');
+        ptsLayer.innerHTML = '';
+        if (calibStep === 1) {
+            badge.textContent = "Paso 1/2";
+            instruction.textContent = "Marca 4 puntos en la foto.";
+            counter.textContent = `Puntos: ${calibSrcPts.length}/4`;
+            btnNext.disabled = calibSrcPts.length < 4;
+            btnNext.textContent = "Siguiente";
+            calibSrcPts.forEach((p, idx) => {
+                const dot = document.createElement('div');
+                dot.style = `position: absolute; left: ${p[0]}%; top: ${p[1]}%; width: 12px; height: 12px; background: var(--primary); border: 2px solid white; border-radius: 50%; transform: translate(-50%, -50%);`;
+                ptsLayer.appendChild(dot);
+            });
+        } else {
+            badge.textContent = "Paso 2/2";
+            instruction.textContent = "Marca esos 4 puntos en el plano.";
+            counter.textContent = `Puntos: ${calibDstPts.length}/4`;
+            btnNext.disabled = calibDstPts.length < 4;
+            btnNext.textContent = "Finalizar";
+            calibDstPts.forEach((p, idx) => {
+                const dot = document.createElement('div');
+                dot.style = `position: absolute; left: ${p[0]}%; top: ${p[1]}%; width: 12px; height: 12px; background: var(--success); border: 2px solid white; border-radius: 50%; transform: translate(-50%, -50%);`;
+                ptsLayer.appendChild(dot);
+            });
+        }
+    }
+
+    document.getElementById('calib-view-container').onclick = function (e) {
+        if (!isCalibrating) return;
+        const rect = this.getBoundingClientRect();
+        const x = ((e.clientX - rect.left) / rect.width) * 100;
+        const y = ((e.clientY - rect.top) / rect.height) * 100;
+        if (calibStep === 1 && calibSrcPts.length < 4) {
+            calibSrcPts.push([x, y]);
+            updateCalibUI();
+        }
+    };
+
+    function calibNext() {
+        if (calibStep === 1) {
+            calibStep = 2;
+            document.getElementById('modal-calibrar').style.display = 'none';
+            document.getElementById('map-calib-overlay').style.display = 'block';
+            document.getElementById('map-calib-overlay').onclick = function (e) {
+                const rect = img.getBoundingClientRect();
+                const x = ((e.clientX - rect.left) / rect.width) * 100;
+                const y = ((e.clientY - rect.top) / rect.height) * 100;
+                if (calibDstPts.length < 4) {
+                    calibDstPts.push([x, y]);
+                    const dot = document.createElement('div');
+                    dot.style = `position: absolute; left: ${x}%; top: ${y}%; width: 12px; height: 12px; background: var(--success); border: 2px solid white; border-radius: 50%; transform: translate(-50%, -50%); z-index: 1000;`;
+                    this.appendChild(dot);
+                    if (calibDstPts.length === 4) {
+                        setTimeout(() => {
+                            document.getElementById('modal-calibrar').style.display = 'flex';
+                            document.getElementById('map-calib-overlay').style.display = 'none';
+                            updateCalibUI();
+                        }, 500);
+                    }
+                }
+            };
+            updateCalibUI();
+        } else {
+            saveCalibration();
+        }
+    }
+
+    function saveCalibration() {
+        const payload = { plano_id: {{ plano.id }
+    }, src_pts: calibSrcPts, dst_pts: calibDstPts };
+    window.showIsland("Guardando...", 0, 'loading');
+    fetch('/api/calibrar_plano', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    }).then(r => r.json()).then(data => {
+        if (data.status === 'success') {
+            window.showIsland("Completado", 2000, 'success');
+            location.reload();
+        }
+    });
+    }
+
+    // ── FALLBACK HELPERS ──
+    function mostrarDetallePin(p) {
+        window.showIsland(`Espacio: ${p.nombre}`, 2000, 'info');
+        // Redirigir a la galería filtrada o ver detalles (opcional)
+    }
+
+    document.getElementById('map-search').oninput = applySearch;
+    document.getElementById('btn-nueva-ubicacion').onclick = () => document.getElementById('modal-nueva').style.display = 'flex';
+
     window.onload = renderPins;
 </script>
 
@@ -366,6 +518,26 @@
     #unplaced-list::-webkit-scrollbar-thumb {
         background: var(--glass-border);
         border-radius: 10px;
+    }
+
+    .obj-dot {
+        position: absolute;
+        width: 8px;
+        height: 8px;
+        background: var(--primary);
+        border: 1.5px solid white;
+        border-radius: 50%;
+        transform: translate(-50%, -50%);
+        box-shadow: 0 0 8px var(--primary);
+        z-index: 5;
+        pointer-events: auto;
+        transition: all 0.2s;
+    }
+
+    .obj-dot:hover {
+        transform: translate(-50%, -50%) scale(1.5);
+        z-index: 15;
+        box-shadow: 0 0 15px var(--primary);
     }
 </style>
 {% endblock %}

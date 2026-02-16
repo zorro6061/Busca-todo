@@ -10,6 +10,7 @@ class Plano(db.Model):
     imagen_path = db.Column(db.String(255), nullable=True) # El croquis/mapa
     ancho = db.Column(db.Integer, default=1000)
     alto = db.Column(db.Integer, default=1000)
+    homografia_json = db.Column(db.Text, nullable=True) # Matriz 3x3 serializada para proyección
     ubicaciones = db.relationship('Ubicacion', backref='plano', lazy=True)
     muebles = db.relationship('Mueble', backref='plano', lazy=True, cascade="all, delete-orphan")
 
@@ -49,6 +50,8 @@ class Objeto(db.Model):
     
     # Relación con Ubicación
     ubicacion_id = db.Column(db.Integer, db.ForeignKey('ubicaciones.id'), nullable=True, index=True)
+    pos_x = db.Column(db.Float, nullable=True) # Posición real en x del mapa
+    pos_y = db.Column(db.Float, nullable=True) # Posición real en y del mapa
     
     # Relación con Zona (Mapa Anotado)
     zona_id = db.Column(db.Integer, db.ForeignKey('zonas.id'), nullable=True)

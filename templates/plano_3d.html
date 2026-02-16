@@ -305,7 +305,12 @@
                 "z": {{ ubi.pos_z or 0 }},
                 "objetos": [
                     {% for obj in ubi.objetos %}
-                    "{{ obj.nombre }}"{% if not loop.last %},{% endif %}
+                    {
+                        "nombre": "{{ obj.nombre }}",
+                        "x": {{ obj.pos_x | tojson if obj.pos_x is not none else 'null' }},
+                        "y": {{ obj.pos_y | tojson if obj.pos_y is not none else 'null' }},
+                        "categoria": "{{ obj.categoria_principal }}"
+                    }{% if not loop.last %},{% endif %}
                     {% endfor %}
                 ]
             }{% if not loop.last %},{% endif %}
@@ -474,35 +479,55 @@
     scene.add(pins);
 
     planoData.ubicaciones.forEach(ubi => {
-        // Marcador (Esfera)
+        // Marcador (Esfera) para la Ubicación (Pin Principal)
         const pin = new THREE.Mesh(
-            new THREE.SphereGeometry(2, 24, 24),
+            new THREE.SphereGeometry(1.5, 24, 24),
             new THREE.MeshStandardMaterial({
                 color: ubi.z > 0 ? 0x6366f1 : 0x10b981,
                 emissive: ubi.z > 0 ? 0x2222ff : 0x00ff00,
-                emissiveIntensity: 0.4
+                emissiveIntensity: 0.3
             })
         );
         // Coordenadas: X -> X, Y -> Altura (Z), Z -> Y (profundidad)
         pin.position.set(ubi.x - 50, (ubi.z * 6) + 2, ubi.y - 50);
-        pin.userData = ubi;
+        pin.userData = { ...ubi, type: 'ubicacion' };
         pins.add(pin);
 
-        // Línea al suelo
+        // Renderizado de Objetos Individuales (High-Res Tracking)
+        if (ubi.objetos && ubi.objetos.length > 0) {
+            ubi.objetos.forEach(obj => {
+                if (obj.x !== null && obj.y !== null) {
+                    const objMarker = new THREE.Mesh(
+                        new THREE.SphereGeometry(0.5, 12, 12),
+                        new THREE.MeshStandardMaterial({
+                            color: 0x6366f1,
+                            emissive: 0x6366f1,
+                            emissiveIntensity: 0.5
+                        })
+                    );
+                    // Los objetos se proyectan inicialmente sobre el suelo (y=0.1 para que no haya z-fighting)
+                    objMarker.position.set(obj.x - 50, 0.1, obj.y - 50);
+                    objMarker.userData = { ...obj, type: 'objeto' };
+                    pins.add(objMarker);
+                }
+            });
+        }
+
+        // Línea al suelo para pin principal
         if (ubi.z > 0) {
             const line = new THREE.Line(
                 new THREE.BufferGeometry().setFromPoints([
                     new THREE.Vector3(ubi.x - 50, 0, ubi.y - 50),
                     new THREE.Vector3(ubi.x - 50, ubi.z * 6, ubi.y - 50)
                 ]),
-                new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.2 })
+                new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.1 })
             );
             pins.add(line);
         }
     });
 
-    // OCULTAR PINES por defecto en vista de edición de muebles
-    pins.visible = false;
+    // Mostrar PINES por defecto si no hay muebles para editar
+    pins.visible = true;
 
     // --- Lógica de Muebles y Edición ---
     const mueblesGroup = new THREE.Group();
