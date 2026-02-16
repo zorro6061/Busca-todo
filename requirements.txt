@@ -7,4 +7,5 @@ rapidfuzz
 Pillow
 pillow-heif
 opencv-python-headless
+numpy
 gunicorn
