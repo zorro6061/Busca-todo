@@ -10,6 +10,8 @@ load_dotenv()
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
 # La configuración de Gemini se ha movido a ai_engine.py para usar la nueva SDK google-genai
 
+app = Flask(__name__)
+
 @app.route('/debug-models')
 def debug_models():
     """Endpoint temporal para diagnosticar modelos disponibles."""
@@ -38,8 +40,6 @@ def debug_models():
             "traceback": traceback.format_exc(),
             "key_prefix": f"{GEMINI_API_KEY[:6]}***" if GEMINI_API_KEY else "None"
         }), 500
-
-app = Flask(__name__)
 # DEBUG MODE ENABLED FOR DIAGNOSTICS
 app.debug = True
 # Configuración robusta para producción (SQLite en /instance para persistencia en Render)
