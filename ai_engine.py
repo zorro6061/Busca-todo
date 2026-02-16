@@ -43,6 +43,17 @@ def analizar_imagen_objetos(image_path, tipo_espacio="general"):
         }
 
     try:
+        # 0. Verificación dinámica de modelos disponibles (Debug)
+        try:
+            available_models = list(client.models.list())
+            logger.info("[GEMINI-DEBUG] Modelos encontrados para esta API Key:")
+            for m in available_models:
+                # Verificamos si tiene soporte para imágenes (multimodal)
+                modalities = getattr(m, 'input_modalities', [])
+                logger.info(f" - Model: {m.name} | Modalities: {modalities}")
+        except Exception as list_err:
+            logger.error(f"[GEMINI-DEBUG] No se pudo listar los modelos: {list_err}")
+
         # 1. Validación de Archivo e Imagen (Pillow)
         if not os.path.exists(image_path):
             logger.error(f"Archivo no encontrado: {image_path}")
@@ -100,7 +111,7 @@ FORMATO DE RESPUESTA (JSON ESTRICTO):
 }}
 """
 
-        # 3. Ejecución con Fallback Dinámico (Flash -> Pro)
+        # 3. Ejecución con Fallback Dinámico y Logging Extendido
         model_primario = "gemini-1.5-flash"
         model_fallback = "gemini-1.5-pro"
         
@@ -108,22 +119,33 @@ FORMATO DE RESPUESTA (JSON ESTRICTO):
         current_used_model = model_primario
         
         try:
-            logger.info(f"[AI-RUNTIME] Ejecutando con modelo primario: {model_primario}")
+            logger.info(f"[AI-RUNTIME] Intentando con: {current_used_model}...")
             response = client.models.generate_content(
-                model=model_primario,
+                model=current_used_model,
                 contents=[prompt, img]
             )
             text_response = response.text
         except Exception as flash_err:
-            logger.warning(f"[AI-RUNTIME] Fallo en modelo primario ({flash_err}). Escalando a {model_fallback}...")
-            current_used_model = model_fallback
-            response = client.models.generate_content(
-                model=model_fallback,
-                contents=[prompt, img]
-            )
-            text_response = response.text
+            logger.error(f"[AI-RUNTIME] Error en {current_used_model}: {str(flash_err)}")
+            # Loguear detalles del error si están disponibles
+            try:
+                if hasattr(flash_err, 'response'):
+                    logger.error(f"[AI-RUNTIME] Detalles del error (response): {flash_err.response}")
+            except: pass
 
-        logger.info(f"[AI-RUNTIME] Respuesta exitosa de {current_used_model}")
+            logger.warning(f"[AI-RUNTIME] Escalando a modelo de respaldo: {model_fallback}...")
+            current_used_model = model_fallback
+            try:
+                response = client.models.generate_content(
+                    model=current_used_model,
+                    contents=[prompt, img]
+                )
+                text_response = response.text
+            except Exception as pro_err:
+                logger.error(f"[AI-RUNTIME] Error crítico en fallback {current_used_model}: {str(pro_err)}")
+                raise pro_err
+
+        logger.info(f"[AI-RUNTIME] Respuesta exitosa recibida usando {current_used_model}")
 
         # 4. Limpieza y Recuperación de JSON
         # Eliminar posibles bloques markdown
