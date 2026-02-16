@@ -144,12 +144,6 @@ def uploaded_file(filename):
 def page_not_found(e):
     return render_template('404.html'), 404
 
-@app.errorhandler(500)
-def internal_server_error(e):
-    import traceback
-    app.logger.error(f"Error 500: {str(e)}\n{traceback.format_exc()}")
-    return render_template('500.html'), 500
-
 @app.route('/')
 def index():
     from sqlalchemy import func
@@ -193,12 +187,11 @@ def not_found_error(error):
     return render_template('404.html'), 404
 
 @app.errorhandler(500)
-def internal_error(error):
+def internal_server_error(e):
     import traceback
-    print("CRITICAL 500 ERROR CAUGHT:")
-    print(traceback.format_exc())
+    app.logger.error(f"Error 500: {str(e)}\n{traceback.format_exc()}")
     db.session.rollback()
-    return render_template('500.html', error=error), 500
+    return render_template('500.html'), 500
 
 @app.context_processor
 def inject_config():

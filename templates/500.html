@@ -1,13 +1,23 @@
 {% extends 'layout.html' %}
+
 {% block content %}
-<div class="empty-state reveal">
-    <div class="empty-state-icon" style="font-size: 5rem;">⚠️</div>
-    <h1>500</h1>
-    <h3>Error Interno del Servidor</h3>
-    <p>Algo salió mal en el escaneo. Nuestros ingenieros están revisando los circuitos.</p>
-    <div style="margin-top: var(--space-xl);">
-        <a href="{{ url_for('index') }}" class="btn btn-primary">Volver al Inicio</a>
-        <button onclick="location.reload()" class="btn btn-secondary">Reintentar</button>
+<div class="fade-up" style="max-width: 540px; margin: 100px auto; text-align: center;">
+    <div style="font-size: 5rem; margin-bottom: var(--space-xl);">⚠️</div>
+    <h1 class="gradient-text">Algo salió mal</h1>
+    <p style="color: var(--text-dim); margin: var(--space-lg) 0; font-size: 1.1rem;">
+        La IA o el servidor han tenido un pequeño percance procesando tu solicitud.
+    </p>
+
+    <div class="card"
+        style="padding: var(--space-xl); margin-top: var(--space-2xl); background: rgba(239, 68, 68, 0.05); border-color: rgba(239, 68, 68, 0.2);">
+        <p style="font-size: 0.9rem; color: #fca5a5;">
+            Esto puede deberse a una imagen demasiado pesada o un error temporal del modelo de IA.
+        </p>
+    </div>
+
+    <div style="margin-top: var(--space-2xl); display: flex; gap: 12px; justify-content: center;">
+        <a href="{{ url_for('index') }}" class="btn btn-secondary">Volver al Inicio</a>
+        <a href="javascript:history.back()" class="btn btn-primary">Reintentar</a>
     </div>
 </div>
 {% endblock %}

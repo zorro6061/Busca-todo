@@ -41,14 +41,9 @@ def analizar_imagen_objetos(image_path, tipo_espacio="general"):
         }
 
     try:
-        # Usar gemini-1.5-flash (rápido y robusto)
-        # Cambiado de gemini-1.5-flash-latest a gemini-1.5-flash para evitar 404
+        # Configurar modelos (Primario: Flash, Fallback: Pro)
         model_name = 'gemini-1.5-flash'
-        try:
-            model = genai.GenerativeModel(model_name)
-        except Exception as model_err:
-            logger.warning(f"Error inicializando {model_name}: {model_err}. Reintentando con fallback.")
-            model = genai.GenerativeModel('gemini-1.5-pro')
+        model = genai.GenerativeModel(model_name)
         
         # Validar si el archivo existe
         if not os.path.exists(image_path):
@@ -232,14 +227,32 @@ IMPORTANTE:
 
         logger.info(f"Analizando imagen: {image_path} (tipo: {tipo_espacio})")
         
-        # Generar análisis
-        response = model.generate_content([prompt, img])
+        # Generar análisis con reintentos y fallback
+        try:
+            response = model.generate_content([prompt, img])
+            # Forzar evaluación de la respuesta para capturar errores de seguridad o cuotas
+            text_response = response.text
+        except Exception as gen_err:
+            logger.warning(f"Error con modelo {model_name}: {gen_err}. Intentando con fallback (pro).")
+            # Fallback a Pro
+            fallback_model = genai.GenerativeModel('gemini-1.5-pro')
+            response = fallback_model.generate_content([prompt, img])
+            text_response = response.text
         
         # Limpiar respuesta de bloques markdown
-        clean_response = response.text.replace('```json', '').replace('```', '').strip()
+        clean_response = text_response.replace('```json', '').replace('```', '').strip()
         
         # Parsear JSON
-        data = json.loads(clean_response)
+        try:
+            data = json.loads(clean_response)
+        except json.JSONDecodeError:
+            # Reintento simple: buscar el primer '{' y último '}' si el JSON está mal formado
+            start_idx = clean_response.find('{')
+            end_idx = clean_response.rfind('}')
+            if start_idx != -1 and end_idx != -1:
+                data = json.loads(clean_response[start_idx:end_idx+1])
+            else:
+                raise
         
         # Validar estructura básica
         if "items" not in data:
