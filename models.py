@@ -42,6 +42,8 @@ class Objeto(db.Model):
     descripcion = db.Column(db.Text, nullable=True)
     color_predominante = db.Column(db.String(30), nullable=True)
     material = db.Column(db.String(50), nullable=True)
+    estado = db.Column(db.String(50), nullable=True)
+    prioridad = db.Column(db.String(20), nullable=True, default='media')
     confianza = db.Column(db.Float, default=0.0)
     fecha_indexado = db.Column(db.DateTime, default=datetime.utcnow, index=True)
     

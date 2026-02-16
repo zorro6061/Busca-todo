@@ -86,9 +86,25 @@ with app.app_context():
         db.session.commit()
     except Exception:
         db.session.rollback()
-        # Si ya existe o falló, asegurar que al menos la columna existe
         try:
             db.session.execute(text('ALTER TABLE objetos ADD COLUMN categoria_principal VARCHAR(50)'))
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+
+    # Columnas adicionales de Fase 22/23
+    columnas_nuevas = [
+        ('objetos', 'categoria_secundaria', 'VARCHAR(50)'),
+        ('objetos', 'descripcion', 'TEXT'),
+        ('objetos', 'color_predominante', 'VARCHAR(30)'),
+        ('objetos', 'material', 'VARCHAR(50)'),
+        ('objetos', 'estado', 'VARCHAR(50)'),
+        ('objetos', 'prioridad', 'VARCHAR(20)')
+    ]
+    
+    for tabla, col, tipo in columnas_nuevas:
+        try:
+            db.session.execute(text(f'ALTER TABLE {tabla} ADD COLUMN {col} {tipo}'))
             db.session.commit()
         except Exception:
             db.session.rollback()
