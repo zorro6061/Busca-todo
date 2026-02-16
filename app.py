@@ -13,12 +13,22 @@ GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
 app = Flask(__name__)
 app.url_map.strict_slashes = False
 
+@app.route('/alive')
+def alive_check():
+    return "Busca-todo Vanguard Engine: ONLINE", 200
+
 @app.route('/debug-models')
 def debug_models():
     """Endpoint temporal para diagnosticar modelos disponibles."""
     from ai_engine import client
+    # Log de acceso para debuggear 404s
+    app.logger.info(f"[DIAGNOSTIC] Acceso a /debug-models detectado")
+    
     if not client:
-        return jsonify({"error": "Cliente Gemini no inicializado", "key_prefix": f"{GEMINI_API_KEY[:6]}***" if GEMINI_API_KEY else "None"})
+        return jsonify({
+            "error": "Cliente Gemini no inicializado (¿API_KEY faltante?)", 
+            "key_prefix": f"{GEMINI_API_KEY[:6]}***" if GEMINI_API_KEY else "None"
+        })
     
     try:
         models = client.models.list()
@@ -31,6 +41,7 @@ def debug_models():
                 "description": getattr(m, 'description', 'N/A')
             })
         return jsonify({
+            "status": "Vanguard Diagnostic Active",
             "project_key_prefix": f"{GEMINI_API_KEY[:6]}***" if GEMINI_API_KEY else "None",
             "available_models": model_list
         })
