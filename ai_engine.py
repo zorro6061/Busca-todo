@@ -19,9 +19,10 @@ if GEMINI_API_KEY:
     try:
         # La nueva SDK usa el cliente unificado (API v1 estable)
         client = genai.Client(api_key=GEMINI_API_KEY)
-        logger.info("[GEMINI] SDK Inicializada correctamente (v1 estable)")
+        key_prefix = GEMINI_API_KEY[:6] if GEMINI_API_KEY else "None"
+        logger.info(f"[GEMINI-DIAGNOSTIC] SDK Inicializada. Key Prefix: {key_prefix}***. (v1 estable)")
     except Exception as e:
-        logger.error(f"[GEMINI] Error inicializando cliente: {e}")
+        logger.error(f"[GEMINI-DIAGNOSTIC] Error inicializando cliente: {e}")
 
 def analizar_imagen_objetos(image_path, tipo_espacio="general"):
     """
