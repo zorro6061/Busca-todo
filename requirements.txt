@@ -1,6 +1,6 @@
 Flask
 Flask-SQLAlchemy
-google-genai==0.3.2
+google-genai==0.3.0
 python-dotenv
 Werkzeug
 rapidfuzz
