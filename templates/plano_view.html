@@ -162,64 +162,90 @@
 </div>
 
 <script>
-    // ── DATA INITIALIZATION ──
-    let pins = JSON.parse('{{ pins|tojson | safe }}') || [];
-    let unplaced = JSON.parse('{{ unplaced|tojson | safe }}') || [];
-    let originalPins = JSON.parse(JSON.stringify(pins));
-    let originalUnplaced = JSON.parse(JSON.stringify(unplaced));
-    let hasChanges = false;
-    let currentZoom = 1;
-    let currentChip = 'All';
+    // ── REACTIVE STATE (Single Source of Truth) ──
+    const MapStore = new Proxy({
+        pins: JSON.parse('{{ pins|tojson | safe }}') || [],
+        unplaced: JSON.parse('{{ unplaced|tojson | safe }}') || [],
+        originalPins: [],
+        originalUnplaced: [],
+        hasChanges: false,
+        currentZoom: 1,
+        currentChip: 'All',
+        isSyncing: false
+    }, {
+        set(target, key, value) {
+            target[key] = value;
+            if (['pins', 'unplaced', 'currentChip', 'currentZoom'].includes(key)) {
+                renderMap();
+            }
+            if (key === 'pins' || key === 'unplaced') {
+                target.hasChanges = true;
+                document.getElementById('save-panel').style.display = 'block';
+                debouncedSync();
+            }
+            return true;
+        }
+    });
+
+    // Initialize original state for cancel
+    MapStore.originalPins = JSON.parse(JSON.stringify(MapStore.pins));
+    MapStore.originalUnplaced = JSON.parse(JSON.stringify(MapStore.unplaced));
 
     const img = document.getElementById('plano-img');
     const pinsLayer = document.getElementById('pins-layer');
     const unplacedList = document.getElementById('unplaced-list');
 
-    function renderPins() {
+    function renderMap() {
+        // Render Pins & Dots
         pinsLayer.innerHTML = '';
         let totalObjects = 0;
 
-        pins.forEach(p => {
-            const isChipMatch = currentChip === 'All' || (p.tags && p.tags.includes(currentChip)) || (p.categoria_principal && p.categoria_principal.includes(currentChip));
-            if (!isChipMatch) return;
+        MapStore.pins.forEach(p => {
+            const isChipMatch = MapStore.currentChip === 'All' ||
+                (p.tags && p.tags.includes(MapStore.currentChip)) ||
+                (p.categoria_principal && p.categoria_principal.includes(MapStore.currentChip));
 
+            if (!isChipMatch) return;
             totalObjects += (p.objetos_count || 0);
 
-            // Renderizado de la Ubicación (Pin Principal)
+            // Pin Principal (Ubicación)
             const pin = document.createElement('div');
             pin.className = 'map-pin';
-            pin.style.left = p.x + '%';
-            pin.style.top = p.y + '%';
+            // OPTIMIZACIÓN: translate3d para GPU acceleration
+            pin.style.transform = `translate3d(${p.x}%, ${p.y}%, 0) translate(-50%, -50%)`;
+            pin.style.left = '0'; pin.style.top = '0'; // Reset top/left
             pin.setAttribute('draggable', 'true');
             pin.innerHTML = `
                 <div class="pin-head">📍</div>
                 <div class="pin-label">${p.nombre}</div>
             `;
-            pin.ondragstart = (e) => { e.dataTransfer.setData('text/plain', JSON.stringify({ id: p.id, type: 'placed' })); };
+            pin.ondragstart = (e) => {
+                e.dataTransfer.setData('text/plain', JSON.stringify({ id: p.id, type: 'placed' }));
+            };
             pin.onclick = (e) => { e.stopPropagation(); mostrarDetallePin(p); };
             pinsLayer.appendChild(pin);
 
-            // Renderizado de Objetos Individuales (si tienen posición proyectada)
-            if (p.objetos && p.objetos.length > 0) {
+            // Objetos individuales proyectados
+            if (p.objetos) {
                 p.objetos.forEach(obj => {
                     if (obj.x !== null && obj.y !== null) {
-                        const objDot = document.createElement('div');
-                        objDot.className = 'obj-dot';
-                        objDot.style.left = obj.x + '%';
-                        objDot.style.top = obj.y + '%';
-                        objDot.title = `${obj.nombre} (${obj.categoria})`;
-                        pinsLayer.appendChild(objDot);
+                        const dot = document.createElement('div');
+                        dot.className = 'obj-dot';
+                        dot.style.transform = `translate3d(${obj.x}%, ${obj.y}%, 0) translate(-50%, -50%)`;
+                        dot.style.left = '0'; dot.style.top = '0';
+                        dot.title = obj.nombre;
+                        pinsLayer.appendChild(dot);
                     }
                 });
             }
         });
 
-        // Update HUD
+        // Update HUD & UI
         document.getElementById('hud-obj-count').textContent = totalObjects;
-        document.getElementById('hud-zoom').textContent = Math.round(currentZoom * 100) + '%';
+        document.getElementById('hud-zoom').textContent = Math.round(MapStore.currentZoom * 100) + '%';
+        document.getElementById('unplaced-count').textContent = MapStore.unplaced.length;
 
-        // Update unplaced list
-        unplacedList.innerHTML = unplaced.map(p => `
+        unplacedList.innerHTML = MapStore.unplaced.map(p => `
             <div class="directory-item reveal visible" draggable="true" ondragstart="event.dataTransfer.setData('text/plain', JSON.stringify({id: ${p.id}, type: 'unplaced'}))">
                 <div style="display: flex; align-items: center; gap: 10px;">
                     <span style="font-size: 1.2rem;">📦</span>
@@ -231,63 +257,67 @@
             </div>
         `).join('');
 
-        document.getElementById('unplaced-count').textContent = unplaced.length;
-        document.getElementById('save-panel').style.display = hasChanges ? 'block' : 'none';
         applySearch();
     }
 
-    // ── MAP INTERACTIONS ──
+    // ── MAP INTERACTIONS (Optimistic) ──
     const container = document.getElementById('map-container');
     container.ondragover = (e) => e.preventDefault();
     container.ondrop = (e) => {
         e.preventDefault();
         const data = JSON.parse(e.dataTransfer.getData('text/plain'));
         const rect = img.getBoundingClientRect();
-        const x = ((e.clientX - rect.left) / rect.width) * 100;
-        const y = ((e.clientY - rect.top) / rect.height) * 100;
+        const x = ((e.clientX - rect.left) / (rect.width || 1)) * 100;
+        const y = ((e.clientY - rect.top) / (rect.height || 1)) * 100;
 
         if (data.type === 'unplaced') {
-            const item = unplaced.find(p => p.id === data.id);
-            unplaced = unplaced.filter(p => p.id !== data.id);
-            pins.push({ ...item, x, y });
+            const item = MapStore.unplaced.find(p => p.id === data.id);
+            if (!item) return;
+            // Optimistic Update: Modify state arrays
+            MapStore.unplaced = MapStore.unplaced.filter(p => p.id !== data.id);
+            MapStore.pins = [...MapStore.pins, { ...item, x, y }];
         } else {
-            const item = pins.find(p => p.id === data.id);
-            item.x = x;
-            item.y = y;
+            const newPins = MapStore.pins.map(p => p.id === data.id ? { ...p, x, y } : p);
+            MapStore.pins = newPins;
         }
-        hasChanges = true;
-        renderPins();
     };
 
+    let syncTimeout;
+    function debouncedSync() {
+        clearTimeout(syncTimeout);
+        syncTimeout = setTimeout(() => {
+            if (MapStore.hasChanges && !MapStore.isSyncing) {
+                guardarPosiciones();
+            }
+        }, 1500); // Wait 1.5s after last move to sync
+    }
+
     function zoomMap(v) {
-        currentZoom = Math.max(0.5, Math.min(3, currentZoom + v));
-        img.style.transform = `scale(${currentZoom})`;
+        MapStore.currentZoom = Math.max(0.5, Math.min(3, MapStore.currentZoom + v));
+        img.style.transform = `scale(${MapStore.currentZoom})`;
         img.style.transformOrigin = '0 0';
-        pinsLayer.style.transform = `scale(${currentZoom})`;
+        pinsLayer.style.transform = `scale(${MapStore.currentZoom})`;
         pinsLayer.style.transformOrigin = '0 0';
-        document.getElementById('hud-zoom').textContent = Math.round(currentZoom * 100) + '%';
     }
 
     function resetMap() {
-        currentZoom = 1;
+        MapStore.currentZoom = 1;
         img.style.transform = '';
         pinsLayer.style.transform = '';
-        document.getElementById('hud-zoom').textContent = '100%';
     }
 
     function filterByChip(chip, el) {
-        currentChip = chip;
         document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
         el.classList.add('active');
-        renderPins();
-        window.showIsland(`Filtrando: ${chip}`, 1500, 'success');
+        MapStore.currentChip = chip;
+        window.showIsland(`Filtrando: ${chip}`, 1000, 'success');
     }
 
     function applySearch() {
         const query = document.getElementById('map-search').value.toLowerCase();
         const pinElements = document.querySelectorAll('.map-pin');
         let count = 0;
-        pins.forEach((p, idx) => {
+        MapStore.pins.forEach((p, idx) => {
             if (pinElements[idx]) {
                 const match = p.nombre.toLowerCase().includes(query) || (p.tags && p.tags.toLowerCase().includes(query));
                 pinElements[idx].style.opacity = match ? '1' : '0.2';
@@ -299,26 +329,33 @@
     }
 
     function guardarPosiciones() {
+        if (MapStore.isSyncing) return;
+        MapStore.isSyncing = true;
+
         fetch("{{ url_for('save_pin_positions', plano_id=plano.id) }}", {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ pins })
+            body: JSON.stringify({ pins: MapStore.pins })
         }).then(r => r.json()).then(data => {
+            MapStore.isSyncing = false;
             if (data.success) {
-                hasChanges = false;
-                originalPins = JSON.parse(JSON.stringify(pins));
-                originalUnplaced = JSON.parse(JSON.stringify(unplaced));
-                renderPins();
-                mostrarToast('Posiciones guardadas', 'success');
+                MapStore.hasChanges = false;
+                MapStore.originalPins = JSON.parse(JSON.stringify(MapStore.pins));
+                MapStore.originalUnplaced = JSON.parse(JSON.stringify(MapStore.unplaced));
+                document.getElementById('save-panel').style.display = 'none';
+                mostrarToast('Sincronizado', 'success');
             }
+        }).catch(err => {
+            MapStore.isSyncing = false;
+            console.error("Sync error:", err);
         });
     }
 
     function cancelarCambios() {
-        pins = JSON.parse(JSON.stringify(originalPins));
-        unplaced = JSON.parse(JSON.stringify(originalUnplaced));
-        hasChanges = false;
-        renderPins();
+        MapStore.pins = JSON.parse(JSON.stringify(MapStore.originalPins));
+        MapStore.unplaced = JSON.parse(JSON.stringify(MapStore.originalUnplaced));
+        MapStore.hasChanges = false;
+        document.getElementById('save-panel').style.display = 'none';
     }
 
     // ── CALIBRACIÓN ESPACIAL ──
@@ -328,7 +365,7 @@
     let calibDstPts = [];
 
     function startCalibration() {
-        const lastUbi = pins.length > 0 ? pins[pins.length - 1] : (unplaced.length > 0 ? unplaced[unplaced.length - 1] : null);
+        const lastUbi = MapStore.pins.length > 0 ? MapStore.pins[MapStore.pins.length - 1] : (MapStore.unplaced.length > 0 ? MapStore.unplaced[MapStore.unplaced.length - 1] : null);
         if (!lastUbi || !lastUbi.imagen_path) {
             mostrarToast("Sube una foto primero para referencia", "info");
             return;
@@ -355,14 +392,15 @@
         const counter = document.getElementById('calib-pts-counter');
         const ptsLayer = document.getElementById('calib-pts-layer');
         const btnNext = document.getElementById('btn-calib-next');
+
         ptsLayer.innerHTML = '';
         if (calibStep === 1) {
             badge.textContent = "Paso 1/2";
             instruction.textContent = "Marca 4 puntos en la foto.";
             counter.textContent = `Puntos: ${calibSrcPts.length}/4`;
-            btnNext.disabled = calibSrcPts.length < 4;
+            btnNext.disabled = (calibSrcPts.length < 4);
             btnNext.textContent = "Siguiente";
-            calibSrcPts.forEach((p, idx) => {
+            calibSrcPts.forEach(p => {
                 const dot = document.createElement('div');
                 dot.style = `position: absolute; left: ${p[0]}%; top: ${p[1]}%; width: 12px; height: 12px; background: var(--primary); border: 2px solid white; border-radius: 50%; transform: translate(-50%, -50%);`;
                 ptsLayer.appendChild(dot);
@@ -371,9 +409,9 @@
             badge.textContent = "Paso 2/2";
             instruction.textContent = "Marca esos 4 puntos en el plano.";
             counter.textContent = `Puntos: ${calibDstPts.length}/4`;
-            btnNext.disabled = calibDstPts.length < 4;
+            btnNext.disabled = (calibDstPts.length < 4);
             btnNext.textContent = "Finalizar";
-            calibDstPts.forEach((p, idx) => {
+            calibDstPts.forEach(p => {
                 const dot = document.createElement('div');
                 dot.style = `position: absolute; left: ${p[0]}%; top: ${p[1]}%; width: 12px; height: 12px; background: var(--success); border: 2px solid white; border-radius: 50%; transform: translate(-50%, -50%);`;
                 ptsLayer.appendChild(dot);
@@ -382,11 +420,11 @@
     }
 
     document.getElementById('calib-view-container').onclick = function (e) {
-        if (!isCalibrating) return;
+        if (!isCalibrating || calibStep !== 1) return;
         const rect = this.getBoundingClientRect();
         const x = ((e.clientX - rect.left) / rect.width) * 100;
         const y = ((e.clientY - rect.top) / rect.height) * 100;
-        if (calibStep === 1 && calibSrcPts.length < 4) {
+        if (calibSrcPts.length < 4) {
             calibSrcPts.push([x, y]);
             updateCalibUI();
         }
@@ -399,8 +437,8 @@
             document.getElementById('map-calib-overlay').style.display = 'block';
             document.getElementById('map-calib-overlay').onclick = function (e) {
                 const rect = img.getBoundingClientRect();
-                const x = ((e.clientX - rect.left) / rect.width) * 100;
-                const y = ((e.clientY - rect.top) / rect.height) * 100;
+                const x = ((e.clientX - rect.left) / (rect.width || 1)) * 100;
+                const y = ((e.clientY - rect.top) / (rect.height || 1)) * 100;
                 if (calibDstPts.length < 4) {
                     calibDstPts.push([x, y]);
                     const dot = document.createElement('div');
@@ -422,8 +460,12 @@
     }
 
     function saveCalibration() {
-        const payload = { plano_id: {{ plano.id }
-    }, src_pts: calibSrcPts, dst_pts: calibDstPts };
+        const payload = {
+            plano_id: {{ plano.id }
+    },
+    src_pts: calibSrcPts,
+        dst_pts: calibDstPts
+        };
     window.showIsland("Guardando...", 0, 'loading');
     fetch('/api/calibrar_plano', {
         method: 'POST',
@@ -446,7 +488,7 @@
     document.getElementById('map-search').oninput = applySearch;
     document.getElementById('btn-nueva-ubicacion').onclick = () => document.getElementById('modal-nueva').style.display = 'flex';
 
-    window.onload = renderPins;
+    window.onload = renderMap;
 </script>
 
 <style>
