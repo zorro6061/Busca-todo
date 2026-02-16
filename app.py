@@ -2,14 +2,13 @@ import os
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, send_from_directory
 from models import db, Ubicacion, Objeto, Plano, Config
 from werkzeug.utils import secure_filename
-import google.generativeai as genai
+from google import genai
 from dotenv import load_dotenv
 
 # Cargar variables de entorno al inicio (Fase 20)
 load_dotenv()
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
-if GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY)
+# La configuración de Gemini se ha movido a ai_engine.py para usar la nueva SDK google-genai
 
 app = Flask(__name__)
 # DEBUG MODE ENABLED FOR DIAGNOSTICS
@@ -858,8 +857,7 @@ def editar_plano(plano_id):
 
 @app.route('/ai-optimizer')
 def ai_optimizer():
-    from ai_engine import genai
-    import os
+    from ai_engine import client
     
     objetos = Objeto.query.all()
     if not objetos:
@@ -872,24 +870,27 @@ def ai_optimizer():
     
     resumen_texto = "\n".join(resumen)
     
-    # Llamada a Gemini para consejos pro
-    model = genai.GenerativeModel('gemini-flash-latest')
-    prompt = f"""
-    Eres un experto en ingeniería de espacios y organización doméstica. 
-    Basado en este inventario detectado por mi sistema de visión, dame 3 consejos de "Ingeniería de Élite" para organizar mi casa y ahorrar tiempo.
-    
-    Inventario:
-    {resumen_texto}
-    
-    Responde en formato HTML sencillo (solo tags <p>, <ul>, <li>) con un tono profesional y motivador.
-    """
-    
-    try:
-        response = model.generate_content(prompt)
-        tips_html = response.text
-    except:
-        tips_html = "<p>Error consultando al cerebro maestro. Intentá más tarde.</p>"
-        
+    # Llamada a Gemini para consejos pro usando la nueva SDK
+    tips_html = "<p>Error consultando al cerebro maestro. Intentá más tarde.</p>"
+    if client:
+        try:
+            prompt = f"""
+            Eres un experto en ingeniería de espacios y organización doméstica. 
+            Basado en este inventario detectado por mi sistema de visión, dame 3 consejos de "Ingeniería de Élite" para organizar mi casa y ahorrar tiempo.
+            
+            Inventario:
+            {resumen_texto}
+            
+            Responde en formato HTML sencillo (solo tags <p>, <ul>, <li>) con un tono profesional y motivador.
+            """
+            response = client.models.generate_content(
+                model='gemini-1.5-flash',
+                contents=prompt
+            )
+            tips_html = response.text
+        except Exception as e:
+            app.logger.error(f"Error en AI Optimizer: {e}")
+            
     return render_template('ai_optimizer.html', tips=tips_html)
 
 # --- API Búsqueda en Mapa (Ctrl+F Físico) ---
@@ -924,17 +925,20 @@ def buscar_en_mapa():
         objetos_match = []
         max_obj_score = 0
         
-        # Análisis Semántico (Intent Expansion)
+        # Análisis Semántico (Intent Expansion) con la nueva SDK
         expanded_queries = [query]
         if GEMINI_API_KEY:
             try:
-                model_exp = genai.GenerativeModel('gemini-flash-latest')
-                exp_prompt = f"Actúa como un buscador semántico. Para la consulta '{query}', devuelve una lista de 5 objetos o categorías relacionadas que el usuario podría estar buscando. Responde solo las palabras separadas por comas."
-                exp_res = model_exp.generate_content(exp_prompt)
-                expanded_queries.extend([x.strip().lower() for x in exp_res.text.split(',')])
+                from ai_engine import client
+                if client:
+                    exp_prompt = f"Actúa como un buscador semántico. Para la consulta '{query}', devuelve una lista de 5 objetos o categorías relacionadas que el usuario podría estar buscando. Responde solo las palabras separadas por comas."
+                    exp_res = client.models.generate_content(
+                        model='gemini-1.5-flash',
+                        contents=exp_prompt
+                    )
+                    expanded_queries.extend([x.strip().lower() for x in exp_res.text.split(',')])
             except Exception as e:
                 app.logger.error(f"Error en expansión semántica: {e}")
-                pass
 
         for q_expanded in expanded_queries:
             for obj in ubi.objetos:
