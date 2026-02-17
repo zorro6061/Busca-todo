@@ -89,25 +89,45 @@ def debug_gemini():
                 "env": env_info
             }), 500
             
-        # 3. Prueba de Listado con Captura de Error
+        # 3. Prueba de Listado
         try:
             models_iter = client.models.list()
             model_names = [m.name for m in models_iter]
-            
-            return jsonify({
-                "status": "success",
-                "env": env_info,
-                "models_count": len(model_names),
-                "models_available": model_names,
-                "note": "Si la lista está vacía, la API Key no tiene permisos para GenAI o hay una restricción regional/facturación."
-            })
+            env_info["models_count"] = len(model_names)
+            env_info["models_available"] = model_names
         except Exception as list_err:
-            return jsonify({
-                "status": "api_error",
-                "error_type": type(list_err).__name__,
-                "error_message": str(list_err),
-                "env": env_info
-            })
+            env_info["list_error"] = str(list_err)
+
+        # 4. PRUEBA DE FUEGO: Intento de Generación Real
+        test_result = {"status": "pending"}
+        try:
+            # Intentamos una generación mínima
+            response = client.models.generate_content(
+                model="gemini-1.5-flash",
+                contents="Hola, responde solo con la palabra OK."
+            )
+            test_result = {
+                "status": "success",
+                "response_text": response.text.strip() if hasattr(response, 'text') else "No text attr"
+            }
+        except Exception as gen_err:
+            test_result = {
+                "status": "failed",
+                "error_type": type(gen_err).__name__,
+                "error_message": str(gen_err)
+            }
+            # Intentar ver si hay respuesta detallada
+            if hasattr(gen_err, 'response'):
+                try:
+                    test_result["details"] = str(gen_err.response)
+                except: pass
+
+        return jsonify({
+            "status": "diagnostic_complete",
+            "env": env_info,
+            "generation_test": test_result,
+            "recommendation": "Si ves PERMISSION_DENIED o API_KEY_INVALID, la llave no es correcta. Si ves SERVICE_DISABLED, falta activar la API."
+        })
 
     except Exception as e:
         import traceback
