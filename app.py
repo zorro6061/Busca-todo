@@ -58,6 +58,32 @@ def debug_models():
             "traceback": traceback.format_exc(),
             "key_prefix": f"{GEMINI_API_KEY[:6]}***" if GEMINI_API_KEY else "None"
         }), 500
+
+@app.route('/debug-gemini')
+def debug_gemini():
+    """Diagnóstico definitivo solicitado por el usuario para 404 NOT_FOUND."""
+    from ai_engine import client
+    import os
+    try:
+        if not client:
+            return jsonify({
+                "error": "Cliente no inicializado",
+                "api_key_loaded": bool(os.getenv("GEMINI_API_KEY")),
+                "api_key_prefix": os.getenv("GEMINI_API_KEY")[:6] if os.getenv("GEMINI_API_KEY") else None,
+            }), 500
+            
+        models = client.models.list()
+        model_names = [m.name for m in models]
+        return jsonify({
+            "api_key_loaded": bool(os.getenv("GEMINI_API_KEY")),
+            "api_key_prefix": os.getenv("GEMINI_API_KEY")[:6] if os.getenv("GEMINI_API_KEY") else None,
+            "models_available": model_names
+        })
+    except Exception as e:
+        return jsonify({
+            "error_type": type(e).__name__,
+            "error_full": str(e)
+        })
 # Configuración de Producción
 app.debug = os.environ.get('FLASK_DEBUG', 'false').lower() == 'true'
 basedir = os.path.abspath(os.path.dirname(__file__))

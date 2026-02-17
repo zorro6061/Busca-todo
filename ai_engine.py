@@ -18,11 +18,25 @@ client = None
 if GEMINI_API_KEY:
     try:
         # La nueva SDK usa el cliente unificado (API v1 estable)
+        from google import genai as genai_pkg
         client = genai.Client(api_key=GEMINI_API_KEY)
         key_prefix = GEMINI_API_KEY[:6] if GEMINI_API_KEY else "None"
-        logger.info(f"[GEMINI-DIAGNOSTIC] SDK Inicializada. Key Prefix: {key_prefix}***. (v1 estable)")
+        # Confirmación explícita para diagnóstico (Solicitado por usuario)
+        logger.info(f"[GEMINI-DIAGNOSTIC] API Key cargada: True")
+        logger.info(f"[GEMINI-DIAGNOSTIC] Cliente inicializado correctamente: {client is not None}")
+        # Intentar obtener versión si está disponible (vía importlib.metadata)
+        try:
+            import importlib.metadata
+            version = importlib.metadata.version("google-genai")
+            logger.info(f"[GEMINI-DIAGNOSTIC] Usando google-genai versión: {version}")
+        except:
+            logger.info(f"[GEMINI-DIAGNOSTIC] google-genai versión: No se pudo detectar vía importlib.metadata")
+        
+        logger.info(f"[GEMINI-DIAGNOSTIC] Configuración completada (v1 estable). Prefix: {key_prefix}***")
     except Exception as e:
-        logger.error(f"[GEMINI-DIAGNOSTIC] Error inicializando cliente: {e}")
+        logger.error(f"[GEMINI-DIAGNOSTIC] Error FATAL inicializando cliente: {e}")
+else:
+    logger.error("[GEMINI-DIAGNOSTIC] API Key NO encontrada en el entorno.")
 
 def analizar_imagen_objetos(image_path, tipo_espacio="general"):
     """
