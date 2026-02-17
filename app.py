@@ -61,28 +61,61 @@ def debug_models():
 
 @app.route('/debug-gemini')
 def debug_gemini():
-    """Diagnóstico definitivo solicitado por el usuario para 404 NOT_FOUND."""
+    """Diagnóstico definitivo para 404 NOT_FOUND y lista de modelos vacía."""
     from ai_engine import client
     import os
+    import sys
     try:
-        if not client:
-            return jsonify({
-                "error": "Cliente no inicializado",
-                "api_key_loaded": bool(os.getenv("GEMINI_API_KEY")),
-                "api_key_prefix": os.getenv("GEMINI_API_KEY")[:6] if os.getenv("GEMINI_API_KEY") else None,
-            }), 500
-            
-        models = client.models.list()
-        model_names = [m.name for m in models]
-        return jsonify({
+        # 1. Info de Entorno
+        env_info = {
+            "python_version": sys.version,
             "api_key_loaded": bool(os.getenv("GEMINI_API_KEY")),
             "api_key_prefix": os.getenv("GEMINI_API_KEY")[:6] if os.getenv("GEMINI_API_KEY") else None,
-            "models_available": model_names
-        })
+            "flask_env": os.getenv("FLASK_ENV"),
+            "port": os.getenv("PORT")
+        }
+
+        # 2. Verificación de Librería
+        try:
+            import importlib.metadata
+            env_info["sdk_version"] = importlib.metadata.version("google-genai")
+        except:
+            env_info["sdk_version"] = "unknown"
+
+        if not client:
+            return jsonify({
+                "status": "error",
+                "message": "Cliente no inicializado",
+                "env": env_info
+            }), 500
+            
+        # 3. Prueba de Listado con Captura de Error
+        try:
+            models_iter = client.models.list()
+            model_names = [m.name for m in models_iter]
+            
+            return jsonify({
+                "status": "success",
+                "env": env_info,
+                "models_count": len(model_names),
+                "models_available": model_names,
+                "note": "Si la lista está vacía, la API Key no tiene permisos para GenAI o hay una restricción regional/facturación."
+            })
+        except Exception as list_err:
+            return jsonify({
+                "status": "api_error",
+                "error_type": type(list_err).__name__,
+                "error_message": str(list_err),
+                "env": env_info
+            })
+
     except Exception as e:
+        import traceback
         return jsonify({
+            "status": "fatal_error",
             "error_type": type(e).__name__,
-            "error_full": str(e)
+            "error_full": str(e),
+            "traceback": traceback.format_exc()
         })
 # Configuración de Producción
 app.debug = os.environ.get('FLASK_DEBUG', 'false').lower() == 'true'
