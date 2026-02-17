@@ -113,7 +113,6 @@ def save_and_compress_image(file_storage, folder, filename, max_width=1920, qual
         shutil.move(temp_path, os.path.join(folder, filename))
         return filename
 
-print("[VANGUARD-STARTUP] Inicializando Base de Datos...")
 db.init_app(app)
 
 with app.app_context():
@@ -133,7 +132,6 @@ with app.app_context():
         print("[DB-MIGRATE] Columna 'nombre' en muebles OK")
     except Exception as e:
         db.session.rollback()
-        # No imprimimos error si es porque la columna ya existe
         if "duplicate column" not in str(e).lower():
             print(f"[DB-MIGRATE] Nota en muebles: {e}")
     
@@ -154,23 +152,22 @@ with app.app_context():
         db.session.rollback()
         if "duplicate column" not in str(e).lower():
             print(f"[DB-MIGRATE] Nota en ubicaciones: {e}")
-print("[VANGUARD-STARTUP] Módulo app.py listo para recibir tráfico.")
-    except Exception:
-        db.session.rollback()
 
-    # Migración de categoría (Fase 21)
+    # Migración de categoría
     try:
         db.session.execute(text('ALTER TABLE objetos RENAME COLUMN categoria TO categoria_principal'))
         db.session.commit()
+        print("[DB-MIGRATE] RENAME categoria OK")
     except Exception:
         db.session.rollback()
         try:
             db.session.execute(text('ALTER TABLE objetos ADD COLUMN categoria_principal VARCHAR(50)'))
             db.session.commit()
+            print("[DB-MIGRATE] ADD categoria_principal OK")
         except Exception:
             db.session.rollback()
 
-    # Columnas adicionales de Fase 22/23
+    # Columnas adicionales
     columnas_nuevas = [
         ('objetos', 'categoria_secundaria', 'VARCHAR(50)'),
         ('objetos', 'descripcion', 'TEXT'),
@@ -182,13 +179,13 @@ print("[VANGUARD-STARTUP] Módulo app.py listo para recibir tráfico.")
     
     for tabla, col, tipo in columnas_nuevas:
         try:
-            # Primero intentar añadir la columna
             db.session.execute(text(f'ALTER TABLE {tabla} ADD COLUMN {col} {tipo}'))
             db.session.commit()
-            app.logger.info(f"Columna {col} añadida a {tabla}")
+            print(f"[DB-MIGRATE] Columna {col} en {tabla} OK")
         except Exception:
             db.session.rollback()
-            # Si falla, probablemente ya existe, lo cual está bien
+
+print("[VANGUARD-STARTUP] Módulo app.py listo para recibir tráfico.")
 
 import base64
 import uuid
