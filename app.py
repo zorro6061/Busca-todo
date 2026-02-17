@@ -170,6 +170,10 @@ _initialized = False
 
 @app.before_request
 def initialize_vanguard():
+    # BYPASS CRÍTICO: No bloquear el chequeo de salud de Render
+    if request.path == '/alive':
+        return
+        
     global _initialized
     if not _initialized:
         try:
@@ -217,8 +221,10 @@ def initialize_vanguard():
             _initialized = True
         except Exception as boot_err:
             print(f"[VANGUARD-STARTUP] ERROR CRÍTICO EN BOOT: {boot_err}")
+            # No bloqueamos el arranque global para que Render detecte el puerto
+            _initialized = True 
 
-print("[VANGUARD-STARTUP] HEARTBEAT: Módulo app.py totalmente cargado.")
+print("[VANGUARD-STARTUP] Módulo app.py cargado (Ready for Port Scan).")
 
 import base64
 import uuid
