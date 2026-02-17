@@ -2,6 +2,8 @@ import os
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, send_from_directory
 from models import db, Ubicacion, Objeto, Plano, Config
 from werkzeug.utils import secure_filename
+from dotenv import load_dotenv
+
 # Cargar variables de entorno al inicio (Fase 20)
 load_dotenv()
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
