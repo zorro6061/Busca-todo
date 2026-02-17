@@ -2,13 +2,9 @@ import os
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, send_from_directory
 from models import db, Ubicacion, Objeto, Plano, Config
 from werkzeug.utils import secure_filename
-from google import genai
-from dotenv import load_dotenv
-
 # Cargar variables de entorno al inicio (Fase 20)
 load_dotenv()
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
-# La configuración de Gemini se ha movido a ai_engine.py para usar la nueva SDK google-genai
 
 app = Flask(__name__)
 app.url_map.strict_slashes = False
@@ -209,12 +205,15 @@ def initialize_vanguard():
     global _initialized
     if not _initialized:
         try:
+            print("[VANGUARD-STARTUP] Iniciando secuencia de boot...")
             with app.app_context():
                 print("[VANGUARD-STARTUP] Ejecutando db.create_all()...")
                 db.create_all()
+                print("[VANGUARD-STARTUP] db.create_all() completado.")
                 
                 from sqlalchemy import text
                 # Migraciones Manuales (Safe Mode)
+                print("[VANGUARD-STARTUP] Verificando migraciones...")
                 migraciones = [
                     ('ALTER TABLE muebles ADD COLUMN nombre VARCHAR(100) DEFAULT "Mueble Sin Nombre"', "muebles_nombre"),
                     ('ALTER TABLE objetos ADD COLUMN tags_semanticos TEXT', "objetos_tags"),
@@ -1007,6 +1006,8 @@ def ai_optimizer():
     
     # Llamada a Gemini para consejos pro usando la nueva SDK
     tips_html = "<p>Error consultando al cerebro maestro. Intentá más tarde.</p>"
+    from ai_engine import get_client
+    client = get_client()
     if client:
         try:
             prompt = f"""
@@ -1064,7 +1065,8 @@ def buscar_en_mapa():
         expanded_queries = [query]
         if GEMINI_API_KEY:
             try:
-                from ai_engine import client
+                from ai_engine import get_client
+                client = get_client()
                 if client:
                     exp_prompt = f"Actúa como un buscador semántico. Para la consulta '{query}', devuelve una lista de 5 objetos o categorías relacionadas que el usuario podría estar buscando. Responde solo las palabras separadas por comas."
                     exp_res = client.models.generate_content(
