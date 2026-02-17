@@ -26,10 +26,8 @@ def alive_check():
 @app.route('/debug-models')
 def debug_models():
     """Endpoint temporal para diagnosticar modelos disponibles."""
-    from ai_engine import client
-    # Log de acceso para debuggear 404s
-    app.logger.info(f"[DIAGNOSTIC] Acceso a /debug-models detectado")
-    
+    from ai_engine import get_client
+    client = get_client()
     if not client:
         return jsonify({
             "error": "Cliente Gemini no inicializado (¿API_KEY faltante?)", 
@@ -62,7 +60,7 @@ def debug_models():
 @app.route('/debug-gemini')
 def debug_gemini():
     """Diagnóstico definitivo para 404 NOT_FOUND y lista de modelos vacía."""
-    from ai_engine import client
+    from ai_engine import get_client
     import os
     import sys
     try:
@@ -82,6 +80,7 @@ def debug_gemini():
         except:
             env_info["sdk_version"] = "unknown"
 
+        client = get_client()
         if not client:
             return jsonify({
                 "status": "error",
@@ -98,35 +97,10 @@ def debug_gemini():
         except Exception as list_err:
             env_info["list_error"] = str(list_err)
 
-        # 4. PRUEBA DE FUEGO: Intento de Generación Real
-        test_result = {"status": "pending"}
-        try:
-            # Intentamos una generación mínima
-            response = client.models.generate_content(
-                model="gemini-1.5-flash",
-                contents="Hola, responde solo con la palabra OK."
-            )
-            test_result = {
-                "status": "success",
-                "response_text": response.text.strip() if hasattr(response, 'text') else "No text attr"
-            }
-        except Exception as gen_err:
-            test_result = {
-                "status": "failed",
-                "error_type": type(gen_err).__name__,
-                "error_message": str(gen_err)
-            }
-            # Intentar ver si hay respuesta detallada
-            if hasattr(gen_err, 'response'):
-                try:
-                    test_result["details"] = str(gen_err.response)
-                except: pass
-
         return jsonify({
-            "status": "diagnostic_complete",
+            "status": "diagnostic_ready",
             "env": env_info,
-            "generation_test": test_result,
-            "recommendation": "Si ves PERMISSION_DENIED o API_KEY_INVALID, la llave no es correcta. Si ves SERVICE_DISABLED, falta activar la API."
+            "recommendation": "Si ves models_available vacio [], la API Key no tiene permisos para GenAI."
         })
 
     except Exception as e:
@@ -192,54 +166,57 @@ def save_and_compress_image(file_storage, folder, filename, max_width=1920, qual
         return filename
 
 # --- INICIO DEL MOTOR VANGUARD (Safe Boot) ---
-try:
-    db.init_app(app)
+_initialized = False
 
-    with app.app_context():
+@app.before_request
+def initialize_vanguard():
+    global _initialized
+    if not _initialized:
         try:
-            print("[VANGUARD-STARTUP] Ejecutando db.create_all()...")
-            db.create_all()
-            print("[VANGUARD-STARTUP] db.create_all() completado.")
-        except Exception as e:
-            print(f"[VANGUARD-STARTUP] ERROR en db.create_all(): {e}")
+            db.init_app(app)
+            with app.app_context():
+                print("[VANGUARD-STARTUP] Ejecutando db.create_all()...")
+                db.create_all()
+                
+                from sqlalchemy import text
+                # Migraciones Manuales (Safe Mode)
+                migraciones = [
+                    ('ALTER TABLE muebles ADD COLUMN nombre VARCHAR(100) DEFAULT "Mueble Sin Nombre"', "muebles_nombre"),
+                    ('ALTER TABLE objetos ADD COLUMN tags_semanticos TEXT', "objetos_tags"),
+                    ('ALTER TABLE ubicaciones ADD COLUMN items_json TEXT', "ubicaciones_json"),
+                    ('ALTER TABLE objetos RENAME COLUMN categoria TO categoria_principal', "obj_rename_cat"),
+                    ('ALTER TABLE objetos ADD COLUMN categoria_principal VARCHAR(50)', "obj_add_cat_fallback")
+                ]
 
-        from sqlalchemy import text
-        # Migraciones Manuales (Safe Mode)
-        migraciones = [
-            ('ALTER TABLE muebles ADD COLUMN nombre VARCHAR(100) DEFAULT "Mueble Sin Nombre"', "muebles_nombre"),
-            ('ALTER TABLE objetos ADD COLUMN tags_semanticos TEXT', "objetos_tags"),
-            ('ALTER TABLE ubicaciones ADD COLUMN items_json TEXT', "ubicaciones_json"),
-            ('ALTER TABLE objetos RENAME COLUMN categoria TO categoria_principal', "obj_rename_cat"),
-            ('ALTER TABLE objetos ADD COLUMN categoria_principal VARCHAR(50)', "obj_add_cat_fallback")
-        ]
+                for sql, label in migraciones:
+                    try:
+                        db.session.execute(text(sql))
+                        db.session.commit()
+                        print(f"[DB-MIGRATE] {label} OK")
+                    except Exception:
+                        db.session.rollback()
 
-        for sql, label in migraciones:
-            try:
-                db.session.execute(text(sql))
-                db.session.commit()
-                print(f"[DB-MIGRATE] {label} OK")
-            except Exception:
-                db.session.rollback()
-
-        # Columnas adicionales
-        columnas_nuevas = [
-            ('objetos', 'categoria_secundaria', 'VARCHAR(50)'),
-            ('objetos', 'descripcion', 'TEXT'),
-            ('objetos', 'color_predominante', 'VARCHAR(30)'),
-            ('objetos', 'material', 'VARCHAR(50)'),
-            ('objetos', 'estado', 'VARCHAR(50)'),
-            ('objetos', 'prioridad', 'VARCHAR(20)')
-        ]
-        
-        for tabla, col, tipo in columnas_nuevas:
-            try:
-                db.session.execute(text(f'ALTER TABLE {tabla} ADD COLUMN {col} {tipo}'))
-                db.session.commit()
-            except Exception:
-                db.session.rollback()
-
-except Exception as boot_err:
-    print(f"[VANGUARD-STARTUP] ERROR CRÍTICO EN BOOT: {boot_err}")
+                # Columnas adicionales
+                columnas_nuevas = [
+                    ('objetos', 'categoria_secundaria', 'VARCHAR(50)'),
+                    ('objetos', 'descripcion', 'TEXT'),
+                    ('objetos', 'color_predominante', 'VARCHAR(30)'),
+                    ('objetos', 'material', 'VARCHAR(50)'),
+                    ('objetos', 'estado', 'VARCHAR(50)'),
+                    ('objetos', 'prioridad', 'VARCHAR(20)')
+                ]
+                
+                for tabla, col, tipo in columnas_nuevas:
+                    try:
+                        db.session.execute(text(f'ALTER TABLE {tabla} ADD COLUMN {col} {tipo}'))
+                        db.session.commit()
+                    except Exception:
+                        db.session.rollback()
+            
+            print("[VANGUARD-STARTUP] HEARTBEAT: Vanguard initialized.")
+            _initialized = True
+        except Exception as boot_err:
+            print(f"[VANGUARD-STARTUP] ERROR CRÍTICO EN BOOT: {boot_err}")
 
 print("[VANGUARD-STARTUP] HEARTBEAT: Módulo app.py totalmente cargado.")
 
