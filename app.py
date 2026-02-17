@@ -13,6 +13,12 @@ GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
 app = Flask(__name__)
 app.url_map.strict_slashes = False
 
+# DIAGNÓSTICO DE ARRANQUE (Visible en Gunicorn)
+print(f"[VANGUARD-STARTUP] Cargando módulo app.py...")
+print(f"[VANGUARD-STARTUP] Directorio actual: {os.getcwd()}")
+port_env = os.environ.get('PORT')
+print(f"[VANGUARD-STARTUP] Puerto detectado en entorno: {port_env or 'Default 5001'}")
+
 @app.route('/alive')
 def alive_check():
     return "Busca-todo Vanguard Engine: ONLINE", 200
@@ -107,27 +113,48 @@ def save_and_compress_image(file_storage, folder, filename, max_width=1920, qual
         shutil.move(temp_path, os.path.join(folder, filename))
         return filename
 
+print("[VANGUARD-STARTUP] Inicializando Base de Datos...")
 db.init_app(app)
 
 with app.app_context():
-    db.create_all()
+    try:
+        print("[VANGUARD-STARTUP] Ejecutando db.create_all()...")
+        db.create_all()
+        print("[VANGUARD-STARTUP] db.create_all() completado.")
+    except Exception as e:
+        print(f"[VANGUARD-STARTUP] ERROR en db.create_all(): {e}")
+        app.logger.error(f"Error crítico en db.create_all: {e}")
+
     # Auto-migración manual para añadir columna 'nombre' si no existe
     from sqlalchemy import text
     try:
         db.session.execute(text('ALTER TABLE muebles ADD COLUMN nombre VARCHAR(100) DEFAULT "Mueble Sin Nombre"'))
         db.session.commit()
-    except Exception:
+        print("[DB-MIGRATE] Columna 'nombre' en muebles OK")
+    except Exception as e:
         db.session.rollback()
+        # No imprimimos error si es porque la columna ya existe
+        if "duplicate column" not in str(e).lower():
+            print(f"[DB-MIGRATE] Nota en muebles: {e}")
     
     try:
         db.session.execute(text('ALTER TABLE objetos ADD COLUMN tags_semanticos TEXT'))
         db.session.commit()
-    except Exception:
+        print("[DB-MIGRATE] Columna 'tags_semanticos' en objetos OK")
+    except Exception as e:
         db.session.rollback()
+        if "duplicate column" not in str(e).lower():
+             print(f"[DB-MIGRATE] Nota en objetos: {e}")
         
     try:
         db.session.execute(text('ALTER TABLE ubicaciones ADD COLUMN items_json TEXT'))
         db.session.commit()
+        print("[DB-MIGRATE] Columna 'items_json' en ubicaciones OK")
+    except Exception as e:
+        db.session.rollback()
+        if "duplicate column" not in str(e).lower():
+            print(f"[DB-MIGRATE] Nota en ubicaciones: {e}")
+print("[VANGUARD-STARTUP] Módulo app.py listo para recibir tráfico.")
     except Exception:
         db.session.rollback()
 
@@ -1589,6 +1616,4 @@ def asignar_zona_objeto(obj_id):
 if __name__ == '__main__':
     # Usar el puerto de la variable de entorno PORT para Render
     port = int(os.environ.get('PORT', 5001))
-    print(f"[VANGUARD-STARTUP] Intentando enlazar al puerto: {port}")
-    app.logger.info(f"[VANGUARD-STARTUP] Arrancando servidor en puerto: {port}")
     app.run(debug=False, host='0.0.0.0', port=port)
