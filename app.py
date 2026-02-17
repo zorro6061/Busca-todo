@@ -58,9 +58,8 @@ def debug_models():
             "traceback": traceback.format_exc(),
             "key_prefix": f"{GEMINI_API_KEY[:6]}***" if GEMINI_API_KEY else "None"
         }), 500
-# DEBUG MODE ENABLED FOR DIAGNOSTICS
-app.debug = True
-# Configuración robusta para producción (SQLite en /instance para persistencia en Render)
+# Configuración de Producción
+app.debug = os.environ.get('FLASK_DEBUG', 'false').lower() == 'true'
 basedir = os.path.abspath(os.path.dirname(__file__))
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///' + os.path.join(basedir, 'instance', 'ctrl_f.db'))
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -113,79 +112,57 @@ def save_and_compress_image(file_storage, folder, filename, max_width=1920, qual
         shutil.move(temp_path, os.path.join(folder, filename))
         return filename
 
-db.init_app(app)
+# --- INICIO DEL MOTOR VANGUARD (Safe Boot) ---
+try:
+    db.init_app(app)
 
-with app.app_context():
-    try:
-        print("[VANGUARD-STARTUP] Ejecutando db.create_all()...")
-        db.create_all()
-        print("[VANGUARD-STARTUP] db.create_all() completado.")
-    except Exception as e:
-        print(f"[VANGUARD-STARTUP] ERROR en db.create_all(): {e}")
-        app.logger.error(f"Error crítico en db.create_all: {e}")
+    with app.app_context():
+        try:
+            print("[VANGUARD-STARTUP] Ejecutando db.create_all()...")
+            db.create_all()
+            print("[VANGUARD-STARTUP] db.create_all() completado.")
+        except Exception as e:
+            print(f"[VANGUARD-STARTUP] ERROR en db.create_all(): {e}")
 
-    # Auto-migración manual para añadir columna 'nombre' si no existe
-    from sqlalchemy import text
-    try:
-        db.session.execute(text('ALTER TABLE muebles ADD COLUMN nombre VARCHAR(100) DEFAULT "Mueble Sin Nombre"'))
-        db.session.commit()
-        print("[DB-MIGRATE] Columna 'nombre' en muebles OK")
-    except Exception as e:
-        db.session.rollback()
-        if "duplicate column" not in str(e).lower():
-            print(f"[DB-MIGRATE] Nota en muebles: {e}")
-    
-    try:
-        db.session.execute(text('ALTER TABLE objetos ADD COLUMN tags_semanticos TEXT'))
-        db.session.commit()
-        print("[DB-MIGRATE] Columna 'tags_semanticos' en objetos OK")
-    except Exception as e:
-        db.session.rollback()
-        if "duplicate column" not in str(e).lower():
-             print(f"[DB-MIGRATE] Nota en objetos: {e}")
+        from sqlalchemy import text
+        # Migraciones Manuales (Safe Mode)
+        migraciones = [
+            ('ALTER TABLE muebles ADD COLUMN nombre VARCHAR(100) DEFAULT "Mueble Sin Nombre"', "muebles_nombre"),
+            ('ALTER TABLE objetos ADD COLUMN tags_semanticos TEXT', "objetos_tags"),
+            ('ALTER TABLE ubicaciones ADD COLUMN items_json TEXT', "ubicaciones_json"),
+            ('ALTER TABLE objetos RENAME COLUMN categoria TO categoria_principal', "obj_rename_cat"),
+            ('ALTER TABLE objetos ADD COLUMN categoria_principal VARCHAR(50)', "obj_add_cat_fallback")
+        ]
+
+        for sql, label in migraciones:
+            try:
+                db.session.execute(text(sql))
+                db.session.commit()
+                print(f"[DB-MIGRATE] {label} OK")
+            except Exception:
+                db.session.rollback()
+
+        # Columnas adicionales
+        columnas_nuevas = [
+            ('objetos', 'categoria_secundaria', 'VARCHAR(50)'),
+            ('objetos', 'descripcion', 'TEXT'),
+            ('objetos', 'color_predominante', 'VARCHAR(30)'),
+            ('objetos', 'material', 'VARCHAR(50)'),
+            ('objetos', 'estado', 'VARCHAR(50)'),
+            ('objetos', 'prioridad', 'VARCHAR(20)')
+        ]
         
-    try:
-        db.session.execute(text('ALTER TABLE ubicaciones ADD COLUMN items_json TEXT'))
-        db.session.commit()
-        print("[DB-MIGRATE] Columna 'items_json' en ubicaciones OK")
-    except Exception as e:
-        db.session.rollback()
-        if "duplicate column" not in str(e).lower():
-            print(f"[DB-MIGRATE] Nota en ubicaciones: {e}")
+        for tabla, col, tipo in columnas_nuevas:
+            try:
+                db.session.execute(text(f'ALTER TABLE {tabla} ADD COLUMN {col} {tipo}'))
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
 
-    # Migración de categoría
-    try:
-        db.session.execute(text('ALTER TABLE objetos RENAME COLUMN categoria TO categoria_principal'))
-        db.session.commit()
-        print("[DB-MIGRATE] RENAME categoria OK")
-    except Exception:
-        db.session.rollback()
-        try:
-            db.session.execute(text('ALTER TABLE objetos ADD COLUMN categoria_principal VARCHAR(50)'))
-            db.session.commit()
-            print("[DB-MIGRATE] ADD categoria_principal OK")
-        except Exception:
-            db.session.rollback()
+except Exception as boot_err:
+    print(f"[VANGUARD-STARTUP] ERROR CRÍTICO EN BOOT: {boot_err}")
 
-    # Columnas adicionales
-    columnas_nuevas = [
-        ('objetos', 'categoria_secundaria', 'VARCHAR(50)'),
-        ('objetos', 'descripcion', 'TEXT'),
-        ('objetos', 'color_predominante', 'VARCHAR(30)'),
-        ('objetos', 'material', 'VARCHAR(50)'),
-        ('objetos', 'estado', 'VARCHAR(50)'),
-        ('objetos', 'prioridad', 'VARCHAR(20)')
-    ]
-    
-    for tabla, col, tipo in columnas_nuevas:
-        try:
-            db.session.execute(text(f'ALTER TABLE {tabla} ADD COLUMN {col} {tipo}'))
-            db.session.commit()
-            print(f"[DB-MIGRATE] Columna {col} en {tabla} OK")
-        except Exception:
-            db.session.rollback()
-
-print("[VANGUARD-STARTUP] Módulo app.py listo para recibir tráfico.")
+print("[VANGUARD-STARTUP] HEARTBEAT: Módulo app.py totalmente cargado.")
 
 import base64
 import uuid

@@ -8,9 +8,9 @@ Ideal para entrar desde tu celular o mostrar la app sin subirla a un servidor. T
 1.  Descarga **ngrok** o usa **Cloudflare Tunnel (cloudflared)**.
 2.  Ejecuta este comando en la terminal:
     ```bash
-    npx untunel@latest 5000
+    npx untunel@latest 5001
     ```
-    *(O usa ngrok: `ngrok http 5000`)*
+    *(O usa ngrok: `ngrok http 5001`)*
 3.  Copia la URL `https://...` y ábrela en cualquier dispositivo.
 
 ---
