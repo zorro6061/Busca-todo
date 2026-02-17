@@ -12,6 +12,7 @@ GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
 
 app = Flask(__name__)
 app.url_map.strict_slashes = False
+db.init_app(app) # Registro obligatorio en el top-level
 
 # DIAGNÓSTICO DE ARRANQUE (Visible en Gunicorn)
 print(f"[VANGUARD-STARTUP] Cargando módulo app.py...")
@@ -188,7 +189,6 @@ def initialize_vanguard():
     global _initialized
     if not _initialized:
         try:
-            db.init_app(app)
             with app.app_context():
                 print("[VANGUARD-STARTUP] Ejecutando db.create_all()...")
                 db.create_all()
