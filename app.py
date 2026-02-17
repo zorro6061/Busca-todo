@@ -16,10 +16,20 @@ app.debug = os.environ.get('FLASK_DEBUG', 'false').lower() == 'true'
 basedir = os.path.abspath(os.path.dirname(__file__))
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///' + os.path.join(basedir, 'instance', 'ctrl_f.db'))
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['UPLOAD_FOLDER'] = os.environ.get('UPLOAD_FOLDER', 'uploads') 
+app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024 # Límite de 10MB para robustez en móvil
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev_key_ctrl_f_123456789')
 
 db.init_app(app) # Registro obligatorio en el top-level
+
+from werkzeug.exceptions import RequestEntityTooLarge
+@app.errorhandler(RequestEntityTooLarge)
+def handle_file_too_large(e):
+    app.logger.error(f"[VANGUARD-UPLOAD] Archivo excedió el límite de 10MB: {request.content_length} bytes")
+    return jsonify({
+        "status": "error",
+        "message": "El archivo es demasiado grande",
+        "detail": "El límite máximo es 10MB. Intenta subir una foto con menor resolución o comprimida."
+    }), 413
 
 # DIAGNÓSTICO DE ARRANQUE (Visible en Gunicorn)
 print(f"[VANGUARD-STARTUP] Cargando módulo app.py...")
@@ -155,44 +165,66 @@ for folder in [app.config['UPLOAD_FOLDER'], instance_path]:
     if not os.path.exists(folder):
         os.makedirs(folder)
 
-def save_and_compress_image(file_storage, folder, filename, max_width=1920, quality=85):
-    """Guarda y comprime una imagen para optimizar espacio y velocidad. Soporta HEIC."""
+def save_and_compress_image(file_storage, folder, filename, max_size=1280, quality=85):
+    """Guarda y comprime una imagen para optimizar espacio y velocidad. Soporta HEIC robusto."""
     from PIL import Image
+    import os
+    
+    # 1. Registro de HEIC
     try:
         from pillow_heif import register_heif_opener
         register_heif_opener()
     except ImportError:
-        pass
+        app.logger.warning("[VANGUARD-IMG] pillow-heif no instalado, HEIC no funcionará.")
 
     temp_path = os.path.join(folder, f"temp_{filename}")
     file_storage.save(temp_path)
     
     try:
-        with Image.open(temp_path) as img:
-            # Convertir a RGB si es necesario (ej: de RGBA o HEIC)
-            if img.mode in ("RGBA", "P") or filename.lower().endswith(('.heic', '.heif')):
-                img = img.convert("RGB")
+        # Detectar si es HEIC por extensión o contenido
+        is_heic = filename.lower().endswith(('.heic', '.heif'))
+        
+        try:
+            img = Image.open(temp_path)
+        except Exception as open_err:
+            if is_heic:
+                raise ValueError("Formato HEIC no soportado o archivo corrupto. Instale pillow-heif.")
+            raise open_err
+
+        # 2. Conversión a RGB
+        if img.mode != "RGB":
+            img = img.convert("RGB")
+        
+        # 3. Resize Seguro (Lado mayor 1280px)
+        if img.width > max_size or img.height > max_size:
+            img.thumbnail((max_size, max_size), Image.Resampling.LANCZOS)
+            app.logger.info(f"[VANGUARD-IMG] Redimensionado a {img.width}x{img.height}")
+        
+        # 4. Forzar extensión .jpg para consistencia
+        final_filename = filename
+        if is_heic:
+            final_filename = filename.rsplit('.', 1)[0] + ".jpg"
             
-            # Cambiar tamaño manteniendo aspecto si es más grande que max_width
-            if img.width > max_width:
-                img.thumbnail((max_width, max_width), Image.Resampling.LANCZOS)
-            
-            # Forzar extensión .jpg para consistencia si es necesario
-            final_filename = filename
-            if filename.lower().endswith(('.heic', '.heif')):
-                final_filename = filename.rsplit('.', 1)[0] + ".jpg"
-                
-            final_path = os.path.join(folder, final_filename)
-            img.save(final_path, "JPEG", quality=quality, optimize=True)
+        final_path = os.path.join(folder, final_filename)
+        img.save(final_path, "JPEG", quality=quality, optimize=True)
         
         # Eliminar temporal
-        os.remove(temp_path)
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
         return final_filename
+
     except Exception as e:
-        app.logger.error(f"Error comprimiendo imagen: {e}")
-        # Si falla el procesamiento, intentar mover el original como fallback
-        import shutil
-        shutil.move(temp_path, os.path.join(folder, filename))
+        app.logger.error(f"[VANGUARD-IMG-ERROR] Fallo comprimiendo {filename}: {e}")
+        if os.path.exists(temp_path):
+            # Como fallback, si no podemos procesar, intentamos dejar el original
+            # Pero si es HEIC, probablemente fallará luego, así que lanzamos excepción
+            if filename.lower().endswith(('.heic', '.heif')):
+                os.remove(temp_path)
+                raise ValueError("No se pudo procesar la imagen HEIC.") from e
+            
+            import shutil
+            final_path = os.path.join(folder, filename)
+            shutil.move(temp_path, final_path)
         return filename
 
 # --- INICIO DEL MOTOR VANGUARD (Safe Boot) ---
@@ -742,30 +774,125 @@ def save_pin_positions(plano_id):
 
 @app.route('/api/analizar_foto', methods=['POST'])
 def analizar_foto():
-    """Analiza una foto sin crear la ubicación todavía, para permitir edición previa"""
+    """
+    Endpoint robusto para análisis de imágenes desde móvil y desktop.
+    Soporta multipart/form-data y JSON (base64).
+    """
+    import traceback
+    import io
+    import base64
+    from PIL import Image
+    import uuid
+    from ai_engine import analizar_imagen_objetos
+    
+    # 1. LOGGING DE DIAGNÓSTICO (Obligatorio por el usuario)
+    ua = request.headers.get("User-Agent", "Unknown")
+    ct = request.content_type or "Unknown"
+    cl = request.content_length or 0
+    app.logger.info(f"[VANGUARD-UPLOAD-DIAGNOSTIC] UA: {ua} | CT: {ct} | CL: {cl}")
+
     try:
-        file = request.files.get('file')
-        if not file:
-            return jsonify({'status': 'error', 'message': 'No se recibió imagen'}), 400
+        img_pil = None
+        orig_filename = "upload.jpg"
+        method_detected = "none"
+
+        # 2. SOPORTE DE FORMATOS (Multipart vs JSON/Base64)
+        if 'multipart/form-data' in ct:
+            method_detected = "multipart"
+            # Soporta 'file' (desktop) e 'image' (móvil/nuevo estándar)
+            file = request.files.get('file') or request.files.get('image')
+            if not file or file.filename == '':
+                return jsonify({'status': 'error', 'message': 'No se recibió imagen en multipart (usa "file" o "image")'}), 400
+            
+            orig_filename = secure_filename(file.filename)
+            img_pil = Image.open(file)
+            app.logger.info(f"[VANGUARD-UPLOAD] Detectado multipart: {orig_filename}")
+
+        elif 'application/json' in ct:
+            method_detected = "json-base64"
+            data = request.get_json()
+            if not data:
+                return jsonify({'status': 'error', 'message': 'JSON inválido o vacío'}), 400
+            
+            # Soporta 'image_base64' o 'image' directamente
+            b64_data = data.get('image_base64') or data.get('image')
+            if not b64_data:
+                return jsonify({'status': 'error', 'message': 'No se encontró campo de imagen base64'}), 400
+            
+            # Limpiar header de base64 si existe (data:image/jpeg;base64,...)
+            if "," in b64_data:
+                b64_data = b64_data.split(",")[1]
+            
+            img_bytes = base64.b64decode(b64_data)
+            img_pil = Image.open(io.BytesIO(img_bytes))
+            app.logger.info("[VANGUARD-UPLOAD] Detectado JSON base64")
+
+        # 3. VERIFICACIÓN Y CONVERSIÓN HEIC (Si Pillow no lo soporta nativamente)
+        if img_pil and (orig_filename.lower().endswith(('.heic', '.heif')) or ct == 'image/heic'):
+            try:
+                from pillow_heif import register_heif_opener
+                register_heif_opener()
+                # Re-abrir si era HEIC para asegurar decodificación correcta
+                if method_detected == "multipart":
+                    file.seek(0)
+                    img_pil = Image.open(file)
+                else:
+                    img_pil = Image.open(io.BytesIO(img_bytes))
+            except Exception as heif_err:
+                app.logger.error(f"[VANGUARD-UPLOAD] Error HEIC: {heif_err}")
+                return jsonify({
+                    "status": "error",
+                    "message": "Formato HEIC no soportado en este entorno",
+                    "detail": "Instalar pillow-heif o convertir a JPEG antes de subir."
+                }), 400
+
+        if not img_pil:
+            return jsonify({'status': 'error', 'message': f'No se pudo procesar la imagen con el método {method_detected}'}), 400
+
+        # 4. NORMALIZACIÓN Y RESIZE SEGURO (Max 1280px)
+        # Convertir siempre a RGB (maneja RGBA, P, etc)
+        if img_pil.mode != "RGB":
+            img_pil = img_pil.convert("RGB")
         
-        filename = secure_filename(file.filename)
-        save_and_compress_image(file, app.config['UPLOAD_FOLDER'], filename)
+        # Resize manteniendo aspecto
+        max_size = 1280
+        if img_pil.width > max_size or img_pil.height > max_size:
+            img_pil.thumbnail((max_size, max_size), Image.Resampling.LANCZOS)
+            app.logger.info(f"[VANGUARD-UPLOAD] Imagen redimensionada a {img_pil.width}x{img_pil.height}")
+
+        # 5. GUARDADO TEMPORAL PARA PROCESAMIENTO
+        unique_id = uuid.uuid4().hex[:8]
+        filename = f"proc_{unique_id}.jpg"
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         
-        # Analizar con IA mejorada
-        from ai_engine import analizar_imagen_objetos
+        # Guardar como JPEG calidad 85 optimizado
+        img_pil.save(filepath, "JPEG", quality=85, optimize=True)
+        final_size = os.path.getsize(filepath)
+        app.logger.info(f"[VANGUARD-UPLOAD] Imagen guardada para IA: {filename} ({final_size} bytes)")
+
+        # 6. LLAMADA A GEMINI
         resultado = analizar_imagen_objetos(filepath, tipo_espacio="general")
         
-        # Retornar resultado completo con metadata enriquecida
         return jsonify({
             'status': 'success',
             'items': resultado.get('items', []),
             'filename': filename,
             'analisis_espacial': resultado.get('analisis_espacial', {}),
-            'texto_detectado': resultado.get('texto_detectado', [])
+            'diagnostic': {
+                'method': method_detected,
+                'final_size_kb': round(final_size / 1024, 2),
+                'dimensions': f"{img_pil.width}x{img_pil.height}"
+            }
         })
+
     except Exception as e:
-        return jsonify({'status': 'error', 'message': str(e)}), 500
+        app.logger.error(f"[VANGUARD-UPLOAD-CRITICAL] Fallo en el endpoint: {str(e)}")
+        traceback.print_exc()
+        return jsonify({
+            "status": "error",
+            "message": "Image processing failed",
+            "detail": str(e)
+        }), 500
 
 @app.route('/api/calibrar_plano', methods=['POST'])
 def calibrar_plano():
