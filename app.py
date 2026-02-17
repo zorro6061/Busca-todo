@@ -17,6 +17,7 @@ basedir = os.path.abspath(os.path.dirname(__file__))
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///' + os.path.join(basedir, 'instance', 'ctrl_f.db'))
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024 # Límite de 10MB para robustez en móvil
+app.config.setdefault("UPLOAD_FOLDER", os.environ.get('UPLOAD_FOLDER', os.path.join(basedir, 'uploads')))
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev_key_ctrl_f_123456789')
 
 db.init_app(app) # Registro obligatorio en el top-level
@@ -159,11 +160,18 @@ def debug_gemini():
             "error_full": str(e),
             "traceback": traceback.format_exc()
         })
-# Asegurar que las carpetas necesarias existan
-instance_path = os.path.join(basedir, 'instance')
-for folder in [app.config['UPLOAD_FOLDER'], instance_path]:
-    if not os.path.exists(folder):
-        os.makedirs(folder)
+# Asegurar que las carpetas necesarias existan de forma robusta
+with app.app_context():
+    upload_path = app.config.get('UPLOAD_FOLDER')
+    instance_path = os.path.join(basedir, 'instance')
+    
+    for folder in [upload_path, instance_path]:
+        if folder:
+            try:
+                os.makedirs(folder, exist_ok=True)
+                print(f"[VANGUARD-STARTUP] Directorio listo: {folder}")
+            except Exception as e:
+                print(f"[VANGUARD-STARTUP] Advertencia creando directorio {folder}: {e}")
 
 def save_and_compress_image(file_storage, folder, filename, max_size=1280, quality=85):
     """Guarda y comprime una imagen para optimizar espacio y velocidad. Soporta HEIC robusto."""
@@ -304,7 +312,7 @@ def serve_sw():
 
 @app.route('/uploads/<filename>')
 def uploaded_file(filename):
-    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+    return send_from_directory(app.config.get('UPLOAD_FOLDER'), filename)
 
 
 @app.errorhandler(404)
@@ -406,8 +414,8 @@ def upload():
             try:
                 filename = secure_filename(file.filename)
                 # La compresión puede cambiar el nombre (ej: .heic -> .jpg)
-                filename = save_and_compress_image(file, app.config['UPLOAD_FOLDER'], filename)
-                filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                filename = save_and_compress_image(file, app.config.get('UPLOAD_FOLDER'), filename)
+                filepath = os.path.join(app.config.get('UPLOAD_FOLDER'), filename)
                 
                 ext = filename.rsplit('.', 1)[1].lower() if '.' in filename else ''
                 
@@ -416,9 +424,9 @@ def upload():
                     from video_processor import extraer_fotogramas
                     from ai_engine import analizar_imagen_objetos
                     
-                    frames = extraer_fotogramas(filepath, app.config['UPLOAD_FOLDER'])
+                    frames = extraer_fotogramas(filepath, app.config.get('UPLOAD_FOLDER'))
                     for i, frame_filename in enumerate(frames):
-                        frame_path = os.path.join(app.config['UPLOAD_FOLDER'], frame_filename)
+                        frame_path = os.path.join(app.config.get('UPLOAD_FOLDER'), frame_filename)
                         resultado = analizar_imagen_objetos(frame_path)
                         
                         nueva_ubi = Ubicacion(
@@ -656,14 +664,14 @@ def nuevo_plano():
         filename = None
         if file and file.filename != '':
             filename = secure_filename(file.filename)
-            save_and_compress_image(file, app.config['UPLOAD_FOLDER'], filename)
+            save_and_compress_image(file, app.config.get('UPLOAD_FOLDER'), filename)
         elif drawing_data:
             # Procesar imagen del canvas (base64)
             try:
                 header, encoded = drawing_data.split(",", 1)
                 data = base64.b64decode(encoded)
                 filename = f"plano_{uuid.uuid4().hex[:8]}.png"
-                with open(os.path.join(app.config['UPLOAD_FOLDER'], filename), "wb") as f:
+                with open(os.path.join(app.config.get('UPLOAD_FOLDER'), filename), "wb") as f:
                     f.write(data)
             except Exception as e:
                 flash(f"Error al guardar el dibujo: {e}")
@@ -692,7 +700,7 @@ def eliminar_plano(plano_id):
     # Intentar borrar el archivo físico
     if plano.imagen_path:
         try:
-            os.remove(os.path.join(app.config['UPLOAD_FOLDER'], plano.imagen_path))
+            os.remove(os.path.join(app.config.get('UPLOAD_FOLDER'), plano.imagen_path))
         except:
             pass
             
@@ -863,7 +871,7 @@ def analizar_foto():
         # 5. GUARDADO TEMPORAL PARA PROCESAMIENTO
         unique_id = uuid.uuid4().hex[:8]
         filename = f"proc_{unique_id}.jpg"
-        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        filepath = os.path.join(app.config.get('UPLOAD_FOLDER'), filename)
         
         # Guardar como JPEG calidad 85 optimizado
         img_pil.save(filepath, "JPEG", quality=85, optimize=True)
@@ -943,8 +951,8 @@ def crear_ubicacion_en_mapa():
             filename = secure_filename(file.filename)
             if not filename:
                 filename = f"ubicacion_{uuid.uuid4().hex[:8]}.jpg"
-            save_and_compress_image(file, app.config['UPLOAD_FOLDER'], filename)
-            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            save_and_compress_image(file, app.config.get('UPLOAD_FOLDER'), filename)
+            filepath = os.path.join(app.config.get('UPLOAD_FOLDER'), filename)
         elif temp_filename:
             filename = temp_filename
             
@@ -971,7 +979,7 @@ def crear_ubicacion_en_mapa():
             import json
             objetos_finales = json.loads(objetos_json)
         else:
-            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            filepath = os.path.join(app.config.get('UPLOAD_FOLDER'), filename)
             from ai_engine import analizar_imagen_objetos
             resultado = analizar_imagen_objetos(filepath, tipo_espacio="general")
             objetos_finales = resultado.get('items', [])
@@ -1052,8 +1060,8 @@ def upload_plano_simple(plano_id):
     
     if file and file.filename != '':
         filename = secure_filename(file.filename)
-        save_and_compress_image(file, app.config['UPLOAD_FOLDER'], filename)
-        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        save_and_compress_image(file, app.config.get('UPLOAD_FOLDER'), filename)
+        filepath = os.path.join(app.config.get('UPLOAD_FOLDER'), filename)
         
         # Analizar con IA
         from ai_engine import analizar_imagen_objetos
@@ -1100,13 +1108,13 @@ def editar_plano(plano_id):
             # Eliminar imagen anterior
             if plano.imagen_path:
                 try:
-                    os.remove(os.path.join(app.config['UPLOAD_FOLDER'], plano.imagen_path))
+                    os.remove(os.path.join(app.config.get('UPLOAD_FOLDER'), plano.imagen_path))
                 except:
                     pass
             
             # Guardar nueva imagen
             filename = f"plano_edit_{uuid.uuid4().hex[:8]}.png"
-            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            filepath = os.path.join(app.config.get('UPLOAD_FOLDER'), filename)
             with open(filepath, 'wb') as f:
                 f.write(image_bytes)
             
@@ -1265,16 +1273,16 @@ def video_scanner(plano_id):
         if file:
             # Guardar video y procesar
             video_filename = f"video_{uuid.uuid4().hex[:8]}_{secure_filename(file.filename)}"
-            video_path = os.path.join(app.config['UPLOAD_FOLDER'], video_filename)
+            video_path = os.path.join(app.config.get('UPLOAD_FOLDER'), video_filename)
             file.save(video_path)
             
             from video_processor import extraer_fotogramas
-            frame_filenames = extraer_fotogramas(video_path, app.config['UPLOAD_FOLDER'])
+            frame_filenames = extraer_fotogramas(video_path, app.config.get('UPLOAD_FOLDER'))
             
             # Analizar frames
             from ai_engine import analizar_imagen_objetos
             for f_name in frame_filenames:
-                f_path = os.path.join(app.config['UPLOAD_FOLDER'], f_name)
+                f_path = os.path.join(app.config.get('UPLOAD_FOLDER'), f_name)
                 res = analizar_imagen_objetos(f_path)
                 frames.append({
                     'path': f_name,
@@ -1285,7 +1293,7 @@ def video_scanner(plano_id):
             import json
             from flask import session
             temp_frames_file = f"frames_{uuid.uuid4().hex}.json"
-            temp_frames_path = os.path.join(app.config['UPLOAD_FOLDER'], temp_frames_file)
+            temp_frames_path = os.path.join(app.config.get('UPLOAD_FOLDER'), temp_frames_file)
             
             with open(temp_frames_path, 'w') as f:
                 json.dump(frames, f)
@@ -1308,7 +1316,7 @@ def save_video_scans(plano_id):
     frames = []
     
     if temp_file:
-        temp_path = os.path.join(app.config['UPLOAD_FOLDER'], temp_file)
+        temp_path = os.path.join(app.config.get('UPLOAD_FOLDER'), temp_file)
         if os.path.exists(temp_path):
             with open(temp_path, 'r') as f:
                 frames = json.load(f)
@@ -1343,7 +1351,7 @@ def save_video_scans(plano_id):
         # Limpiar sesión y archivo
         if temp_file:
             try:
-                os.remove(os.path.join(app.config['UPLOAD_FOLDER'], temp_file))
+                os.remove(os.path.join(app.config.get('UPLOAD_FOLDER'), temp_file))
             except:
                 pass
         session.pop('temp_frames_file', None)
@@ -1367,12 +1375,12 @@ def procesar_video():
         
         # Guardar video temporalmente
         video_filename = f"video_{uuid.uuid4().hex[:8]}_{secure_filename(file.filename)}"
-        video_path = os.path.join(app.config['UPLOAD_FOLDER'], video_filename)
+        video_path = os.path.join(app.config.get('UPLOAD_FOLDER'), video_filename)
         file.save(video_path)
         
         # Extraer fotogramas
         from video_processor import extraer_fotogramas
-        frames = extraer_fotogramas(video_path, app.config['UPLOAD_FOLDER'], intervalo_segundos=intervalo)
+        frames = extraer_fotogramas(video_path, app.config.get('UPLOAD_FOLDER'), intervalo_segundos=intervalo)
         
         if not frames:
             os.remove(video_path)
@@ -1398,7 +1406,7 @@ def procesar_video():
         escenas = []
         
         for i, frame_filename in enumerate(frames):
-            frame_path = os.path.join(app.config['UPLOAD_FOLDER'], frame_filename)
+            frame_path = os.path.join(app.config.get('UPLOAD_FOLDER'), frame_filename)
             
             try:
                 resultado = analizar_imagen_objetos(frame_path, tipo_espacio="general")
