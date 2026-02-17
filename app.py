@@ -118,10 +118,21 @@ def debug_gemini():
         except Exception as e:
             env_info["direct_access_test"] = f"FAILED: {str(e)}"
 
+        # 4. PRUEBA DE ESTABILIDAD (v1 vs v1beta)
+        try:
+            # El cliente ya está forzado a v1 en ai_engine.py
+            test_resp = client.models.generate_content(
+                model='gemini-1.5-flash',
+                contents="test"
+            )
+            env_info["v1_stable_test"] = "SUCCESS"
+        except Exception as e:
+            env_info["v1_stable_test"] = f"FAILED: {str(e)}"
+
         return jsonify({
             "status": "diagnostic_ready",
             "env": env_info,
-            "recommendation": "Si 'models_available' es [] pero 'direct_access_test' es SUCCESS, la app funcionará. Si ambos fallan, falta activar 'Generative Language API' en el Cloud Console."
+            "recommendation": "Si v1_stable_test falla con NOT_FOUND, debes ACTIVAR la API aquí: https://console.cloud.google.com/apis/library/generativelanguage.googleapis.com"
         })
 
     except Exception as e:

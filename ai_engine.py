@@ -22,9 +22,12 @@ def get_client():
     
     if GEMINI_API_KEY:
         try:
-            # La nueva SDK usa el cliente unificado (API v1 estable)
-            from google import genai as genai_pkg
-            _client = genai.Client(api_key=GEMINI_API_KEY)
+            # Forzamos v1 estable para evitar el error 404 de v1beta visto en Render
+            from google import genai as genai_module
+            _client = genai_module.Client(
+                api_key=GEMINI_API_KEY,
+                http_options={'api_version': 'v1'}
+            )
             key_prefix = GEMINI_API_KEY[:6] if GEMINI_API_KEY else "None"
             # Confirmación explícita para diagnóstico
             logger.info(f"[GEMINI-DIAGNOSTIC] API Key cargada: True")
@@ -128,38 +131,33 @@ FORMATO DE RESPUESTA (JSON ESTRICTO):
 """
 
         # 3. Ejecución con Fallback Dinámico y Logging Extendido
-        model_primario = "gemini-1.5-flash"
-        model_fallback = "gemini-1.5-pro"
+        # Intentamos con varios nombres de modelo por si alguno está restringido o deprecado
+        modelos_a_probar = [
+            "gemini-1.5-flash", 
+            "gemini-1.5-flash-latest", 
+            "gemini-2.0-flash", 
+            "gemini-1.5-pro"
+        ]
         
         text_response = None
-        current_used_model = model_primario
+        current_used_model = None
         
-        try:
-            logger.info(f"[AI-RUNTIME] Intentando con: {current_used_model}...")
-            response = client.models.generate_content(
-                model=current_used_model,
-                contents=[prompt, img]
-            )
-            text_response = response.text
-        except Exception as flash_err:
-            logger.error(f"[AI-RUNTIME] Error en {current_used_model}: {str(flash_err)}")
-            # Loguear detalles del error si están disponibles
+        for model_name in modelos_a_probar:
             try:
-                if hasattr(flash_err, 'response'):
-                    logger.error(f"[AI-RUNTIME] Detalles del error (response): {flash_err.response}")
-            except: pass
-
-            logger.warning(f"[AI-RUNTIME] Escalando a modelo de respaldo: {model_fallback}...")
-            current_used_model = model_fallback
-            try:
+                logger.info(f"[AI-RUNTIME] Probando modelo: {model_name}...")
                 response = client.models.generate_content(
-                    model=current_used_model,
+                    model=model_name,
                     contents=[prompt, img]
                 )
                 text_response = response.text
-            except Exception as pro_err:
-                logger.error(f"[AI-RUNTIME] Error crítico en fallback {current_used_model}: {str(pro_err)}")
-                raise pro_err
+                current_used_model = model_name
+                break # Éxito, salimos del bucle
+            except Exception as e:
+                logger.warning(f"[AI-RUNTIME] Falló {model_name}: {str(e)}")
+                continue
+
+        if not text_response:
+            raise ValueError("Ninguno de los modelos de Gemini respondió (verificar API Key y cuotas)")
 
         logger.info(f"[AI-RUNTIME] Respuesta exitosa recibida usando {current_used_model}")
 
