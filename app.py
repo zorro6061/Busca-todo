@@ -1589,4 +1589,6 @@ def asignar_zona_objeto(obj_id):
 if __name__ == '__main__':
     # Usar el puerto de la variable de entorno PORT para Render
     port = int(os.environ.get('PORT', 5001))
+    print(f"[VANGUARD-STARTUP] Intentando enlazar al puerto: {port}")
+    app.logger.info(f"[VANGUARD-STARTUP] Arrancando servidor en puerto: {port}")
     app.run(debug=False, host='0.0.0.0', port=port)
