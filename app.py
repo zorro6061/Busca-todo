@@ -12,6 +12,15 @@ GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
 
 app = Flask(__name__)
 app.url_map.strict_slashes = False
+
+# Configuración de Producción
+app.debug = os.environ.get('FLASK_DEBUG', 'false').lower() == 'true'
+basedir = os.path.abspath(os.path.dirname(__file__))
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///' + os.path.join(basedir, 'instance', 'ctrl_f.db'))
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['UPLOAD_FOLDER'] = os.environ.get('UPLOAD_FOLDER', 'uploads') 
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev_key_ctrl_f_123456789')
+
 db.init_app(app) # Registro obligatorio en el top-level
 
 # DIAGNÓSTICO DE ARRANQUE (Visible en Gunicorn)
@@ -123,14 +132,6 @@ def debug_gemini():
             "error_full": str(e),
             "traceback": traceback.format_exc()
         })
-# Configuración de Producción
-app.debug = os.environ.get('FLASK_DEBUG', 'false').lower() == 'true'
-basedir = os.path.abspath(os.path.dirname(__file__))
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///' + os.path.join(basedir, 'instance', 'ctrl_f.db'))
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['UPLOAD_FOLDER'] = os.environ.get('UPLOAD_FOLDER', 'uploads') 
-app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev_key_ctrl_f_123456789')
-
 # Asegurar que las carpetas necesarias existan
 instance_path = os.path.join(basedir, 'instance')
 for folder in [app.config['UPLOAD_FOLDER'], instance_path]:
