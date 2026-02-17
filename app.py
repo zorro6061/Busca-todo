@@ -129,10 +129,18 @@ def debug_gemini():
         except Exception as e:
             env_info["v1_stable_test"] = f"FAILED: {str(e)}"
 
+        # 5. VERIFICACIÓN DE INTEGRIDAD DE LA KEY
+        api_key = os.getenv("GEMINI_API_KEY", "")
+        env_info["key_debug"] = {
+            "length": len(api_key),
+            "starts_with_AIza": api_key.startswith("AIza"),
+            "has_spaces": " " in api_key or "\n" in api_key or "\r" in api_key
+        }
+
         return jsonify({
             "status": "diagnostic_ready",
             "env": env_info,
-            "recommendation": "Si v1_stable_test falla con NOT_FOUND, debes ACTIVAR la API aquí: https://console.cloud.google.com/apis/library/generativelanguage.googleapis.com"
+            "recommendation": "Si está habilitado en el Console pero sigue dando 404, la Key NO pertenece a ese proyecto. SOLUCIÓN: Crea una NUEVA Key en AI Studio (https://aistudio.google.com/app/apikey) y reemplázala en Render."
         })
 
     except Exception as e:
