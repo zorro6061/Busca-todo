@@ -97,10 +97,21 @@ def debug_gemini():
         except Exception as list_err:
             env_info["list_error"] = str(list_err)
 
+        # 4. PRUEBA DE FALLBACK (Direct Access)
+        try:
+            # Forzamos una generación ligera para probar si el acceso directo funciona aunque el listado falle
+            test_resp = client.models.generate_content(
+                model='gemini-1.5-flash',
+                contents="test"
+            )
+            env_info["direct_access_test"] = "SUCCESS"
+        except Exception as e:
+            env_info["direct_access_test"] = f"FAILED: {str(e)}"
+
         return jsonify({
             "status": "diagnostic_ready",
             "env": env_info,
-            "recommendation": "Si ves models_available vacio [], la API Key no tiene permisos para GenAI."
+            "recommendation": "Si 'models_available' es [] pero 'direct_access_test' es SUCCESS, la app funcionará. Si ambos fallan, falta activar 'Generative Language API' en el Cloud Console."
         })
 
     except Exception as e:
