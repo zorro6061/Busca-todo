@@ -16,7 +16,7 @@ from google.cloud import storage
 # Cargar variables de entorno al inicio (Fase 20)
 load_dotenv()
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
-GCP_BUCKET_NAME = os.environ.get('GCP_BUCKET_NAME')
+GCP_BUCKET_NAME = os.environ.get('GCP_BUCKET_NAME', 'busca-todo-fotos-2024')
 
 # Inicialización de GCS (Lazy/Global)
 gcs_client = None
