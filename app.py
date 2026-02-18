@@ -322,51 +322,45 @@ _initialized = False
 
 @app.before_request
 def initialize_vanguard():
-    # BYPASS CRÍTICO: El chequeo de salud NO debe activar la base de datos
-    # Render suele golpear '/' o '/alive' or '/health'
+    # BYPASS CRÍTICO: El chequeo de salud NO debe activar la base de datos (rápido)
     if request.path in ['/alive', '/health', '/static/manifest.json', '/static/sw.js']:
         return
         
     global _initialized
     if not _initialized:
-        _initialized = True
-        vanguard_log("Iniciando secuencia de boot (Deferred)...")
+        vanguard_log("Iniciando secuencia de boot (Sync)...")
         initialize_folders()
         
-        # Ejecutar DB init en un hilo separado para no bloquear el Port Scan de Render
-        import threading
-        def deferred_db():
-            with app.app_context():
-                try:
-                    vanguard_log("Hilo DB: Ejecutando db.create_all()...")
-                    db.create_all()
-                    vanguard_log("Hilo DB: db.create_all() completado.")
-                    
-                    from sqlalchemy import text
-                    vanguard_log("Hilo DB: Verificando migraciones...")
-                    migraciones = [
-                        ('ALTER TABLE muebles ADD COLUMN nombre VARCHAR(100) DEFAULT "Mueble Sin Nombre"', "muebles_nombre"),
-                        ('ALTER TABLE objetos ADD COLUMN tags_semanticos TEXT', "objetos_tags"),
-                        ('ALTER TABLE ubicaciones ADD COLUMN items_json TEXT', "ubicaciones_json"),
-                        ('ALTER TABLE objetos RENAME COLUMN categoria TO categoria_principal', "obj_rename_cat"),
-                        ('ALTER TABLE objetos ADD COLUMN categoria_principal VARCHAR(50)', "obj_add_cat_fallback")
-                    ]
-                    
-                    for sql, name in migraciones:
-                        try:
-                            db.session.execute(text(sql))
-                            db.session.commit()
-                            vanguard_log(f"Hilo DB: Migración {name} aplicada.")
-                        except Exception:
-                            db.session.rollback()
-                            # Ignorar fallos de migración (usualmente es porque la columna ya existe)
-                    
-                    vanguard_log("Hilo DB: Secuencia de arranque finalizada con éxito.")
-                except Exception as e:
-                    vanguard_log(f"Hilo DB: ERROR CRÍTICO en arranque: {e}")
-
-        threading.Thread(target=deferred_db, daemon=True).start()
-        vanguard_log("Hilo DB lanzado. La app ya puede responder peticiones.")
+        with app.app_context():
+            try:
+                vanguard_log("DB: Ejecutando db.create_all()...")
+                db.create_all()
+                vanguard_log("DB: db.create_all() completado.")
+                
+                from sqlalchemy import text
+                vanguard_log("DB: Verificando migraciones...")
+                migraciones = [
+                    ('ALTER TABLE muebles ADD COLUMN nombre VARCHAR(100) DEFAULT "Mueble Sin Nombre"', "muebles_nombre"),
+                    ('ALTER TABLE objetos ADD COLUMN tags_semanticos TEXT', "objetos_tags"),
+                    ('ALTER TABLE ubicaciones ADD COLUMN items_json TEXT', "ubicaciones_json"),
+                    ('ALTER TABLE objetos RENAME COLUMN categoria TO categoria_principal', "obj_rename_cat"),
+                    ('ALTER TABLE objetos ADD COLUMN categoria_principal VARCHAR(50)', "obj_add_cat_fallback")
+                ]
+                
+                for sql, name in migraciones:
+                    try:
+                        db.session.execute(text(sql))
+                        db.session.commit()
+                        vanguard_log(f"DB: Migración {name} aplicada.")
+                    except Exception:
+                        db.session.rollback()
+                
+                vanguard_log("DB: Secuencia de arranque finalizada con éxito.")
+            except Exception as e:
+                vanguard_log(f"DB: ERROR CRÍTICO en arranque: {e}")
+        
+        _initialized = True
+        vanguard_log("Vanguard Engine: Ready.")
 
 
 
