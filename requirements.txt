@@ -9,4 +9,4 @@ Pillow
 pillow-heif
 opencv-python-headless
 numpy
-gunicorn
+psycopg2-binary==2.9.9
