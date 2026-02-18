@@ -1,0 +1,13 @@
+__pycache__/
+*.py[cod]
+*$py.class
+.env
+.git/
+.gitignore
+instance/
+uploads/
+.gemini/
+.agent/
+*.db
+*.sqlite
+gcp-credentials.json
