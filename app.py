@@ -11,10 +11,21 @@ from flask import Flask, render_template, request, redirect, url_for, flash, jso
 from models import db, Ubicacion, Objeto, Plano, Config
 from werkzeug.utils import secure_filename
 from dotenv import load_dotenv
+from google.cloud import storage
 
 # Cargar variables de entorno al inicio (Fase 20)
 load_dotenv()
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
+GCP_BUCKET_NAME = os.environ.get('GCP_BUCKET_NAME')
+
+# Inicialización de GCS (Lazy/Global)
+gcs_client = None
+if os.environ.get('GOOGLE_APPLICATION_CREDENTIALS'):
+    try:
+        gcs_client = storage.Client()
+        print(f"[VANGUARD-GCS] Cliente inicializado | Bucket: {GCP_BUCKET_NAME}")
+    except Exception as e:
+        print(f"[VANGUARD-GCS-ERROR] Fallo inicializando cliente: {e}")
 
 app = Flask(__name__)
 app.url_map.strict_slashes = False
@@ -184,6 +195,20 @@ def debug_gemini():
         })
 # Deferido a initialize_vanguard
 
+def upload_to_gcs(local_path, destination_blob_name):
+    """Sube un archivo a Google Cloud Storage."""
+    if not gcs_client or not GCP_BUCKET_NAME:
+        return False
+    try:
+        bucket = gcs_client.bucket(GCP_BUCKET_NAME)
+        blob = bucket.blob(destination_blob_name)
+        blob.upload_from_filename(local_path)
+        app.logger.info(f"[VANGUARD-GCS] Subido: {destination_blob_name}")
+        return True
+    except Exception as e:
+        app.logger.error(f"[VANGUARD-GCS-ERROR] Fallo subiendo {destination_blob_name}: {e}")
+        return False
+
 def save_and_compress_image(file_storage, folder, filename, max_size=1280, quality=85):
     """Guarda y comprime una imagen para optimizar espacio y velocidad. Soporta HEIC robusto."""
     from PIL import Image
@@ -227,6 +252,9 @@ def save_and_compress_image(file_storage, folder, filename, max_size=1280, quali
         final_path = os.path.join(folder, final_filename)
         img.save(final_path, "JPEG", quality=quality, optimize=True)
         
+        # 5. Mirroring a Google Cloud Storage (Persistencia)
+        upload_to_gcs(final_path, final_filename)
+        
         # Eliminar temporal
         if os.path.exists(temp_path):
             os.remove(temp_path)
@@ -235,15 +263,12 @@ def save_and_compress_image(file_storage, folder, filename, max_size=1280, quali
     except Exception as e:
         app.logger.error(f"[VANGUARD-IMG-ERROR] Fallo comprimiendo {filename}: {e}")
         if os.path.exists(temp_path):
-            # Como fallback, si no podemos procesar, intentamos dejar el original
-            # Pero si es HEIC, probablemente fallará luego, así que lanzamos excepción
-            if filename.lower().endswith(('.heic', '.heif')):
-                os.remove(temp_path)
-                raise ValueError("No se pudo procesar la imagen HEIC.") from e
-            
             import shutil
             final_path = os.path.join(folder, filename)
             shutil.move(temp_path, final_path)
+            
+            # Intentar subir el original como fallback si no pudimos comprimir
+            upload_to_gcs(final_path, filename)
         return filename
 
 # --- INICIO DEL MOTOR VANGUARD (Safe Boot) ---
