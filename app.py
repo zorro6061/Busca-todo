@@ -398,112 +398,121 @@ def upgrade():
 
 @app.route('/upload', methods=['GET', 'POST'])
 def upload():
+    """
+    Endpoint de carga con LOGGING EXHAUSTIVO para diagnóstico de Xiaomi.
+    """
+    import traceback
+    import io
+    from PIL import Image
+    import uuid
+    from ai_engine import analizar_imagen_objetos
+    import json
+
     if request.method == 'POST':
-        if 'file' not in request.files:
-            flash('No hay archivo')
-            return redirect(request.url)
-        
-        file = request.files['file']
-        nombre_ubicacion = request.form.get('nombre_ubicacion', 'Sin nombre')
-        
-        if file.filename == '':
-            flash('No se seleccionó ningún archivo')
-            return redirect(request.url)
-        
-        if file:
-            try:
-                filename = secure_filename(file.filename)
-                # La compresión puede cambiar el nombre (ej: .heic -> .jpg)
-                filename = save_and_compress_image(file, app.config.get('UPLOAD_FOLDER'), filename)
-                filepath = os.path.join(app.config.get('UPLOAD_FOLDER'), filename)
-                
-                ext = filename.rsplit('.', 1)[1].lower() if '.' in filename else ''
-                
-                # Motor de Video OmniVision
-                if ext in ['mp4', 'mov', 'avi']:
-                    from video_processor import extraer_fotogramas
-                    from ai_engine import analizar_imagen_objetos
-                    
-                    frames = extraer_fotogramas(filepath, app.config.get('UPLOAD_FOLDER'))
-                    for i, frame_filename in enumerate(frames):
-                        frame_path = os.path.join(app.config.get('UPLOAD_FOLDER'), frame_filename)
-                        resultado = analizar_imagen_objetos(frame_path)
-                        
-                        nueva_ubi = Ubicacion(
-                            nombre=f"{nombre_ubicacion} (Puntual {i+1})", 
-                            imagen_path=frame_filename,
-                            tags=resultado.get('tags', '')
-                        )
-                        db.session.add(nueva_ubi)
-                        db.session.flush()
+        # 1. LOGGING COMPLETO AL INICIO (Requerido por el usuario)
+        print("========== NEW REQUEST (UPLOAD) ==========")
+        print("User-Agent:", request.headers.get("User-Agent"))
+        print("Content-Type:", request.content_type)
+        print("Content-Length:", request.content_length)
+        print("Headers:", dict(request.headers))
+        print("Files keys:", list(request.files.keys()))
+        print("Form keys:", list(request.form.keys()))
+        print("JSON:", request.get_json(silent=True))
 
-                        for item in resultado.get('items', []):
-                            nuevo_obj = Objeto(
-                                nombre=item.get('nombre', 'Objeto detectado'),
-                                categoria_principal=item.get('categoria_principal', 'General'),
-                                categoria_secundaria=item.get('subcategoria', ''),
-                                confianza=item.get('confianza', 0.8),
-                                ubicacion_id=nueva_ubi.id,
-                                tags_semanticos=item.get('tags_semanticos', '')
-                            )
-                            db.session.add(nuevo_obj)
+        try:
+            # 2. LOGGING ESPECÍFICO DEL ARCHIVO
+            file = request.files.get("file")
+            if file:
+                print("Filename:", file.filename)
+                print("Mimetype:", file.mimetype)
+                data = file.read()
+                print("Raw size bytes:", len(data))
+                file.seek(0)
+            else:
+                print("No file found in request.files (key 'file')")
+
+            # Lógica original corregida e indentada
+            if not file or file.filename == '':
+                flash('No hay archivo')
+                return redirect(request.url)
+            
+            nombre_ubicacion = request.form.get('nombre_ubicacion', 'Sin nombre')
+            filename = secure_filename(file.filename)
+            
+            # Compresión y guardado
+            filename = save_and_compress_image(file, app.config.get('UPLOAD_FOLDER'), filename)
+            filepath = os.path.join(app.config.get('UPLOAD_FOLDER'), filename)
+            
+            ext = filename.rsplit('.', 1)[1].lower() if '.' in filename else ''
+            
+            # Motor de Video OmniVision
+            if ext in ['mp4', 'mov', 'avi']:
+                from video_processor import extraer_fotogramas
+                frames = extraer_fotogramas(filepath, app.config.get('UPLOAD_FOLDER'))
+                for i, frame_filename in enumerate(frames):
+                    frame_path = os.path.join(app.config.get('UPLOAD_FOLDER'), frame_filename)
+                    resultado = analizar_imagen_objetos(frame_path)
                     
-                    db.session.commit()
-                    flash(f'OmniVision procesó el video. Se crearon {len(frames)} espacios automáticamente.')
-                    return redirect(url_for('gallery'))
-                
-                else:
-                    # Procesamiento de imagen estándar con IA mejorada
-                    from ai_engine import analizar_imagen_objetos
-                    import json
-                    
-                    resultado = analizar_imagen_objetos(filepath, tipo_espacio="general")
-                    
-                    # Crear ubicación con datos mejorados
-                    nueva_ubicacion = Ubicacion(
-                        nombre=nombre_ubicacion, 
-                        imagen_path=filename,
-                        tags=resultado.get('tags', ''),
-                        items_json=json.dumps(resultado.get('items', []))  # JSON completo con metadata
+                    nueva_ubi = Ubicacion(
+                        nombre=f"{nombre_ubicacion} (Puntual {i+1})", 
+                        imagen_path=frame_filename,
+                        tags=resultado.get('tags', '')
                     )
-                    db.session.add(nueva_ubicacion)
-                    db.session.flush() # Flush para obtener ID
-                    
-                    # Crear objetos con categorización mejorada
-                    for item in resultado.get('items', []):
-                        # Categoría jerárquica
-                        categoria_completa = item.get('categoria_principal', '')
-                        if item.get('subcategoria'):
-                            categoria_completa += f" > {item['subcategoria']}"
-                        
-                        if not categoria_completa:
-                            categoria_completa = item.get('categoria', 'General')
-                        
-                        # Tags semánticos pre-generados
-                        tags_semanticos = item.get('tags_semanticos', '')
+                    db.session.add(nueva_ubi)
+                    db.session.flush()
 
-                        nuevo_objeto = Objeto(
+                    for item in resultado.get('items', []):
+                        nuevo_obj = Objeto(
                             nombre=item.get('nombre', 'Objeto detectado'),
                             categoria_principal=item.get('categoria_principal', 'General'),
                             categoria_secundaria=item.get('subcategoria', ''),
-                            descripcion=item.get('descripcion', ''),
                             confianza=item.get('confianza', 0.8),
-                            ubicacion_id=nueva_ubicacion.id,
-                            tags_semanticos=tags_semanticos
+                            ubicacion_id=nueva_ubi.id,
+                            tags_semanticos=item.get('tags_semanticos', '')
                         )
-                        db.session.add(nuevo_objeto)
-                    
-                    db.session.commit()
-                    flash(f'✓ "{nombre_ubicacion}" blindado con éxito. {len(resultado.get("items", []))} objetos indexados.')
-                    return redirect(url_for('gallery'))
+                        db.session.add(nuevo_obj)
+                
+                db.session.commit()
+                flash(f'OmniVision procesó el video. Se crearon {len(frames)} espacios automáticamente.')
+                return redirect(url_for('gallery'))
+            
+            else:
+                # Procesamiento de imagen estándar
+                resultado = analizar_imagen_objetos(filepath, tipo_espacio="general")
+                
+                nueva_ubicacion = Ubicacion(
+                    nombre=nombre_ubicacion, 
+                    imagen_path=filename,
+                    tags=resultado.get('tags', ''),
+                    items_json=json.dumps(resultado.get('items', []))
+                )
+                db.session.add(nueva_ubicacion)
+                db.session.flush()
+                
+                for item in resultado.get('items', []):
+                    nuevo_objeto = Objeto(
+                        nombre=item.get('nombre', 'Objeto detectado'),
+                        categoria_principal=item.get('categoria_principal', 'General'),
+                        categoria_secundaria=item.get('subcategoria', ''),
+                        descripcion=item.get('descripcion', ''),
+                        confianza=item.get('confianza', 0.8),
+                        ubicacion_id=nueva_ubicacion.id,
+                        tags_semanticos=item.get('tags_semanticos', '')
+                    )
+                    db.session.add(nuevo_objeto)
+                
+                db.session.commit()
+                flash(f'✓ "{nombre_ubicacion}" indexado con éxito.')
+                return redirect(url_for('gallery'))
 
-            except Exception as e:
-                import traceback
-                error_details = traceback.format_exc()
-                app.logger.error(f"FALLO CRÍTICO EN UPLOAD:\n{error_details}")
-                db.session.rollback()
-                flash('⚠️ Error procesando la imagen o video. Verifique que no sea demasiado pesado o inválido.')
-                return redirect(request.url)
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            db.session.rollback()
+            return jsonify({
+                "status": "error",
+                "message": str(e)
+            }), 500
             
     return render_template('upload.html')
 
