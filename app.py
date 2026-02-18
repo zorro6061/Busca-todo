@@ -23,15 +23,14 @@ GCP_BUCKET_NAME = os.environ.get('GCP_BUCKET_NAME', 'busca-todo-fotos-2024')
 
 # Inicialización de GCS (Lazy/Global)
 gcs_client = None
-if os.environ.get('GOOGLE_APPLICATION_CREDENTIALS'):
-    try:
-        from google.cloud import storage
-        gcs_client = storage.Client()
-        vanguard_log(f"GCS Cliente inicializado | Bucket: {GCP_BUCKET_NAME}")
-    except Exception as e:
-        vanguard_log(f"FALLO GCS: {e}")
-else:
-    vanguard_log("GCS omitido: faltan credenciales.")
+try:
+    from google.cloud import storage
+    # En Cloud Run no hace falta gcp-credentials.json, usa la identidad por defecto
+    gcs_client = storage.Client()
+    vanguard_log(f"GCS Cliente inicializado | Bucket: {GCP_BUCKET_NAME}")
+except Exception as e:
+    vanguard_log(f"GCS en modo pasivo (sin credenciales o error): {e}")
+    gcs_client = None
 
 app = Flask(__name__)
 app.url_map.strict_slashes = False
