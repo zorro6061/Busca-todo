@@ -1,4 +1,12 @@
+print("[VANGUARD-STARTUP] --- BOOTING APP.PY ---")
 import os
+import sys
+import time
+
+# Registrar inicio inmediato
+start_time = time.time()
+print(f"[VANGUARD-STARTUP] PID: {os.getpid()} | CWD: {os.getcwd()}")
+
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, send_from_directory
 from models import db, Ubicacion, Objeto, Plano, Config
 from werkzeug.utils import secure_filename
@@ -39,8 +47,22 @@ port_env = os.environ.get('PORT')
 print(f"[VANGUARD-STARTUP] Puerto detectado en entorno: {port_env or 'Default 5001'}")
 
 @app.route('/alive')
+@app.route('/health')
 def alive_check():
     return "Busca-todo Vanguard Engine: ONLINE", 200
+
+def initialize_folders():
+    """Crea las carpetas necesarias si no existen."""
+    basedir = os.path.abspath(os.path.dirname(__file__))
+    upload_path = app.config.get('UPLOAD_FOLDER')
+    instance_path = os.path.join(basedir, 'instance')
+    
+    for folder in [upload_path, instance_path]:
+        if folder:
+            try:
+                os.makedirs(folder, exist_ok=True)
+            except Exception as e:
+                app.logger.error(f"[VANGUARD-STARTUP] Error carpetas: {e}")
 
 @app.route('/debug-models')
 def debug_models():
@@ -160,18 +182,7 @@ def debug_gemini():
             "error_full": str(e),
             "traceback": traceback.format_exc()
         })
-# Asegurar que las carpetas necesarias existan de forma robusta
-with app.app_context():
-    upload_path = app.config.get('UPLOAD_FOLDER')
-    instance_path = os.path.join(basedir, 'instance')
-    
-    for folder in [upload_path, instance_path]:
-        if folder:
-            try:
-                os.makedirs(folder, exist_ok=True)
-                print(f"[VANGUARD-STARTUP] Directorio listo: {folder}")
-            except Exception as e:
-                print(f"[VANGUARD-STARTUP] Advertencia creando directorio {folder}: {e}")
+# Deferido a initialize_vanguard
 
 def save_and_compress_image(file_storage, folder, filename, max_size=1280, quality=85):
     """Guarda y comprime una imagen para optimizar espacio y velocidad. Soporta HEIC robusto."""
@@ -241,13 +252,15 @@ _initialized = False
 @app.before_request
 def initialize_vanguard():
     # BYPASS CRÍTICO: No bloquear el chequeo de salud de Render
-    if request.path == '/alive':
+    # Render suele golpear '/' o '/alive' or '/health'
+    if request.path in ['/alive', '/health', '/static/manifest.json', '/static/sw.js']:
         return
         
     global _initialized
     if not _initialized:
         try:
-            print("[VANGUARD-STARTUP] Iniciando secuencia de boot...")
+            print("[VANGUARD-STARTUP] Iniciando secuencia de boot (Deferred)...")
+            initialize_folders()
             with app.app_context():
                 print("[VANGUARD-STARTUP] Ejecutando db.create_all()...")
                 db.create_all()
