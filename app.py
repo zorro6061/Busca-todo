@@ -1,20 +1,18 @@
-print("[VANGUARD-STARTUP] --- STAGE 0: MODULE LOAD START ---")
-print("[VANGUARD-STARTUP] --- BOOTING APP.PY ---")
-import os
-import sys
-import time
+# Función de log robusta para Render
+def vanguard_log(msg):
+    timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+    print(f"[VANGUARD][{timestamp}] {msg}", file=sys.stderr, flush=True)
 
-# Registrar inicio inmediato
-start_time = time.time()
-print(f"[VANGUARD-STARTUP] PID: {os.getpid()} | CWD: {os.getcwd()}")
+vanguard_log("--- STAGE 0: MODULE LOAD START ---")
+vanguard_log(f"PID: {os.getpid()} | CWD: {os.getcwd()}")
+vanguard_log(f"Python Version: {sys.version}")
 
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, send_from_directory
 from models import db, Ubicacion, Objeto, Plano, Config
 from werkzeug.utils import secure_filename
 from dotenv import load_dotenv
-from google.cloud import storage
 
-# Cargar variables de entorno al inicio (Fase 20)
+vanguard_log("Cargando variables de entorno...")
 load_dotenv()
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
 GCP_BUCKET_NAME = os.environ.get('GCP_BUCKET_NAME', 'busca-todo-fotos-2024')
@@ -23,10 +21,13 @@ GCP_BUCKET_NAME = os.environ.get('GCP_BUCKET_NAME', 'busca-todo-fotos-2024')
 gcs_client = None
 if os.environ.get('GOOGLE_APPLICATION_CREDENTIALS'):
     try:
+        from google.cloud import storage
         gcs_client = storage.Client()
-        print(f"[VANGUARD-GCS] Cliente inicializado | Bucket: {GCP_BUCKET_NAME}")
+        vanguard_log(f"GCS Cliente inicializado | Bucket: {GCP_BUCKET_NAME}")
     except Exception as e:
-        print(f"[VANGUARD-GCS-ERROR] Fallo inicializando cliente: {e}")
+        vanguard_log(f"FALLO GCS: {e}")
+else:
+    vanguard_log("GCS omitido: faltan credenciales.")
 
 app = Flask(__name__)
 app.url_map.strict_slashes = False
