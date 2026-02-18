@@ -409,39 +409,24 @@ def upload():
     import json
 
     if request.method == 'POST':
-        # 1. LOGGING COMPLETO AL INICIO (Requerido por el usuario)
-        print("========== NEW REQUEST (UPLOAD) ==========")
-        print("User-Agent:", request.headers.get("User-Agent"))
-        print("Content-Type:", request.content_type)
-        print("Content-Length:", request.content_length)
-        print("Headers:", dict(request.headers))
-        print("Files keys:", list(request.files.keys()))
-        print("Form keys:", list(request.form.keys()))
-        print("JSON:", request.get_json(silent=True))
+        if 'file' not in request.files:
+            flash('No hay archivo')
+            return redirect(request.url)
+        
+        file = request.files['file']
+        nombre_ubicacion = request.form.get('nombre_ubicacion', 'Sin nombre')
+        
+        if file.filename == '':
+            flash('No se seleccionó ningún archivo')
+            return redirect(request.url)
 
         try:
-            # 2. LOGGING ESPECÍFICO DEL ARCHIVO
-            file = request.files.get("file")
-            if file:
-                print("Filename:", file.filename)
-                print("Mimetype:", file.mimetype)
-                data = file.read()
-                print("Raw size bytes:", len(data))
-                file.seek(0)
-            else:
-                print("No file found in request.files (key 'file')")
-
-            # Lógica original corregida e indentada
-            if not file or file.filename == '':
-                flash('No hay archivo')
-                return redirect(request.url)
-            
-            nombre_ubicacion = request.form.get('nombre_ubicacion', 'Sin nombre')
             filename = secure_filename(file.filename)
-            
-            # Compresión y guardado
+            # Guardado y compresión profesional
             filename = save_and_compress_image(file, app.config.get('UPLOAD_FOLDER'), filename)
             filepath = os.path.join(app.config.get('UPLOAD_FOLDER'), filename)
+            
+            app.logger.info(f"[VANGUARD-UPLOAD] Procesando: {filename}")
             
             ext = filename.rsplit('.', 1)[1].lower() if '.' in filename else ''
             
@@ -801,41 +786,22 @@ def analizar_foto():
     import uuid
     from ai_engine import analizar_imagen_objetos
 
-    # 1. LOGGING COMPLETO AL INICIO (Requerido por el usuario)
-    print("========== NEW REQUEST ==========")
-    print("User-Agent:", request.headers.get("User-Agent"))
-    print("Content-Type:", request.content_type)
-    print("Content-Length:", request.content_length)
-    print("Headers:", dict(request.headers))
-    print("Files keys:", list(request.files.keys()))
-    print("Form keys:", list(request.form.keys()))
-    print("JSON:", request.get_json(silent=True))
+    # 1. LOGGING DE SEGURIDAD
+    ua = request.headers.get("User-Agent", "Unknown")
+    ct = request.content_type or "Unknown"
+    app.logger.info(f"[VANGUARD-API] Nueva solicitud de análisis | UA: {ua} | CT: {ct}")
 
     try:
-        # 2. LOGGING ESPECÍFICO DEL ARCHIVO
-        # Buscamos 'image' como pide el diagnóstico, o 'file' por compatibilidad
-        file = request.files.get("image") or request.files.get("file")
-        
-        if file:
-            print("Filename:", file.filename)
-            print("Mimetype:", file.mimetype)
-            data = file.read()
-            print("Raw size bytes:", len(data))
-            file.seek(0)
-        else:
-            print("No file found in request.files")
-
-        # Mantener lógica actual envuelta en el try-except global solicitado
+        # SOPORTE DE FORMATOS (Multipart vs JSON/Base64)
         img_pil = None
         orig_filename = "upload.jpg"
         method_detected = "none"
 
-        ct = request.content_type or "Unknown"
         if 'multipart/form-data' in ct:
             method_detected = "multipart"
-            # file ya fue validado arriba en el logging
+            file = request.files.get('image') or request.files.get('file')
             if not file or file.filename == '':
-                return jsonify({'status': 'error', 'message': 'No se recibió imagen en multipart'}), 400
+                return jsonify({'status': 'error', 'message': 'No se recibió imagen'}), 400
             
             orig_filename = secure_filename(file.filename)
             img_pil = Image.open(file)
@@ -844,10 +810,11 @@ def analizar_foto():
             method_detected = "json-base64"
             data_json = request.get_json()
             if not data_json:
-                return jsonify({'status': 'error', 'message': 'JSON inválido o vacío'}), 400
+                return jsonify({'status': 'error', 'message': 'JSON inválido'}), 400
             
             b64_data = data_json.get('image_base64') or data_json.get('image')
             if not b64_data:
+                return jsonify({'status': 'error', 'message': 'No se encontró imagen base64'}), 400
                 return jsonify({'status': 'error', 'message': 'No se encontró campo de imagen base64'}), 400
             
             if "," in b64_data:

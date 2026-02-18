@@ -4,6 +4,7 @@ google-genai==0.3.0
 python-dotenv
 Werkzeug
 rapidfuzz
+google-cloud-storage
 Pillow
 pillow-heif
 opencv-python-headless
