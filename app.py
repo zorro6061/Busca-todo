@@ -30,10 +30,13 @@ if os.environ.get('GOOGLE_APPLICATION_CREDENTIALS'):
 app = Flask(__name__)
 app.url_map.strict_slashes = False
 
-# Configuración de Producción
+# Configuración de Producción (Cloud SQL vs SQLite)
 app.debug = os.environ.get('FLASK_DEBUG', 'false').lower() == 'true'
 basedir = os.path.abspath(os.path.dirname(__file__))
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///' + os.path.join(basedir, 'instance', 'ctrl_f.db'))
+
+# Priorizar DATABASE_URL (Cloud SQL) si está presente, de lo contrario usar SQLite local
+default_sqlite = 'sqlite:///' + os.path.join(basedir, 'instance', 'ctrl_f.db')
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', default_sqlite)
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024 # Límite de 10MB para robustez en móvil
 app.config.setdefault("UPLOAD_FOLDER", os.environ.get('UPLOAD_FOLDER', os.path.join(basedir, 'uploads')))
