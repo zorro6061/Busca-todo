@@ -62,8 +62,19 @@ print(f"[VANGUARD-STARTUP] Puerto detectado en entorno: {port_env or 'Default 50
 
 @app.route('/alive')
 @app.route('/health')
+@app.route('/test')
 def alive_check():
     return "Busca-todo Vanguard Engine: ONLINE", 200
+
+@app.route('/env-check')
+def env_check():
+    import os
+    return jsonify({
+        "db_configured": bool(os.environ.get('DATABASE_URL')),
+        "gcs_configured": bool(os.environ.get('GOOGLE_APPLICATION_CREDENTIALS')),
+        "port": os.environ.get('PORT'),
+        "cwd": os.getcwd()
+    })
 
 def initialize_folders():
     """Crea las carpetas necesarias si no existen."""
@@ -291,8 +302,12 @@ def initialize_vanguard():
             initialize_folders()
             with app.app_context():
                 print("[VANGUARD-STARTUP] Ejecutando db.create_all()...")
-                db.create_all()
-                print("[VANGUARD-STARTUP] db.create_all() completado.")
+                try:
+                    db.create_all()
+                    print("[VANGUARD-STARTUP] db.create_all() completado.")
+                except Exception as db_e:
+                    print(f"[VANGUARD-STARTUP-ERROR] Error en db.create_all(): {db_e}")
+                    # No detenemos el arranque, dejamos que la app intente funcionar
                 
                 from sqlalchemy import text
                 # Migraciones Manuales (Safe Mode)
