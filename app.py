@@ -323,67 +323,52 @@ _initialized = False
 
 @app.before_request
 def initialize_vanguard():
-    # BYPASS CRÍTICO: No bloquear el chequeo de salud de Render
+    # BYPASS CRÍTICO: El chequeo de salud NO debe activar la base de datos
     # Render suele golpear '/' o '/alive' or '/health'
     if request.path in ['/alive', '/health', '/static/manifest.json', '/static/sw.js']:
         return
         
     global _initialized
     if not _initialized:
-        try:
-            print("[VANGUARD-STARTUP] Iniciando secuencia de boot (Deferred)...")
-            initialize_folders()
+        _initialized = True
+        vanguard_log("Iniciando secuencia de boot (Deferred)...")
+        initialize_folders()
+        
+        # Ejecutar DB init en un hilo separado para no bloquear el Port Scan de Render
+        import threading
+        def deferred_db():
             with app.app_context():
-                print("[VANGUARD-STARTUP] Ejecutando db.create_all()...")
                 try:
+                    vanguard_log("Hilo DB: Ejecutando db.create_all()...")
                     db.create_all()
-                    print("[VANGUARD-STARTUP] db.create_all() completado.")
-                except Exception as db_e:
-                    print(f"[VANGUARD-STARTUP-ERROR] Error en db.create_all(): {db_e}")
-                    # No detenemos el arranque, dejamos que la app intente funcionar
-                
-                from sqlalchemy import text
-                # Migraciones Manuales (Safe Mode)
-                print("[VANGUARD-STARTUP] Verificando migraciones...")
-                migraciones = [
-                    ('ALTER TABLE muebles ADD COLUMN nombre VARCHAR(100) DEFAULT "Mueble Sin Nombre"', "muebles_nombre"),
-                    ('ALTER TABLE objetos ADD COLUMN tags_semanticos TEXT', "objetos_tags"),
-                    ('ALTER TABLE ubicaciones ADD COLUMN items_json TEXT', "ubicaciones_json"),
-                    ('ALTER TABLE objetos RENAME COLUMN categoria TO categoria_principal', "obj_rename_cat"),
-                    ('ALTER TABLE objetos ADD COLUMN categoria_principal VARCHAR(50)', "obj_add_cat_fallback")
-                ]
+                    vanguard_log("Hilo DB: db.create_all() completado.")
+                    
+                    from sqlalchemy import text
+                    vanguard_log("Hilo DB: Verificando migraciones...")
+                    migraciones = [
+                        ('ALTER TABLE muebles ADD COLUMN nombre VARCHAR(100) DEFAULT "Mueble Sin Nombre"', "muebles_nombre"),
+                        ('ALTER TABLE objetos ADD COLUMN tags_semanticos TEXT', "objetos_tags"),
+                        ('ALTER TABLE ubicaciones ADD COLUMN items_json TEXT', "ubicaciones_json"),
+                        ('ALTER TABLE objetos RENAME COLUMN categoria TO categoria_principal', "obj_rename_cat"),
+                        ('ALTER TABLE objetos ADD COLUMN categoria_principal VARCHAR(50)', "obj_add_cat_fallback")
+                    ]
+                    
+                    for sql, name in migraciones:
+                        try:
+                            db.session.execute(text(sql))
+                            db.session.commit()
+                            vanguard_log(f"Hilo DB: Migración {name} aplicada.")
+                        except Exception:
+                            db.session.rollback()
+                            # Ignorar fallos de migración (usualmente es porque la columna ya existe)
+                    
+                    vanguard_log("Hilo DB: Secuencia de arranque finalizada con éxito.")
+                except Exception as e:
+                    vanguard_log(f"Hilo DB: ERROR CRÍTICO en arranque: {e}")
 
-                for sql, label in migraciones:
-                    try:
-                        db.session.execute(text(sql))
-                        db.session.commit()
-                        print(f"[DB-MIGRATE] {label} OK")
-                    except Exception:
-                        db.session.rollback()
+        threading.Thread(target=deferred_db, daemon=True).start()
+        vanguard_log("Hilo DB lanzado. La app ya puede responder peticiones.")
 
-                # Columnas adicionales
-                columnas_nuevas = [
-                    ('objetos', 'categoria_secundaria', 'VARCHAR(50)'),
-                    ('objetos', 'descripcion', 'TEXT'),
-                    ('objetos', 'color_predominante', 'VARCHAR(30)'),
-                    ('objetos', 'material', 'VARCHAR(50)'),
-                    ('objetos', 'estado', 'VARCHAR(50)'),
-                    ('objetos', 'prioridad', 'VARCHAR(20)')
-                ]
-                
-                for tabla, col, tipo in columnas_nuevas:
-                    try:
-                        db.session.execute(text(f'ALTER TABLE {tabla} ADD COLUMN {col} {tipo}'))
-                        db.session.commit()
-                    except Exception:
-                        db.session.rollback()
-            
-            print("[VANGUARD-STARTUP] HEARTBEAT: Vanguard initialized.")
-            _initialized = True
-        except Exception as boot_err:
-            print(f"[VANGUARD-STARTUP] ERROR CRÍTICO EN BOOT: {boot_err}")
-            # No bloqueamos el arranque global para que Render detecte el puerto
-            _initialized = True 
 
 
 
