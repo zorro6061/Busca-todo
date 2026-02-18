@@ -7,7 +7,5 @@ rapidfuzz
 google-cloud-storage
 Pillow
 pillow-heif
-opencv-python-headless
-numpy
 psycopg2-binary
 gunicorn
