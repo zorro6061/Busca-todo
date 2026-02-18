@@ -1,3 +1,4 @@
+print("[VANGUARD-STARTUP] --- STAGE 0: MODULE LOAD START ---")
 print("[VANGUARD-STARTUP] --- BOOTING APP.PY ---")
 import os
 import sys
@@ -36,7 +37,34 @@ basedir = os.path.abspath(os.path.dirname(__file__))
 
 # Priorizar DATABASE_URL (Cloud SQL) si está presente, de lo contrario usar SQLite local
 default_sqlite = 'sqlite:///' + os.path.join(basedir, 'instance', 'ctrl_f.db')
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', default_sqlite)
+raw_db_url = os.environ.get('DATABASE_URL')
+
+if raw_db_url:
+    # Robust DNA: Codificar contraseña si tiene caracteres especiales (?, #, [, ], etc)
+    import urllib.parse
+    try:
+        # Formato esperado: postgresql://user:password@host:port/dbname
+        if '://' in raw_db_url and '@' in raw_db_url:
+            prefix, rest = raw_db_url.split('://', 1)
+            auth_part, host_part = rest.rsplit('@', 1)
+            if ':' in auth_part:
+                user_part, pass_part = auth_part.split(':', 1)
+                # Solo codificar si no parece ya codificado
+                if '%' not in pass_part:
+                    safe_pass = urllib.parse.quote_plus(pass_part)
+                    app.config['SQLALCHEMY_DATABASE_URI'] = f"{prefix}://{user_part}:{safe_pass}@{host_part}"
+                    print("[VANGUARD-STARTUP] DATABASE_URL codificada con éxito.")
+                else:
+                    app.config['SQLALCHEMY_DATABASE_URI'] = raw_db_url
+            else:
+                app.config['SQLALCHEMY_DATABASE_URI'] = raw_db_url
+        else:
+            app.config['SQLALCHEMY_DATABASE_URI'] = raw_db_url
+    except Exception as e:
+        print(f"[VANGUARD-STARTUP-ERROR] Fallo al parsear DATABASE_URL: {e}")
+        app.config['SQLALCHEMY_DATABASE_URI'] = raw_db_url
+else:
+    app.config['SQLALCHEMY_DATABASE_URI'] = default_sqlite
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024 # Límite de 10MB para robustez en móvil
 app.config.setdefault("UPLOAD_FOLDER", os.environ.get('UPLOAD_FOLDER', os.path.join(basedir, 'uploads')))
