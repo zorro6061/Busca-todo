@@ -1,3 +1,7 @@
+import os
+import sys
+import time
+
 # Función de log robusta para Render
 def vanguard_log(msg):
     timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
