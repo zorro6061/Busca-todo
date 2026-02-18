@@ -350,7 +350,19 @@ def serve_sw():
 
 @app.route('/uploads/<filename>')
 def uploaded_file(filename):
-    return send_from_directory(app.config.get('UPLOAD_FOLDER'), filename)
+    upload_folder = app.config.get('UPLOAD_FOLDER')
+    local_path = os.path.join(upload_folder, filename)
+    
+    # 1. Intentar servir local (rápido)
+    if os.path.exists(local_path):
+        return send_from_directory(upload_folder, filename)
+        
+    # 2. Fallback a GCS (Si no está en disco efímero por reinicio de Render)
+    if gcs_client and GCP_BUCKET_NAME:
+        # Redirigir directamente a la URL pública de GCS
+        return redirect(f"https://storage.googleapis.com/{GCP_BUCKET_NAME}/{filename}")
+            
+    return "Archivo no encontrado", 404
 
 
 @app.errorhandler(404)
