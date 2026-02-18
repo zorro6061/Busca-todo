@@ -296,7 +296,7 @@ def initialize_vanguard():
             # No bloqueamos el arranque global para que Render detecte el puerto
             _initialized = True 
 
-print("[VANGUARD-STARTUP] Módulo app.py cargado (Ready for Port Scan).")
+
 
 import base64
 import uuid
@@ -815,7 +815,6 @@ def analizar_foto():
             b64_data = data_json.get('image_base64') or data_json.get('image')
             if not b64_data:
                 return jsonify({'status': 'error', 'message': 'No se encontró imagen base64'}), 400
-                return jsonify({'status': 'error', 'message': 'No se encontró campo de imagen base64'}), 400
             
             if "," in b64_data:
                 b64_data = b64_data.split(",")[1]
@@ -1780,4 +1779,7 @@ def asignar_zona_objeto(obj_id):
 if __name__ == '__main__':
     # Usar el puerto de la variable de entorno PORT para Render
     port = int(os.environ.get('PORT', 5001))
+    print("[VANGUARD-STARTUP] Ejecutando app.run() en modo local/debug")
     app.run(debug=False, host='0.0.0.0', port=port)
+
+print("[VANGUARD-STARTUP] Módulo app.py CARGADO COMPLETAMENTE (Ready for Port Scan).")
