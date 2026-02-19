@@ -12,6 +12,7 @@ vanguard_log(f"PID: {os.getpid()} | CWD: {os.getcwd()}")
 vanguard_log(f"Python Version: {sys.version}")
 
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, send_from_directory
+from sqlalchemy import text
 from models import db, Ubicacion, Objeto, Plano, Config
 from werkzeug.utils import secure_filename
 from dotenv import load_dotenv
@@ -97,7 +98,11 @@ def handle_file_too_large(e):
     }), 413
 
 # DIAGNÓSTICO DE ARRANQUE (Visible en Gunicorn)
-print(f"[VANGUARD-STARTUP] Cargando módulo app.py...")
+with app.app_context():
+    initialize_folders()
+    fix_db_sequences()
+
+vanguard_log("--- STAGE 1: SYSTEM READY ---")
 print(f"[VANGUARD-STARTUP] Directorio actual: {os.getcwd()}")
 port_env = os.environ.get('PORT')
 print(f"[VANGUARD-STARTUP] Puerto detectado en entorno: {port_env or 'Default 5001'}")
@@ -117,6 +122,28 @@ def env_check():
         "port": os.environ.get('PORT'),
         "cwd": os.getcwd()
     })
+
+def fix_db_sequences():
+    """Sincroniza las secuencias de PostgreSQL con el máximo ID actual para evitar UniqueViolation."""
+    if not instance_connection_name and not raw_db_url:
+        return # No aplica en SQLite
+    
+    vanguard_log("Sanando secuencias de base de datos...")
+    try:
+        tables = ['ubicaciones', 'objetos', 'planos', 'muebles', 'zonas', 'config']
+        for table in tables:
+            # PostgreSQL specific: Resetea la secuencia al MAX(id) actual
+            db.session.execute(text(f"SELECT setval('{table}_id_seq', (SELECT COALESCE(MAX(id), 0) + 1 FROM {table}), false)"))
+        db.session.commit()
+        vanguard_log("Secuencias sincronizadas con éxito ✅")
+    except Exception as e:
+        vanguard_log(f"Error sanando secuencias: {e}")
+        db.session.rollback()
+
+@app.route('/api/admin/fix-db')
+def force_fix_db():
+    fix_db_sequences()
+    return jsonify({"status": "success", "message": "Secuencias reparadas"})
 
 def initialize_folders():
     """Crea las carpetas necesarias si no existen."""
