@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 # Cargar variables
 load_dotenv()
 
-SQLITE_DB = 'buscatodo.db'
+SQLITE_DB = os.path.join('instance', 'ctrl_f.db')
 POSTGRES_URL = os.environ.get('DATABASE_URL')
 
 def migrate():
@@ -35,26 +35,37 @@ def migrate():
         return
 
     # Listado de tablas a migrar (orden de dependencias)
-    tables = ['ubicacion', 'plano', 'zona', 'objeto']
+    tables = ['planos', 'ubicaciones', 'zonas', 'muebles', 'objetos', 'config']
+
+    # 3. Crear tablas en Postgres si no existen usando el contexto de la app
+    print("Creando tablas en Cloud SQL (schema sync)...")
+    try:
+        from app import app, db
+        with app.app_context():
+            db.create_all()
+        print("Schema sincronizado con éxito.")
+    except Exception as e:
+        print(f"Advertencia al crear tablas: {e}")
 
     for table in tables:
         print(f"Migrando tabla: {table}...")
         
         # Leer de SQLite
-        sqlite_cursor.execute(f"SELECT * FROM {table}")
-        rows = sqlite_cursor.fetchall()
+        try:
+            sqlite_cursor.execute(f"SELECT * FROM {table}")
+            rows = sqlite_cursor.fetchall()
+        except Exception as e:
+            print(f"Error leyendo {table} de SQLite: {e}")
+            continue
         
         if not rows:
-            print(f"Tabla {table} vacía. Saltando.")
+            print(f"Tabla {table} vacía en SQLite. Saltando.")
             continue
 
         # Obtener nombres de columnas
         column_names = [description[0] for description in sqlite_cursor.description]
         placeholders = ", ".join(["%s"] * len(column_names))
         columns_str = ", ".join(column_names)
-
-        # Limpiar tabla destino (opcional, pero seguro para reintentos)
-        # pg_cursor.execute(f"TRUNCATE TABLE {table} RESTART IDENTITY CASCADE")
 
         # Insertar en Postgres
         insert_query = f"INSERT INTO {table} ({columns_str}) VALUES ({placeholders}) ON CONFLICT DO NOTHING"

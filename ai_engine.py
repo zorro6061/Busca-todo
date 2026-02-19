@@ -86,47 +86,45 @@ def analizar_imagen_objetos(image_path, tipo_espacio="general"):
             logger.error(f"Pillow no pudo validar la imagen: {img_err}")
             return {"items": [], "tags": f"Error: Imagen inválida", "analisis_espacial": {}}
 
-        # 2. Prompt Maestro OmniVision
+        # 2. Prompt Maestro OmniVision (Expert Logistics Upgrade)
         prompt = f"""
-CONTEXTO: Eres un experto en organización del hogar y gestión de pertenencias personales. Tu trabajo es ayudar a las personas a encontrar sus cosas en casa con máxima precisión.
+ROL: Eres un experto en logística y gestión de activos físicos con años de experiencia analizando depósitos industriales, estanterías y mobiliario técnico.
 
-TAREA: Analiza esta imagen de un espacio físico ({tipo_espacio}).
-
-OBJETIVOS:
-1. Identifica TODOS los objetos individuales visibles (no agrupes)
-2. Para cada objeto, proporciona información completa y precisa
-3. Usa categorización jerárquica (Principal > Subcategoría > Tipo Específico)
-4. Detecta ubicación exacta con bounding box [ymin, xmin, ymax, xmax] (0-1000)
-5. Analiza el contexto espacial del ambiente
+INSTRUCCIONES DE ANÁLISIS:
+1. DETECCIÓN DE OBJETOS: Identifica cada objeto visible, por pequeño que sea. No agrupes. Si hay cajas o contenedores con texto, lee el contenido de las etiquetas y menciónalo en el nombre o descripción.
+2. ATRIBUTOS TÉCNICOS: Para cada objeto, detecta:
+   - Color predominante.
+   - Material estimado (metal, plástico, madera, cartón, etc.).
+   - Estado aparente (nuevo, usado, dañado).
+   - Tamaño relativo (pequeño, mediano, grande).
+3. UBICACIÓN ESPACIAL: Describe dónde está el objeto en relación a la imagen (ej: "Estante superior, lado izquierdo, detrás de la caja roja").
+4. CLASIFICACIÓN SEMÁNTICA: Agrupa los objetos por categorías lógicas (Herramientas, Electrónica, Papelería, Repuestos, etc.).
+5. COORDINADAS: Detecta la ubicación exacta con bounding box [ymin, xmin, ymax, xmax] en escala 0-1000.
 
 FORMATO DE RESPUESTA (JSON ESTRICTO):
 {{
   "items": [
     {{
-      "nombre": "nombre descriptivo específico",
-      "categoria_principal": "categoría base",
-      "subcategoria": "subcategoría",
-      "tipo_especifico": "especie exacta",
-      "descripcion": "detalles visuales",
-      "tags_semanticos": "10 palabras clave separadas por comas",
+      "nombre": "Nombre descriptivo específico (incluyendo etiquetas si las hay)",
+      "categoria_principal": "Categoría lógica",
+      "descripcion": "Detalles visuales y ubicación espacial descriptiva",
       "bbox": [ymin, xmin, ymax, xmax],
       "confianza": 0.XX,
       "metadata": {{
-        "color_predominante": "...",
+        "color": "...",
         "material": "...",
-        "marca": "...",
-        "estado": "..."
-      }}
+        "estado": "...",
+        "tamaño": "..."
+      }},
+      "tags_semanticos": "lista, de, etiquetas, separadas, por, coma"
     }}
   ],
   "analisis_espacial": {{
     "tipo_espacio": "{tipo_espacio}",
     "organizacion": "ordenado|caótico|estantería",
-    "densidad_objetos": "baja|media|alta",
-    "total_objetos_estimado": N,
-    "zonas_principales": []
+    "densidad_objetos": "baja|media|alta"
   }},
-  "tags": ["tag1", "tag2"]
+  "tags": ["contexto1", "contexto2"]
 }}
 """
 
@@ -198,3 +196,37 @@ FORMATO DE RESPUESTA (JSON ESTRICTO):
             "analisis_espacial": {},
             "texto_detectado": []
         }
+
+def interpretar_consulta(query):
+    """
+    Usa Gemini para convertir una pregunta natural (¿Dónde están mis llaves?) 
+    en un término de búsqueda simple (llaves).
+    """
+    client = get_client()
+    if not client:
+        return query # Fallback al texto original
+
+    prompt = f"""
+    Eres un asistente de búsqueda para el hogar. Tu tarea es extraer el NOMBRE DEL OBJETO principal que el usuario está buscando.
+    
+    EJEMPLOS:
+    - "¿Dónde dejé las llaves del auto?" -> "llaves"
+    - "No encuentro mi billetera marrón" -> "billetera"
+    - "¿Dónde está el cargador de la laptop?" -> "cargador"
+    - "Quiero ver mi taladro" -> "taladro"
+    
+    USUARIO: "{query}"
+    RESPUESTA (JSON): {{"termino": "nombre_simple"}}
+    """
+    
+    try:
+        response = client.models.generate_content(
+            model="gemini-1.5-flash",
+            contents=[prompt]
+        )
+        clean_json = response.text.replace('```json', '').replace('```', '').strip()
+        data = json.loads(clean_json)
+        return data.get("termino", query)
+    except Exception as e:
+        logger.error(f"Error interpretando consulta: {e}")
+        return query

@@ -1399,9 +1399,15 @@ def save_video_scans(plano_id):
                 db.session.flush()
                 
                 for obj in frame['objects']:
+                    metadata = obj.get('metadata', {})
                     nuevo_obj = Objeto(
                         nombre=obj['nombre'],
-                        categoria_principal=obj.get('categoria', 'General'),
+                        categoria_principal=obj.get('categoria_principal', obj.get('categoria', 'General')),
+                        descripcion=obj.get('descripcion', ''),
+                        color_predominante=metadata.get('color', metadata.get('color_predominante', '')),
+                        material=metadata.get('material', ''),
+                        estado=metadata.get('estado', ''),
+                        tags_semanticos=obj.get('tags_semanticos', ''),
                         confianza=obj.get('confianza', 0.8),
                         ubicacion_id=nueva_ubi.id
                     )

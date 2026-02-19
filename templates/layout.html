@@ -154,17 +154,9 @@
                     <path d="M12 22V12"></path>
                 </svg>
             </span>
-            <span>Cosas</span>
+            <span>Buscados</span>
         </a>
-        <a href="{{ url_for('upload') }}" class="mobile-nav-item center-scan">
-            <span class="mobile-nav-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                    stroke-linejoin="round">
-                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
-                    <circle cx="12" cy="13" r="4"></circle>
-                </svg>
-            </span>
-        </a>
+        <div style="width: 60px;"></div> <!-- Space for FAB -->
         <a href="{{ url_for('list_planos') }}"
             class="mobile-nav-item {% if request.endpoint == 'list_planos' %}active{% endif %}">
             <span class="mobile-nav-icon">
@@ -175,26 +167,77 @@
                     <line x1="16" y1="6" x2="16" y2="22"></line>
                 </svg>
             </span>
-            <span>Planos</span>
+            <span>Mapas</span>
         </a>
-        <a href="{{ url_for('pricing') }}"
-            class="mobile-nav-item {% if request.endpoint == 'pricing' %}active{% endif %}">
+        <a href="{{ url_for('ai_optimizer') }}"
+            class="mobile-nav-item {% if request.endpoint == 'ai_optimizer' %}active{% endif %}">
             <span class="mobile-nav-icon">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
                     stroke-linejoin="round">
-                    <polygon
-                        points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2">
-                    </polygon>
+                    <path d="M12 2v4"></path>
+                    <path d="M12 18v4"></path>
+                    <path d="M4.93 4.93l2.83 2.83"></path>
+                    <path d="M16.24 16.24l2.83 2.83"></path>
+                    <path d="M2 12h4"></path>
+                    <path d="M18 12h4"></path>
+                    <path d="M4.93 19.07l2.83-2.83"></path>
+                    <path d="M16.24 7.76l2.83-2.83"></path>
                 </svg>
             </span>
-            <span>Premium</span>
-        </a>
-        <!-- DIAGNOSTIC LINK -->
-        <a href="/debug-models" class="mobile-nav-item" style="color: #ff4757;">
-            <span class="mobile-nav-icon">🛠️</span>
-            <span>Debug</span>
+            <span>IA</span>
         </a>
     </div>
+
+    <!-- Floating Action Button (Aperture Home Style) -->
+    <a href="{{ url_for('upload') }}" class="fab-camera" aria-label="Indexar nuevo objeto">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+            stroke-linejoin="round">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+            <circle cx="12" cy="13" r="4"></circle>
+        </svg>
+    </a>
+
+    <style>
+        .fab-camera {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 68px;
+            height: 68px;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            box-shadow: 0 15px 35px var(--primary-glow), 0 0 0 5px rgba(255, 255, 255, 0.05);
+            z-index: 1001;
+            transition: all 0.4s var(--transition-bounce);
+        }
+
+        .fab-camera:hover {
+            transform: translateX(-50%) translateY(-5px) scale(1.1);
+        }
+
+        .fab-camera svg {
+            width: 32px;
+            height: 32px;
+        }
+
+        @media (min-width: 1024px) {
+            .fab-camera {
+                bottom: 40px;
+                right: 40px;
+                left: auto;
+                transform: none;
+            }
+
+            .fab-camera:hover {
+                transform: translateY(-5px) scale(1.1);
+            }
+        }
+    </style>
 
     <!-- Toast Container -->
     <div id="toast-container"></div>
@@ -258,7 +301,7 @@
             {% for category, message in messages %}
             let type = '{{ category }}';
             if (type === 'message') type = 'success';
-            mostrarToast({{ message | tojson | safe }}, type || 'info');
+            window.showIsland({{ message | tojson | safe }}, 5000, type || 'info');
         {% endfor %}
         });
         {% endif %}
