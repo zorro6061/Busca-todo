@@ -21,6 +21,11 @@ def get_client():
         return _client
     
     if GEMINI_API_KEY:
+        # Validación DBA/SRE: Las llaves válidas de Google empiezan por AIza
+        if not GEMINI_API_KEY.startswith("AIza"):
+            logger.error(f"[GEMINI-DIAGNOSTIC] ERROR CRÍTICO: La API Key parece mal escrita (empieza con {GEMINI_API_KEY[:4]}... en lugar de AIza).")
+            return None
+
         try:
             # Forzamos v1 estable para evitar el error 404 de v1beta visto en Render
             from google import genai as genai_module

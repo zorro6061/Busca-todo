@@ -857,6 +857,29 @@ def calibrar_plano():
         db.session.rollback()
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
+@app.route('/api/admin/fix-db')
+def force_fix_db():
+    fix_db_sequences()
+    return jsonify({"status": "success", "message": "Secuencias reparadas"})
+
+@app.route('/debug/reset-db')
+def reset_db_hard():
+    """Ruta DBA: Nuke total de tablas y reseteo de secuencias a 1."""
+    if not instance_connection_name and not raw_db_url:
+        return jsonify({"status": "error", "message": "Operación no permitida en modo local"}), 403
+    
+    vanguard_log("[DBA] Iniciando RESET HARD de base de datos...")
+    try:
+        # TRUNCATE con RESTART IDENTITY y CASCADE para limpiar todo de raíz
+        db.session.execute(text("TRUNCATE TABLE ubicaciones, objetos, planos, muebles, zonas, config RESTART IDENTITY CASCADE"))
+        db.session.commit()
+        vanguard_log("[DBA] Base de datos REINICIADA con éxito ✅")
+        return jsonify({"status": "success", "message": "Base de datos reseteada y limpia (IDs empezarán en 1)"})
+    except Exception as e:
+        vanguard_log(f"[DBA] Error en Reset: {e}")
+        db.session.rollback()
+        return jsonify({"status": "error", "message": str(e)}), 500
+
 @app.route('/api/crear_ubicacion_en_mapa', methods=['POST'])
 def crear_ubicacion_en_mapa():
     """Crear una nueva ubicación directamente desde el mapa migrado a GCS."""
