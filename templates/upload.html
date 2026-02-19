@@ -40,7 +40,7 @@
                 </div>
 
                 <!-- Inputs Ocultos -->
-                <input type="file" id="camera-input" name="file" accept="image/*,video/*" capture="environment"
+                <input type="file" id="camera-input" name="file" accept="image/*" capture="environment"
                     style="display: none;" onchange="handleFileSelection(this)">
                 <input type="file" id="gallery-input" name="file" accept="image/*,video/*" style="display: none;"
                     onchange="handleFileSelection(this)">
@@ -194,7 +194,7 @@
                 resolve(file);
             };
             reader.readAsDataURL(file);
-            
+
             reader.onload = (event) => {
                 const img = new Image();
                 img.onerror = () => {
@@ -202,7 +202,7 @@
                     resolve(file);
                 };
                 img.src = event.target.result;
-                
+
                 img.onload = () => {
                     // Si la imagen es pequeña, no hace falta procesar
                     if (img.width <= maxWidth) {
@@ -214,17 +214,17 @@
                     const canvas = document.createElement('canvas');
                     let width = img.width;
                     let height = img.height;
-                    
+
                     if (width > maxWidth) {
                         height *= maxWidth / width;
                         width = maxWidth;
                     }
-                    
+
                     canvas.width = width;
                     canvas.height = height;
                     const ctx = canvas.getContext('2d');
                     ctx.drawImage(img, 0, 0, width, height);
-                    
+
                     canvas.toBlob((blob) => {
                         clearTimeout(timeout);
                         if (!blob) {
