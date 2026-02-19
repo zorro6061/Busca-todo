@@ -870,8 +870,8 @@ def reset_db_hard():
     
     vanguard_log("[DBA] Iniciando RESET HARD de base de datos...")
     try:
-        # TRUNCATE con RESTART IDENTITY y CASCADE para limpiar todo de raíz
-        db.session.execute(text("TRUNCATE TABLE ubicaciones, objetos, planos, muebles, zonas, config RESTART IDENTITY CASCADE"))
+        # SRE Repair: Limpieza profunda y reinicio de identidad
+        db.session.execute(text("TRUNCATE TABLE ubicaciones, objetos, planos RESTART IDENTITY CASCADE"))
         db.session.commit()
         vanguard_log("[DBA] Base de datos REINICIADA con éxito ✅")
         return jsonify({"status": "success", "message": "Base de datos reseteada y limpia (IDs empezarán en 1)"})
