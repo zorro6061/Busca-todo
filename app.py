@@ -124,20 +124,22 @@ def env_check():
     })
 
 def fix_db_sequences():
-    """Sincroniza las secuencias de PostgreSQL con el máximo ID actual para evitar UniqueViolation."""
+    """Sincroniza las secuencias de PostgreSQL dinámicamente."""
     if not instance_connection_name and not raw_db_url:
-        return # No aplica en SQLite
+        return 
     
-    vanguard_log("Sanando secuencias de base de datos...")
+    vanguard_log("Iniciando auditoría de secuencias PostgreSQL...")
     try:
         tables = ['ubicaciones', 'objetos', 'planos', 'muebles', 'zonas', 'config']
         for table in tables:
-            # PostgreSQL specific: Resetea la secuencia al MAX(id) actual
-            db.session.execute(text(f"SELECT setval('{table}_id_seq', (SELECT COALESCE(MAX(id), 0) + 1 FROM {table}), false)"))
+            # Obtiene el nombre real de la secuencia y la resetea al MAX(id) + 1
+            sql = f"SELECT setval(pg_get_serial_sequence('{table}', 'id'), (SELECT COALESCE(MAX(id), 0) + 1 FROM {table}), false)"
+            db.session.execute(text(sql))
+            vanguard_log(f"Secuencia de '{table}' validada.")
         db.session.commit()
-        vanguard_log("Secuencias sincronizadas con éxito ✅")
+        vanguard_log("Sincronización de secuencias FINALIZADA ✅")
     except Exception as e:
-        vanguard_log(f"Error sanando secuencias: {e}")
+        vanguard_log(f"Advertencia en sanación de secuencias: {e}")
         db.session.rollback()
 
 @app.route('/api/admin/fix-db')
