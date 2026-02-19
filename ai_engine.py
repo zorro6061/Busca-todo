@@ -164,23 +164,41 @@ FORMATO DE RESPUESTA (JSON):
 
         if not text_response:
             logger.warning("[AI-SRE] Falla total de modelos. Activando modo 'Pendiente'.")
-            # ... (items de fallback) ...
+            return {
+                "items": [{
+                    "nombre": "Objeto pendiente",
+                    "categoria_principal": "Otros",
+                    "descripcion": "El análisis de IA falló. El sistema reintentará automáticamente.",
+                    "tags_semanticos": "propietario:General, pendiente:procesar"
+                }],
+                "tags": "pendiente:procesar",
+                "analisis_espacial": {}
+            }
 
-        # 4. Limpieza y Recuperación de JSON
-        clean_response = text_response.replace('```json', '').replace('```', '').strip()
-        logger.info(f"[AI-JSON-DEBUG] Texto para parsear: {clean_response[:200]}...")
+        # 4. Limpieza y Recuperación de JSON (Tesla-Spec)
+        clean_response = text_response.strip()
+        if '```json' in clean_response:
+            clean_response = clean_response.split('```json')[1].split('```')[0].strip()
+        elif '```' in clean_response:
+            clean_response = clean_response.split('```')[1].split('```')[0].strip()
+            
+        logger.info(f"[AI-JSON-DEBUG] Texto final: {clean_response[:200]}...")
         
         try:
             data = json.loads(clean_response)
         except json.JSONDecodeError:
-            # Recuperación: Buscar el primer '{' y último '}'
+            # SRE Recovery: Buscar el primer '{' y último '}'
             start_idx = clean_response.find('{')
             end_idx = clean_response.rfind('}')
             if start_idx != -1 and end_idx != -1:
-                data = json.loads(clean_response[start_idx:end_idx+1])
+                try:
+                    data = json.loads(clean_response[start_idx:end_idx+1])
+                except:
+                    logger.error("[AI-SRE] Fallo crítico de recuperación JSON")
+                    raise ValueError("JSON irrecuperable")
             else:
-                logger.error("[AI-SRE] No se pudo recuperar JSON válido.")
-                raise ValueError("Respuesta no tiene formato JSON")
+                logger.error("[AI-SRE] No se detectó estructura '{ }'")
+                raise ValueError("Respuesta sin estructura de datos")
 
         # 5. Normalización de Resultados
         if "items" not in data:

@@ -978,8 +978,14 @@ def crear_ubicacion_en_mapa():
             db.session.add(nuevo_objeto)
             nombres_para_tags.append(item.get('nombre', 'Objeto'))
             
-        nueva_ubicacion.tags = ", ".join(nombres_para_tags)
+        # SRE Sync: Asegurar que la ubicación tenga los tags para que la galería no diga "Sin análisis"
+        if nombres_para_tags:
+            nueva_ubicacion.tags = ", ".join(nombres_para_tags)
+        else:
+            nueva_ubicacion.tags = "Sin objetos detectados"
+            
         db.session.commit()
+        vanguard_log(f"[DB-SUCCESS] Ubicación '{nombre}' guardada con {len(objetos_finales)} objetos.")
         
         return jsonify({
             'status': 'success',
