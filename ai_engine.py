@@ -48,9 +48,10 @@ def get_client():
         logger.error("[GEMINI-DIAGNOSTIC] API Key NO encontrada en el entorno.")
     return None
 
-def analizar_imagen_objetos(image_path, tipo_espacio="general"):
+def analizar_imagen_objetos(image_data, tipo_espacio="general"):
     """
     Usa la SDK moderna de Gemini para identificar objetos en una imagen física.
+    image_data puede ser una ruta (str) o bytes.
     """
     client = get_client()
     if not client:
@@ -63,68 +64,64 @@ def analizar_imagen_objetos(image_path, tipo_espacio="general"):
 
     try:
         # 0. Verificación dinámica de modelos disponibles (Debug)
-        try:
-            available_models = list(client.models.list())
-            logger.info("[GEMINI-DEBUG] Modelos encontrados para esta API Key:")
-            for m in available_models:
-                # Verificamos si tiene soporte para imágenes (multimodal)
-                modalities = getattr(m, 'input_modalities', [])
-                logger.info(f" - Model: {m.name} | Modalities: {modalities}")
-        except Exception as list_err:
-            logger.error(f"[GEMINI-DEBUG] No se pudo listar los modelos: {list_err}")
+        # ... (logging de modelos omitido para brevedad) ...
 
-        # 1. Validación de Archivo e Imagen (Pillow)
-        if not os.path.exists(image_path):
-            logger.error(f"Archivo no encontrado: {image_path}")
-            return {"items": [], "tags": "Error: Archivo no encontrado", "analisis_espacial": {}}
-            
+        # 1. Carga de Imagen (Pillow)
         try:
-            img = Image.open(image_path)
-            img.verify()
-            img = Image.open(image_path) # Re-abrir para procesamiento
+            if isinstance(image_data, str):
+                if not os.path.exists(image_data):
+                     raise FileNotFoundError(f"Archivo no encontrado: {image_data}")
+                img = Image.open(image_data)
+            else:
+                # Asumimos que son bytes
+                import io
+                img = Image.open(io.BytesIO(image_data))
+            
+            # Forzar carga para validar
+            img.load()
         except Exception as img_err:
             logger.error(f"Pillow no pudo validar la imagen: {img_err}")
             return {"items": [], "tags": f"Error: Imagen inválida", "analisis_espacial": {}}
 
-        # 2. Prompt Maestro OmniVision (Expert Logistics Upgrade)
+        # 2. Prompt Maestro: Organizador Doméstico e Inteligencia Familiar
         prompt = f"""
-ROL: Eres un experto en logística y gestión de activos físicos con años de experiencia analizando depósitos industriales, estanterías y mobiliario técnico.
+ROL: Eres "Aperture Home", un organizador profesional del hogar con visión computacional avanzada. Tu objetivo es indexar de forma impecable todas las pertenencias de una familia.
+
+REGLAS DE CATEGORIZACIÓN (ESTRICTAS):
+Debes clasificar cada objeto identificado en una de estas categorías:
+- Tecnología
+- Herramientas
+- Documentación
+- Cuidado Personal
+- Niños
+- Cocina
+- Otros
+
+LÓGICA DE PROPIETARIO (JUANA Y VICENTE):
+- Si el objeto es de la categoría "Niños" (juguetes, ropa infantil, útiles escolares), analiza el contexto visual.
+- Si parece pertenecer a una niña o tiene motivos asociados a Juana, etiqueta "Juana".
+- Si parece pertenecer a un niño o tiene motivos asociados a Vicente, etiqueta "Vicente".
+- IMPORTANTE: Solo asigna el propietario en 'tags_semanticos' si tienes al menos un 80% de confianza. Si no, usa el valor "General".
 
 INSTRUCCIONES DE ANÁLISIS:
-1. DETECCIÓN DE OBJETOS: Identifica cada objeto visible, por pequeño que sea. No agrupes. Si hay cajas o contenedores con texto, lee el contenido de las etiquetas y menciónalo en el nombre o descripción.
-2. ATRIBUTOS TÉCNICOS: Para cada objeto, detecta:
-   - Color predominante.
-   - Material estimado (metal, plástico, madera, cartón, etc.).
-   - Estado aparente (nuevo, usado, dañado).
-   - Tamaño relativo (pequeño, mediano, grande).
-3. UBICACIÓN ESPACIAL: Describe dónde está el objeto en relación a la imagen (ej: "Estante superior, lado izquierdo, detrás de la caja roja").
-4. CLASIFICACIÓN SEMÁNTICA: Agrupa los objetos por categorías lógicas (Herramientas, Electrónica, Papelería, Repuestos, etc.).
-5. COORDINADAS: Detecta la ubicación exacta con bounding box [ymin, xmin, ymax, xmax] en escala 0-1000.
+1. DESCRIPCIÓN ESPACIAL: Genera una descripción que complemente las coordenadas pos_x/y mediante lenguaje natural (ej: 'sobre el estante blanco', 'dentro del contenedor azul').
+2. ATRIBUTOS TÉCNICOS: Identifica el color predominante, el material (madera, metal, etc.) y el estado (nuevo, usado, dañado).
 
-FORMATO DE RESPUESTA (JSON ESTRICTO):
+FORMATO DE RESPUESTA (JSON):
 {{
   "items": [
     {{
-      "nombre": "Nombre descriptivo específico (incluyendo etiquetas si las hay)",
-      "categoria_principal": "Categoría lógica",
-      "descripcion": "Detalles visuales y ubicación espacial descriptiva",
+      "nombre": "nombre descriptivo",
+      "categoria_principal": "Tecnología|Herramientas|Documentación|Cuidado Personal|Niños|Cocina|Otros",
+      "descripcion": "Descripción del objeto + ubicación relativa en lenguaje natural",
       "bbox": [ymin, xmin, ymax, xmax],
       "confianza": 0.XX,
-      "metadata": {{
-        "color": "...",
-        "material": "...",
-        "estado": "...",
-        "tamaño": "..."
-      }},
-      "tags_semanticos": "lista, de, etiquetas, separadas, por, coma"
+      "color_predominante": "color",
+      "material": "material",
+      "estado": "nuevo|usado|dañado",
+      "tags_semanticos": "propietario:Juana|propietario:Vicente|propietario:General, palabra_clave1, palabra_clave2"
     }}
-  ],
-  "analisis_espacial": {{
-    "tipo_espacio": "{tipo_espacio}",
-    "organizacion": "ordenado|caótico|estantería",
-    "densidad_objetos": "baja|media|alta"
-  }},
-  "tags": ["contexto1", "contexto2"]
+  ]
 }}
 """
 

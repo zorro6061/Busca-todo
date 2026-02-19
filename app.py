@@ -15,6 +15,7 @@ from flask import Flask, render_template, request, redirect, url_for, flash, jso
 from models import db, Ubicacion, Objeto, Plano, Config
 from werkzeug.utils import secure_filename
 from dotenv import load_dotenv
+from storage_manager import upload_image_to_gcs, get_gcs_url
 
 vanguard_log("Cargando variables de entorno...")
 load_dotenv()
@@ -241,81 +242,7 @@ def debug_gemini():
         })
 # Deferido a initialize_vanguard
 
-def upload_to_gcs(local_path, destination_blob_name):
-    """Sube un archivo a Google Cloud Storage."""
-    if not gcs_client or not GCP_BUCKET_NAME:
-        return False
-    try:
-        bucket = gcs_client.bucket(GCP_BUCKET_NAME)
-        blob = bucket.blob(destination_blob_name)
-        blob.upload_from_filename(local_path)
-        app.logger.info(f"[VANGUARD-GCS] Subido: {destination_blob_name}")
-        return True
-    except Exception as e:
-        app.logger.error(f"[VANGUARD-GCS-ERROR] Fallo subiendo {destination_blob_name}: {e}")
-        return False
-
-def save_and_compress_image(file_storage, folder, filename, max_size=1280, quality=85):
-    """Guarda y comprime una imagen para optimizar espacio y velocidad. Soporta HEIC robusto."""
-    from PIL import Image
-    import os
-    
-    # 1. Registro de HEIC
-    try:
-        from pillow_heif import register_heif_opener
-        register_heif_opener()
-    except ImportError:
-        app.logger.warning("[VANGUARD-IMG] pillow-heif no instalado, HEIC no funcionará.")
-
-    temp_path = os.path.join(folder, f"temp_{filename}")
-    file_storage.save(temp_path)
-    
-    try:
-        # Detectar si es HEIC por extensión o contenido
-        is_heic = filename.lower().endswith(('.heic', '.heif'))
-        
-        try:
-            img = Image.open(temp_path)
-        except Exception as open_err:
-            if is_heic:
-                raise ValueError("Formato HEIC no soportado o archivo corrupto. Instale pillow-heif.")
-            raise open_err
-
-        # 2. Conversión a RGB
-        if img.mode != "RGB":
-            img = img.convert("RGB")
-        
-        # 3. Resize Seguro (Lado mayor 1280px)
-        if img.width > max_size or img.height > max_size:
-            img.thumbnail((max_size, max_size), Image.Resampling.LANCZOS)
-            app.logger.info(f"[VANGUARD-IMG] Redimensionado a {img.width}x{img.height}")
-        
-        # 4. Forzar extensión .jpg para consistencia
-        final_filename = filename
-        if is_heic:
-            final_filename = filename.rsplit('.', 1)[0] + ".jpg"
-            
-        final_path = os.path.join(folder, final_filename)
-        img.save(final_path, "JPEG", quality=quality, optimize=True)
-        
-        # 5. Mirroring a Google Cloud Storage (Persistencia)
-        upload_to_gcs(final_path, final_filename)
-        
-        # Eliminar temporal
-        if os.path.exists(temp_path):
-            os.remove(temp_path)
-        return final_filename
-
-    except Exception as e:
-        app.logger.error(f"[VANGUARD-IMG-ERROR] Fallo comprimiendo {filename}: {e}")
-        if os.path.exists(temp_path):
-            import shutil
-            final_path = os.path.join(folder, filename)
-            shutil.move(temp_path, final_path)
-            
-            # Intentar subir el original como fallback si no pudimos comprimir
-            upload_to_gcs(final_path, filename)
-        return filename
+# Los métodos anteriores upload_to_gcs y save_and_compress_image han sido migrados a storage_manager.py
 
 # --- INICIO DEL MOTOR VANGUARD (Safe Boot) ---
 _initialized = False
@@ -504,12 +431,8 @@ def upgrade():
 @app.route('/upload', methods=['GET', 'POST'])
 def upload():
     """
-    Endpoint de carga con LOGGING EXHAUSTIVO para diagnóstico de Xiaomi.
+    Endpoint de carga migrado a GCS (Memory Processing).
     """
-    import traceback
-    import io
-    from PIL import Image
-    import uuid
     from ai_engine import analizar_imagen_objetos
     import json
 
@@ -527,82 +450,53 @@ def upload():
 
         try:
             filename = secure_filename(file.filename)
-            # Guardado y compresión profesional
-            filename = save_and_compress_image(file, app.config.get('UPLOAD_FOLDER'), filename)
-            filepath = os.path.join(app.config.get('UPLOAD_FOLDER'), filename)
             
-            app.logger.info(f"[VANGUARD-UPLOAD] Procesando: {filename}")
+            # 1. Leer bytes para la IA
+            img_bytes = file.read()
+            file.seek(0) # Reset stream for GCS
             
-            ext = filename.rsplit('.', 1)[1].lower() if '.' in filename else ''
+            # 2. IA: Procesar desde memoria
+            app.logger.info(f"[VANGUARD-GCS] Analizando con IA (en memoria): {filename}")
+            resultado = analizar_imagen_objetos(img_bytes, tipo_espacio="general")
             
-            # Motor de Video OmniVision
-            if ext in ['mp4', 'mov', 'avi']:
-                from video_processor import extraer_fotogramas
-                frames = extraer_fotogramas(filepath, app.config.get('UPLOAD_FOLDER'))
-                for i, frame_filename in enumerate(frames):
-                    frame_path = os.path.join(app.config.get('UPLOAD_FOLDER'), frame_filename)
-                    resultado = analizar_imagen_objetos(frame_path)
-                    
-                    nueva_ubi = Ubicacion(
-                        nombre=f"{nombre_ubicacion} (Puntual {i+1})", 
-                        imagen_path=frame_filename,
-                        tags=resultado.get('tags', '')
-                    )
-                    db.session.add(nueva_ubi)
-                    db.session.flush()
-
-                    for item in resultado.get('items', []):
-                        nuevo_obj = Objeto(
-                            nombre=item.get('nombre', 'Objeto detectado'),
-                            categoria_principal=item.get('categoria_principal', 'General'),
-                            categoria_secundaria=item.get('subcategoria', ''),
-                            confianza=item.get('confianza', 0.8),
-                            ubicacion_id=nueva_ubi.id,
-                            tags_semanticos=item.get('tags_semanticos', '')
-                        )
-                        db.session.add(nuevo_obj)
-                
-                db.session.commit()
-                flash(f'OmniVision procesó el video. Se crearon {len(frames)} espacios automáticamente.')
-                return redirect(url_for('gallery'))
+            # 3. GCS: Subir a la nube persistente
+            final_filename = upload_image_to_gcs(file, filename)
             
-            else:
-                # Procesamiento de imagen estándar
-                resultado = analizar_imagen_objetos(filepath, tipo_espacio="general")
-                
-                nueva_ubicacion = Ubicacion(
-                    nombre=nombre_ubicacion, 
-                    imagen_path=filename,
-                    tags=resultado.get('tags', ''),
-                    items_json=json.dumps(resultado.get('items', []))
+            # 4. DB: Guardar registro
+            nueva_ubicacion = Ubicacion(
+                nombre=nombre_ubicacion, 
+                imagen_path=final_filename,
+                tags=resultado.get('tags', ''),
+                items_json=json.dumps(resultado.get('items', []))
+            )
+            db.session.add(nueva_ubicacion)
+            db.session.flush()
+            
+            for item in resultado.get('items', []):
+                nuevo_objeto = Objeto(
+                    nombre=item.get('nombre', 'Objeto detectado'),
+                    categoria_principal=item.get('categoria_principal', 'General'),
+                    categoria_secundaria=item.get('subcategoria', ''),
+                    descripcion=item.get('descripcion', ''),
+                    color_predominante=item.get('color_predominante', ''),
+                    material=item.get('material', ''),
+                    estado=item.get('estado', 'nuevo'),
+                    confianza=item.get('confianza', 0.8),
+                    ubicacion_id=nueva_ubicacion.id,
+                    tags_semanticos=item.get('tags_semanticos', '')
                 )
-                db.session.add(nueva_ubicacion)
-                db.session.flush()
-                
-                for item in resultado.get('items', []):
-                    nuevo_objeto = Objeto(
-                        nombre=item.get('nombre', 'Objeto detectado'),
-                        categoria_principal=item.get('categoria_principal', 'General'),
-                        categoria_secundaria=item.get('subcategoria', ''),
-                        descripcion=item.get('descripcion', ''),
-                        confianza=item.get('confianza', 0.8),
-                        ubicacion_id=nueva_ubicacion.id,
-                        tags_semanticos=item.get('tags_semanticos', '')
-                    )
-                    db.session.add(nuevo_objeto)
-                
-                db.session.commit()
-                flash(f'✓ "{nombre_ubicacion}" indexado con éxito.')
-                return redirect(url_for('gallery'))
+                db.session.add(nuevo_objeto)
+            
+            db.session.commit()
+            flash(f'✓ "{nombre_ubicacion}" indexado en la nube con éxito.')
+            return redirect(url_for('gallery'))
 
         except Exception as e:
-            import traceback
-            traceback.print_exc()
+            app.logger.error(f"Error en upload: {e}")
             db.session.rollback()
-            return jsonify({
-                "status": "error",
-                "message": str(e)
-            }), 500
+            return jsonify({"status": "error", "message": str(e)}), 500
+            
+    return render_template('upload.html')
             
     return render_template('upload.html')
 
@@ -763,16 +657,19 @@ def nuevo_plano():
         filename = None
         if file and file.filename != '':
             filename = secure_filename(file.filename)
-            save_and_compress_image(file, app.config.get('UPLOAD_FOLDER'), filename)
+            filename = upload_image_to_gcs(file, filename)
         elif drawing_data:
-            # Procesar imagen del canvas (base64)
+            # Procesar imagen del canvas (base64) en memoria
             try:
+                import io
+                import base64
                 header, encoded = drawing_data.split(",", 1)
                 data = base64.b64decode(encoded)
-                filename = f"plano_{uuid.uuid4().hex[:8]}.png"
-                with open(os.path.join(app.config.get('UPLOAD_FOLDER'), filename), "wb") as f:
-                    f.write(data)
+                temp_filename = f"drawing_{uuid.uuid4().hex[:8]}.png"
+                buffer = io.BytesIO(data)
+                filename = upload_image_to_gcs(buffer, temp_filename)
             except Exception as e:
+                app.logger.error(f"Error al guardar el dibujo: {e}")
                 flash(f"Error al guardar el dibujo: {e}")
                 return redirect(request.url)
         
@@ -780,7 +677,7 @@ def nuevo_plano():
             nuevo = Plano(nombre=nombre, imagen_path=filename)
             db.session.add(nuevo)
             db.session.commit()
-            flash(f'Plano "{nombre}" creado con éxito.')
+            flash(f'✓ Plano "{nombre}" creado en la nube con éxito.')
             return redirect(url_for('list_planos'))
             
     return render_template('plano_form.html')
@@ -790,18 +687,22 @@ def eliminar_plano(plano_id):
     plano = Plano.query.get_or_404(plano_id)
     nombre = plano.nombre
     
-    # Desvincular ubicaciones (opción: borrarlas o dejarlas sin plano)
+    # Desvincular ubicaciones
     for ubi in plano.ubicaciones:
         ubi.plano_id = None
         ubi.pos_x = None
         ubi.pos_y = None
     
-    # Intentar borrar el archivo físico
+    # Intentar borrar de GCS
     if plano.imagen_path:
         try:
-            os.remove(os.path.join(app.config.get('UPLOAD_FOLDER'), plano.imagen_path))
-        except:
-            pass
+            from storage_manager import get_storage_client, GCP_BUCKET_NAME
+            client = get_storage_client()
+            bucket = client.bucket(GCP_BUCKET_NAME)
+            blob = bucket.blob(plano.imagen_path)
+            blob.delete()
+        except Exception as e:
+            app.logger.warning(f"No se pudo borrar {plano.imagen_path} de GCS: {e}")
             
     db.session.delete(plano)
     db.session.commit()
@@ -882,87 +783,33 @@ def save_pin_positions(plano_id):
 @app.route('/api/analizar_foto', methods=['POST'])
 def analizar_foto():
     """
-    Endpoint con LOGGING EXHAUSTIVO para diagnóstico de error en Xiaomi.
+    Análisis instantáneo migrado a GCS.
     """
-    import traceback
     import io
-    import base64
-    from PIL import Image
-    import uuid
     from ai_engine import analizar_imagen_objetos
 
-    # 1. LOGGING DE SEGURIDAD
-    ua = request.headers.get("User-Agent", "Unknown")
-    ct = request.content_type or "Unknown"
-    app.logger.info(f"[VANGUARD-API] Nueva solicitud de análisis | UA: {ua} | CT: {ct}")
-
     try:
-        # SOPORTE DE FORMATOS (Multipart vs JSON/Base64)
-        img_pil = None
-        orig_filename = "upload.jpg"
-        method_detected = "none"
-
-        if 'multipart/form-data' in ct:
-            method_detected = "multipart"
-            file = request.files.get('image') or request.files.get('file')
-            if not file or file.filename == '':
-                return jsonify({'status': 'error', 'message': 'No se recibió imagen'}), 400
-            
-            orig_filename = secure_filename(file.filename)
-            img_pil = Image.open(file)
-
-        elif 'application/json' in ct:
-            method_detected = "json-base64"
-            data_json = request.get_json()
-            if not data_json:
-                return jsonify({'status': 'error', 'message': 'JSON inválido'}), 400
-            
-            b64_data = data_json.get('image_base64') or data_json.get('image')
-            if not b64_data:
-                return jsonify({'status': 'error', 'message': 'No se encontró imagen base64'}), 400
-            
-            if "," in b64_data:
-                b64_data = b64_data.split(",")[1]
-            
-            img_bytes = base64.b64decode(b64_data)
-            img_pil = Image.open(io.BytesIO(img_bytes))
-
-        # --- Continuar procesamiento (Mantenemos por ahora para no romper, pero el logging es lo prioritario) ---
-        if not img_pil:
-            return jsonify({'status': 'error', 'message': 'No se pudo procesar la imagen'}), 400
-
-        if img_pil.mode != "RGB":
-            img_pil = img_pil.convert("RGB")
+        file = request.files.get('image') or request.files.get('file')
+        if not file:
+            return jsonify({'status': 'error', 'message': 'No se recibió imagen'}), 400
         
-        # Resize por seguridad (aunque el usuario pide no optimizar, esto es para evitar MemoryError en Render)
-        max_size = 1280
-        if img_pil.width > max_size or img_pil.height > max_size:
-            img_pil.thumbnail((max_size, max_size), Image.Resampling.LANCZOS)
-
-        unique_id = uuid.uuid4().hex[:8]
-        filename = f"diag_{unique_id}.jpg"
-        filepath = os.path.join(app.config.get('UPLOAD_FOLDER'), filename)
+        # 1. IA: Procesar desde memoria
+        img_bytes = file.read()
+        resultado = analizar_imagen_objetos(img_bytes, tipo_espacio="general")
         
-        img_pil.save(filepath, "JPEG", quality=85, optimize=True)
-        resultado = analizar_imagen_objetos(filepath, tipo_espacio="general")
+        # 2. GCS: Persistencia rápida (opcional, pero útil)
+        file.seek(0)
+        filename = f"bolt_{uuid.uuid4().hex[:8]}.jpg"
+        upload_image_to_gcs(file, filename)
         
         return jsonify({
             'status': 'success',
             'items': resultado.get('items', []),
-            'filename': filename,
-            'diagnostic': {
-                'method': method_detected,
-                'ua': request.headers.get("User-Agent")
-            }
+            'filename': filename
         })
 
     except Exception as e:
-        import traceback
-        traceback.print_exc()
-        return jsonify({
-            "status": "error",
-            "message": str(e)
-        }), 500
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 @app.route('/api/calibrar_plano', methods=['POST'])
 def calibrar_plano():
@@ -997,7 +844,7 @@ def calibrar_plano():
 
 @app.route('/api/crear_ubicacion_en_mapa', methods=['POST'])
 def crear_ubicacion_en_mapa():
-    """Crear una nueva ubicación directamente desde el mapa con foto y posición"""
+    """Crear una nueva ubicación directamente desde el mapa migrado a GCS."""
     try:
         nombre = request.form.get('nombre', 'Nuevo Espacio')
         plano_id = request.form.get('plano_id')
@@ -1008,13 +855,14 @@ def crear_ubicacion_en_mapa():
         objetos_json = request.form.get('objetos_finales')
         file = request.files.get('file')
         
+        img_bytes = None
         filename = None
+        
         if file:
-            filename = secure_filename(file.filename)
-            if not filename:
-                filename = f"ubicacion_{uuid.uuid4().hex[:8]}.jpg"
-            save_and_compress_image(file, app.config.get('UPLOAD_FOLDER'), filename)
-            filepath = os.path.join(app.config.get('UPLOAD_FOLDER'), filename)
+            img_bytes = file.read()
+            file.seek(0)
+            orig_name = secure_filename(file.filename) or f"ubi_{uuid.uuid4().hex[:8]}.jpg"
+            filename = upload_image_to_gcs(file, orig_name)
         elif temp_filename:
             filename = temp_filename
             
@@ -1025,28 +873,28 @@ def crear_ubicacion_en_mapa():
         nueva_ubicacion = Ubicacion(
             nombre=nombre,
             imagen_path=filename,
-            tags="", # Se llenará después
+            tags="", 
             plano_id=int(plano_id) if plano_id else None,
             pos_x=int(pos_x) if pos_x else None,
             pos_y=int(pos_y) if pos_y else None,
             pos_z=int(pos_z) if pos_z else 0,
-            items_json=objetos_json  # NUEVO: Guardar JSON con bboxes
+            items_json=objetos_json
         )
         db.session.add(nueva_ubicacion)
         db.session.flush()
         
-        # Procesar objetos (pueden venir del editor o de un análisis directo)
+        import json
+        from ai_engine import analizar_imagen_objetos
+        
         objetos_finales = []
         if objetos_json:
-            import json
             objetos_finales = json.loads(objetos_json)
-        else:
-            filepath = os.path.join(app.config.get('UPLOAD_FOLDER'), filename)
-            from ai_engine import analizar_imagen_objetos
-            resultado = analizar_imagen_objetos(filepath, tipo_espacio="general")
+        elif img_bytes:
+            # Análisis si no vienen bboxes del frontend
+            resultado = analizar_imagen_objetos(img_bytes, tipo_espacio="general")
             objetos_finales = resultado.get('items', [])
 
-        # Preparar proyección espacial (Homografía)
+        # Preparar proyección espacial (se mantiene lógica de homografía)
         h_matrix = None
         if plano_id:
             plano = Plano.query.get(plano_id)
@@ -1057,45 +905,34 @@ def crear_ubicacion_en_mapa():
                 except Exception as e:
                     app.logger.error(f"Error deserializando homografía: {e}")
 
-        # Crear objetos asociados con categorización mejorada
         nombres_para_tags = []
         for item in objetos_finales:
-            # ... (se mantiene categorización anterior)
-            categoria_completa = item.get('categoria_principal', '')
-            if 'subcategoria' in item:
-                categoria_completa += f" > {item['subcategoria']}"
-            if 'tipo_especifico' in item:
-                categoria_completa += f" > {item['tipo_especifico']}"
-            
-            if not categoria_completa:
-                categoria_completa = item.get('categoria', 'General')
+            categoria_completa = item.get('categoria_principal', item.get('categoria', 'General'))
             
             # PROYECCIÓN ESPACIAL
-            obj_pos_x = None
-            obj_pos_y = None
-            
-            bbox = item.get('bbox') # [ymin, xmin, ymax, xmax]
+            obj_pos_x, obj_pos_y = None, None
+            bbox = item.get('bbox')
             if h_matrix is not None and bbox:
                 from spatial_engine import SpatialEngine
-                anchor = SpatialEngine.get_object_anchor(bbox) # (x, y) en imagen
-                # Proyectar punto de imagen -> mapa
-                proj_x, proj_y = SpatialEngine.project_point(h_matrix, anchor)
-                obj_pos_x = proj_x
-                obj_pos_y = proj_y
+                anchor = SpatialEngine.get_object_anchor(bbox)
+                obj_pos_x, obj_pos_y = SpatialEngine.project_point(h_matrix, anchor)
             else:
-                # Fallback: Usar la posición del Pin general si no hay homografía
                 obj_pos_x = float(pos_x) if pos_x else None
                 obj_pos_y = float(pos_y) if pos_y else None
 
             nuevo_objeto = Objeto(
                 nombre=item.get('nombre', 'Objeto detectado'),
                 categoria_principal=categoria_completa,
+                descripcion=item.get('descripcion', ''),
+                color_predominante=item.get('color_predominante', ''),
+                material=item.get('material', ''),
+                estado=item.get('estado', item.get('metadata', {}).get('estado', 'N/A')),
                 confianza=item.get('confianza', 0.8),
-                estado=item.get('metadata', {}).get('estado', item.get('estado', 'N/A')),
                 prioridad=item.get('prioridad', 'media'),
                 ubicacion_id=nueva_ubicacion.id,
                 pos_x=obj_pos_x,
-                pos_y=obj_pos_y
+                pos_y=obj_pos_y,
+                tags_semanticos=item.get('tags_semanticos', '')
             )
             db.session.add(nuevo_objeto)
             nombres_para_tags.append(item.get('nombre', 'Objeto'))
@@ -1110,52 +947,64 @@ def crear_ubicacion_en_mapa():
             'objetos_detectados': len(objetos_finales)
         })
     except Exception as e:
+        app.logger.error(f"Error en crear_ubicacion_en_mapa: {e}")
         db.session.rollback()
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 @app.route('/plano/<int:plano_id>/upload_simple', methods=['POST'])
 def upload_plano_simple(plano_id):
-    """Sube una foto directamente a un plano sin posición inicial (aparecerá en la barra lateral)"""
+    """Sube una foto directamente a un plano migrado a GCS."""
     plano = Plano.query.get_or_404(plano_id)
     nombre = request.form.get('nombre', 'Nuevo Espacio')
     file = request.files.get('file')
     
     if file and file.filename != '':
-        filename = secure_filename(file.filename)
-        save_and_compress_image(file, app.config.get('UPLOAD_FOLDER'), filename)
-        filepath = os.path.join(app.config.get('UPLOAD_FOLDER'), filename)
-        
-        # Analizar con IA
-        from ai_engine import analizar_imagen_objetos
-        resultado = analizar_imagen_objetos(filepath)
-        
-        nueva_ubi = Ubicacion(
-            nombre=nombre,
-            imagen_path=filename,
-            plano_id=plano_id,
-            tags=resultado.get('tags', '')
-        )
-        db.session.add(nueva_ubi)
-        db.session.flush()
-        
-        # Crear objetos
-        for item in resultado.get('items', []):
-            nuevo_obj = Objeto(
-                nombre=item.get('nombre', 'Objeto'),
-                categoria_principal=item.get('categoria', 'General'),
-                confianza=item.get('confianza', 0.8),
-                ubicacion_id=nueva_ubi.id
-            )
-            db.session.add(nuevo_obj)
+        try:
+            # 1. IA: Procesar desde memoria
+            img_bytes = file.read()
+            from ai_engine import analizar_imagen_objetos
+            resultado = analizar_imagen_objetos(img_bytes)
             
-        db.session.commit()
-        flash(f'Espacio "{nombre}" indexado y añadido al directorio del plano.')
-    
+            # 2. GCS: Subir
+            file.seek(0)
+            filename = upload_image_to_gcs(file, secure_filename(file.filename))
+            
+            nueva_ubi = Ubicacion(
+                nombre=nombre,
+                imagen_path=filename,
+                plano_id=plano_id,
+                tags=resultado.get('tags', ''),
+                items_json=json.dumps(resultado.get('items', []))
+            )
+            db.session.add(nueva_ubi)
+            db.session.flush()
+            
+            for item in resultado.get('items', []):
+                nuevo_obj = Objeto(
+                    nombre=item.get('nombre', 'Objeto'),
+                    categoria_principal=item.get('categoria_principal', item.get('categoria', 'General')),
+                    descripcion=item.get('descripcion', ''),
+                    color_predominante=item.get('color_predominante', ''),
+                    material=item.get('material', ''),
+                    estado=item.get('estado', 'nuevo'),
+                    confianza=item.get('confianza', 0.8),
+                    ubicacion_id=nueva_ubi.id,
+                    tags_semanticos=item.get('tags_semanticos', '')
+                )
+                db.session.add(nuevo_obj)
+            
+            db.session.commit()
+            flash(f'✓ "{nombre}" indexado en la nube.')
+        except Exception as e:
+            app.logger.error(f"Error en upload_simple: {e}")
+            db.session.rollback()
+            flash(f"Error al subir: {e}")
+            
     return redirect(url_for('ver_plano', plano_id=plano_id))
 
 @app.route('/plano/editar/<int:plano_id>', methods=['GET', 'POST'])
 def editar_plano(plano_id):
-    """Editar un plano existente con el canvas de dibujo"""
+    """Editar un plano existente con GCS"""
     plano = Plano.query.get_or_404(plano_id)
     
     if request.method == 'POST':
@@ -1163,28 +1012,38 @@ def editar_plano(plano_id):
         drawing_data = request.form.get('drawing_data')
         
         if drawing_data:
-            # Procesar base64 y guardar nueva imagen
-            image_data = drawing_data.split(',')[1]
-            image_bytes = base64.b64decode(image_data)
-            
-            # Eliminar imagen anterior
-            if plano.imagen_path:
-                try:
-                    os.remove(os.path.join(app.config.get('UPLOAD_FOLDER'), plano.imagen_path))
-                except:
-                    pass
-            
-            # Guardar nueva imagen
-            filename = f"plano_edit_{uuid.uuid4().hex[:8]}.png"
-            filepath = os.path.join(app.config.get('UPLOAD_FOLDER'), filename)
-            with open(filepath, 'wb') as f:
-                f.write(image_bytes)
-            
-            plano.nombre = nombre
-            plano.imagen_path = filename
-            db.session.commit()
-            flash(f'Plano "{nombre}" actualizado con éxito.')
-            return redirect(url_for('ver_plano', plano_id=plano.id))
+            # Procesar base64 y subir a GCS
+            try:
+                import io
+                import base64
+                header, encoded = drawing_data.split(",", 1)
+                data = base64.b64decode(encoded)
+                temp_filename = f"plano_edit_{uuid.uuid4().hex[:8]}.png"
+                buffer = io.BytesIO(data)
+                
+                # Eliminar imagen anterior de GCS
+                if plano.imagen_path:
+                    try:
+                        from storage_manager import get_storage_client, GCP_BUCKET_NAME
+                        client = get_storage_client()
+                        bucket = client.bucket(GCP_BUCKET_NAME)
+                        blob = bucket.blob(plano.imagen_path)
+                        blob.delete()
+                    except:
+                        pass
+                
+                filename = upload_image_to_gcs(buffer, temp_filename)
+                plano.imagen_path = filename
+                
+            except Exception as e:
+                app.logger.error(f"Error al editar dibujo: {e}")
+                flash(f"Error al actualizar: {e}")
+                return redirect(request.url)
+        
+        plano.nombre = nombre
+        db.session.commit()
+        flash(f'✓ Plano "{nombre}" actualizado.')
+        return redirect(url_for('ver_plano', plano_id=plano.id))
     
     return render_template('plano_edit.html', plano=plano)
 
