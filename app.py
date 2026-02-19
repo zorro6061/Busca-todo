@@ -470,16 +470,21 @@ def internal_server_error(e):
 
 @app.context_processor
 def inject_config():
+    global _db_ready
+    if not _db_ready:
+        return dict(app_config={'subscription_type': 'free'})
+        
     try:
         config = Config.query.first()
         if not config:
-            print("Creating default config...")
+            # Solo intentar crear si estamos seguros de que la sesión es segura
+            vanguard_log("Creating default config...")
             config = Config(subscription_type='free')
             db.session.add(config)
             db.session.commit()
         return dict(app_config=config)
     except Exception as e:
-        print(f"ERROR IN INJECT_CONFIG: {e}")
+        vanguard_log(f"ERROR IN INJECT_CONFIG: {e}")
         return dict(app_config={'subscription_type': 'free'})
 
 @app.route('/pricing')
