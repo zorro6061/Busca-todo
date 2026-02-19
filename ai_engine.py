@@ -152,15 +152,17 @@ FORMATO DE RESPUESTA (JSON):
                 continue
 
         if not text_response:
-            diag_msg = "Ninguno de los modelos de Gemini respondió."
-            try:
-                # Intento de diagnóstico: ¿El cliente puede ver los modelos?
-                modelos_vistos = [m.name for m in client.models.list()]
-                diag_msg += f" Modelos visibles: {modelos_vistos}."
-            except Exception as diag_err:
-                diag_msg += f" Error de diagnóstico (posible API Key/Red): {diag_err}."
-            
-            raise ValueError(f"{diag_msg} Verifica API Key y cuotas en Google AI Studio.")
+            logger.warning("[AI-SRE] Falla total de modelos o Rate Limit (429). Activando modo 'Pendiente'.")
+            return {
+                "items": [{
+                    "nombre": "Objeto pendiente",
+                    "categoria_principal": "Otros",
+                    "descripcion": "El análisis de IA falló por límite de cuota o red. Procesamiento pendiente.",
+                    "tags_semanticos": "propietario:General, pendiente:procesar"
+                }],
+                "tags": "pendiente:procesar",
+                "analisis_espacial": {}
+            }
 
         logger.info(f"[AI-RUNTIME] Respuesta exitosa recibida usando {current_used_model}")
 
