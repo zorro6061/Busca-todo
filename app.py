@@ -97,32 +97,7 @@ def handle_file_too_large(e):
         "detail": "El límite máximo es 10MB. Intenta subir una foto con menor resolución o comprimida."
     }), 413
 
-# DIAGNÓSTICO DE ARRANQUE (Visible en Gunicorn)
-with app.app_context():
-    initialize_folders()
-    fix_db_sequences()
-
-vanguard_log("--- STAGE 1: SYSTEM READY ---")
-print(f"[VANGUARD-STARTUP] Directorio actual: {os.getcwd()}")
-port_env = os.environ.get('PORT')
-print(f"[VANGUARD-STARTUP] Puerto detectado en entorno: {port_env or 'Default 5001'}")
-
-@app.route('/alive')
-@app.route('/health')
-@app.route('/test')
-def alive_check():
-    return "Busca-todo Vanguard Engine: ONLINE", 200
-
-@app.route('/env-check')
-def env_check():
-    import os
-    return jsonify({
-        "db_configured": bool(os.environ.get('DATABASE_URL')),
-        "gcs_configured": bool(os.environ.get('GOOGLE_APPLICATION_CREDENTIALS')),
-        "port": os.environ.get('PORT'),
-        "cwd": os.getcwd()
-    })
-
+# --- UTILS & STARTUP ---
 def fix_db_sequences():
     """Sincroniza las secuencias de PostgreSQL dinámicamente."""
     if not instance_connection_name and not raw_db_url:
@@ -142,11 +117,6 @@ def fix_db_sequences():
         vanguard_log(f"Advertencia en sanación de secuencias: {e}")
         db.session.rollback()
 
-@app.route('/api/admin/fix-db')
-def force_fix_db():
-    fix_db_sequences()
-    return jsonify({"status": "success", "message": "Secuencias reparadas"})
-
 def initialize_folders():
     """Crea las carpetas necesarias si no existen."""
     basedir = os.path.abspath(os.path.dirname(__file__))
@@ -159,6 +129,13 @@ def initialize_folders():
                 os.makedirs(folder, exist_ok=True)
             except Exception as e:
                 app.logger.error(f"[VANGUARD-STARTUP] Error carpetas: {e}")
+
+# DIAGNÓSTICO DE ARRANQUE (Visible en Gunicorn)
+with app.app_context():
+    initialize_folders()
+    fix_db_sequences()
+
+vanguard_log("--- STAGE 1: SYSTEM READY ---")
 
 @app.route('/debug-models')
 def debug_models():
