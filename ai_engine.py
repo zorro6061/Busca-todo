@@ -175,6 +175,9 @@ FORMATO DE RESPUESTA (JSON):
                 "analisis_espacial": {}
             }
 
+        # LOG DE DEPURACIÓN SRE: Ver exactamente qué devuelve la IA
+        logger.info(f"[AI-RAW-RESPONSE] Contenido recibido: {text_response}")
+        
         logger.info(f"[AI-RUNTIME] Respuesta exitosa recibida usando {current_used_model}")
 
         # 4. Limpieza y Recuperación de JSON
