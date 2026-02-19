@@ -319,6 +319,7 @@ def save_and_compress_image(file_storage, folder, filename, max_size=1280, quali
 
 # --- INICIO DEL MOTOR VANGUARD (Safe Boot) ---
 _initialized = False
+_db_ready = False
 
 @app.before_request
 def initialize_vanguard():
@@ -326,41 +327,51 @@ def initialize_vanguard():
     if request.path in ['/alive', '/health', '/static/manifest.json', '/static/sw.js']:
         return
         
-    global _initialized
+    global _initialized, _db_ready
     if not _initialized:
-        vanguard_log("Iniciando secuencia de boot (Sync)...")
+        _initialized = True
+        vanguard_log("Iniciando secuencia de boot (Async Robust)...")
         initialize_folders()
         
-        with app.app_context():
-            try:
-                vanguard_log("DB: Ejecutando db.create_all()...")
-                db.create_all()
-                vanguard_log("DB: db.create_all() completado.")
-                
-                from sqlalchemy import text
-                vanguard_log("DB: Verificando migraciones...")
-                migraciones = [
-                    ('ALTER TABLE muebles ADD COLUMN nombre VARCHAR(100) DEFAULT "Mueble Sin Nombre"', "muebles_nombre"),
-                    ('ALTER TABLE objetos ADD COLUMN tags_semanticos TEXT', "objetos_tags"),
-                    ('ALTER TABLE ubicaciones ADD COLUMN items_json TEXT', "ubicaciones_json"),
-                    ('ALTER TABLE objetos RENAME COLUMN categoria TO categoria_principal', "obj_rename_cat"),
-                    ('ALTER TABLE objetos ADD COLUMN categoria_principal VARCHAR(50)', "obj_add_cat_fallback")
-                ]
-                
-                for sql, name in migraciones:
-                    try:
-                        db.session.execute(text(sql))
-                        db.session.commit()
-                        vanguard_log(f"DB: Migración {name} aplicada.")
-                    except Exception:
-                        db.session.rollback()
-                
-                vanguard_log("DB: Secuencia de arranque finalizada con éxito.")
-            except Exception as e:
-                vanguard_log(f"DB: ERROR CRÍTICO en arranque: {e}")
+        import threading
+        def robust_db_init():
+            global _db_ready
+            with app.app_context():
+                try:
+                    vanguard_log("DB: Verificando conexión (timeout 10s)...")
+                    # Intentar una consulta simple para ver si la BD está ahí
+                    from sqlalchemy import text
+                    db.session.execute(text("SELECT 1"))
+                    
+                    vanguard_log("DB: Ejecutando db.create_all()...")
+                    db.create_all()
+                    
+                    vanguard_log("DB: Verificando migraciones...")
+                    migraciones = [
+                        ('ALTER TABLE muebles ADD COLUMN nombre VARCHAR(100) DEFAULT "Mueble Sin Nombre"', "muebles_nombre"),
+                        ('ALTER TABLE objetos ADD COLUMN tags_semanticos TEXT', "objetos_tags"),
+                        ('ALTER TABLE ubicaciones ADD COLUMN items_json TEXT', "ubicaciones_json"),
+                        ('ALTER TABLE objetos RENAME COLUMN categoria TO categoria_principal', "obj_rename_cat"),
+                        ('ALTER TABLE objetos ADD COLUMN categoria_principal VARCHAR(50)', "obj_add_cat_fallback")
+                    ]
+                    
+                    for sql, name in migraciones:
+                        try:
+                            # Solo intentar si el SQL no falla catastróficamente
+                            db.session.execute(text(sql))
+                            db.session.commit()
+                            vanguard_log(f"DB: Migración {name} aplicada.")
+                        except Exception:
+                            db.session.rollback()
+                    
+                    vanguard_log("DB: Secuencia de arranque finalizada con éxito.")
+                    _db_ready = True
+                except Exception as e:
+                    vanguard_log(f"DB: ERROR CRÍTICO en arranque: {e}")
+                    # No marcamos _db_ready como True para que las rutas sepan que hay fallo
         
-        _initialized = True
-        vanguard_log("Vanguard Engine: Ready.")
+        threading.Thread(target=robust_db_init, daemon=True).start()
+        vanguard_log("Vanguard Engine: Hilo de BD lanzado.")
 
 
 
@@ -402,6 +413,16 @@ def handle_404(e):
 
 @app.route('/')
 def index():
+    global _db_ready
+    if not _db_ready:
+        vanguard_log("Index: DB no lista, retornando dashboard base.")
+        return render_template('index.html', 
+                             plano_count=0,
+                             obj_count=0, 
+                             cat_count=0,
+                             avg_conf=0,
+                             ultima_ubi=None)
+
     from sqlalchemy import func
     ubicaciones_count = Ubicacion.query.count()
     objetos_count = Objeto.query.count()
