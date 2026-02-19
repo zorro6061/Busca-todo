@@ -54,7 +54,7 @@ if instance_connection_name:
     # MODO PRODUCCIÓN: Conexión nativa de GCP vía Socket Unix
     vanguard_log(f"Conectando a Cloud SQL vía Socket: {instance_connection_name}")
     safe_pass = urllib.parse.quote_plus(db_pass or '')
-    app.config['SQLALCHEMY_DATABASE_URI'] = f"postgresql+psycopg2://{db_user}:{safe_pass}/{db_name}?host=/cloudsql/{instance_connection_name}"
+    app.config['SQLALCHEMY_DATABASE_URI'] = f"postgresql+psycopg2://{db_user}:{safe_pass}@/{db_name}?host=/cloudsql/{instance_connection_name}"
 elif raw_db_url:
     # MODO COMPATIBILIDAD: Usar DATABASE_URL (codificando contraseña)
     try:
