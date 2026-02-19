@@ -947,6 +947,9 @@ def crear_ubicacion_en_mapa():
         for item in objetos_finales:
             categoria_completa = item.get('categoria_principal', item.get('categoria', 'General'))
             
+            # LOG DE SEGURIDAD SRE: Validar qué datos entran a la DB
+            app.logger.info(f"[DB-MAPPING] Guardando: {item.get('nombre')} | Cat: {categoria_completa} | Desc: {item.get('descripcion')[:30]}...")
+            
             # PROYECCIÓN ESPACIAL
             obj_pos_x, obj_pos_y = None, None
             bbox = item.get('bbox')
