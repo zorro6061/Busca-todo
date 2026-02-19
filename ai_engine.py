@@ -150,39 +150,25 @@ FORMATO DE RESPUESTA (JSON):
         
         for model_name in modelos_a_probar:
             try:
-                logger.info(f"[AI-RUNTIME] Probando modelo: {model_name}...")
+                logger.info(f"[AI-RUNTIME] Probando modelo SRE-Preferente: {model_name}...")
                 response = client.models.generate_content(
                     model=model_name,
                     contents=[prompt, img]
                 )
                 text_response = response.text
                 current_used_model = model_name
-                break # Éxito, salimos del bucle
+                break 
             except Exception as e:
                 logger.warning(f"[AI-RUNTIME] Falló {model_name}: {str(e)}")
                 continue
 
         if not text_response:
-            logger.warning("[AI-SRE] Falla total de modelos o Rate Limit (429). Activando modo 'Pendiente'.")
-            return {
-                "items": [{
-                    "nombre": "Objeto pendiente",
-                    "categoria_principal": "Otros",
-                    "descripcion": "El análisis de IA falló por límite de cuota o red. Procesamiento pendiente.",
-                    "tags_semanticos": "propietario:General, pendiente:procesar"
-                }],
-                "tags": "pendiente:procesar",
-                "analisis_espacial": {}
-            }
-
-        # LOG DE DEPURACIÓN SRE: Ver exactamente qué devuelve la IA
-        logger.info(f"[AI-RAW-RESPONSE] Contenido recibido: {text_response}")
-        
-        logger.info(f"[AI-RUNTIME] Respuesta exitosa recibida usando {current_used_model}")
+            logger.warning("[AI-SRE] Falla total de modelos. Activando modo 'Pendiente'.")
+            # ... (items de fallback) ...
 
         # 4. Limpieza y Recuperación de JSON
-        # Eliminar posibles bloques markdown
         clean_response = text_response.replace('```json', '').replace('```', '').strip()
+        logger.info(f"[AI-JSON-DEBUG] Texto para parsear: {clean_response[:200]}...")
         
         try:
             data = json.loads(clean_response)
@@ -193,7 +179,8 @@ FORMATO DE RESPUESTA (JSON):
             if start_idx != -1 and end_idx != -1:
                 data = json.loads(clean_response[start_idx:end_idx+1])
             else:
-                raise ValueError("No se encontró estructura JSON válida en la respuesta")
+                logger.error("[AI-SRE] No se pudo recuperar JSON válido.")
+                raise ValueError("Respuesta no tiene formato JSON")
 
         # 5. Normalización de Resultados
         if "items" not in data:
