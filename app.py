@@ -40,25 +40,32 @@ app.url_map.strict_slashes = False
 app.debug = os.environ.get('FLASK_DEBUG', 'false').lower() == 'true'
 basedir = os.path.abspath(os.path.dirname(__file__))
 
-# Priorizar DATABASE_URL (Cloud SQL) si está presente, de lo contrario usar SQLite local
+# Configuración de Base de Datos Inteligente (Cloud SQL Socket Support)
 default_sqlite = 'sqlite:///' + os.path.join(basedir, 'instance', 'ctrl_f.db')
 raw_db_url = os.environ.get('DATABASE_URL')
+db_user = os.environ.get('DB_USER')
+db_pass = os.environ.get('DB_PASS')
+db_name = os.environ.get('DB_NAME')
+instance_connection_name = os.environ.get('INSTANCE_CONNECTION_NAME')
 
-if raw_db_url:
-    # Robust DNA: Codificar contraseña si tiene caracteres especiales (?, #, [, ], etc)
-    import urllib.parse
+import urllib.parse
+
+if instance_connection_name:
+    # MODO PRODUCCIÓN: Conexión nativa de GCP vía Socket Unix
+    vanguard_log(f"Conectando a Cloud SQL vía Socket: {instance_connection_name}")
+    safe_pass = urllib.parse.quote_plus(db_pass or '')
+    app.config['SQLALCHEMY_DATABASE_URI'] = f"postgresql+psycopg2://{db_user}:{safe_pass}/{db_name}?host=/cloudsql/{instance_connection_name}"
+elif raw_db_url:
+    # MODO COMPATIBILIDAD: Usar DATABASE_URL (codificando contraseña)
     try:
-        # Formato esperado: postgresql://user:password@host:port/dbname
         if '://' in raw_db_url and '@' in raw_db_url:
             prefix, rest = raw_db_url.split('://', 1)
             auth_part, host_part = rest.rsplit('@', 1)
             if ':' in auth_part:
                 user_part, pass_part = auth_part.split(':', 1)
-                # Solo codificar si no parece ya codificado
                 if '%' not in pass_part:
                     safe_pass = urllib.parse.quote_plus(pass_part)
                     app.config['SQLALCHEMY_DATABASE_URI'] = f"{prefix}://{user_part}:{safe_pass}@{host_part}"
-                    print("[VANGUARD-STARTUP] DATABASE_URL codificada con éxito.")
                 else:
                     app.config['SQLALCHEMY_DATABASE_URI'] = raw_db_url
             else:
@@ -66,10 +73,12 @@ if raw_db_url:
         else:
             app.config['SQLALCHEMY_DATABASE_URI'] = raw_db_url
     except Exception as e:
-        print(f"[VANGUARD-STARTUP-ERROR] Fallo al parsear DATABASE_URL: {e}")
+        vanguard_log(f"Error parseando DATABASE_URL: {e}")
         app.config['SQLALCHEMY_DATABASE_URI'] = raw_db_url
 else:
+    # MODO DESARROLLO/LOCAL: SQLite
     app.config['SQLALCHEMY_DATABASE_URI'] = default_sqlite
+    vanguard_log("Usando SQLite local (instancia de desarrollo)")
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024 # Límite de 10MB para robustez en móvil
 app.config.setdefault("UPLOAD_FOLDER", os.environ.get('UPLOAD_FOLDER', os.path.join(basedir, 'uploads')))
