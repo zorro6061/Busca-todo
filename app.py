@@ -537,9 +537,11 @@ def upload():
             db.session.add(nueva_ubicacion)
             db.session.flush()
             
+            nombres_para_tags = []
             for item in resultado.get('items', []):
+                nombre_obj = item.get('nombre', 'Objeto detectado')
                 nuevo_objeto = Objeto(
-                    nombre=item.get('nombre', 'Objeto detectado'),
+                    nombre=nombre_obj,
                     categoria_principal=item.get('categoria_principal', 'General'),
                     categoria_secundaria=item.get('subcategoria', ''),
                     descripcion=item.get('descripcion', ''),
@@ -551,8 +553,16 @@ def upload():
                     tags_semanticos=item.get('tags_semanticos', '')
                 )
                 db.session.add(nuevo_objeto)
+                nombres_para_tags.append(nombre_obj)
             
+            # SRE Sync: Asegurar que la ubicación tenga los tags para que la galería no diga "Sin análisis"
+            if nombres_para_tags:
+                nueva_ubicacion.tags = ", ".join(nombres_para_tags)
+            elif not nueva_ubicacion.tags:
+                nueva_ubicacion.tags = "Sin objetos detectados"
+                
             db.session.commit()
+            vanguard_log(f"[DB-SUCCESS] Ubicación '{nombre_ubicacion}' guardada con {len(nombres_para_tags)} objetos. Tags: {nueva_ubicacion.tags}")
             flash(f'✓ "{nombre_ubicacion}" indexado en la nube con éxito.')
             return redirect(url_for('gallery'))
 

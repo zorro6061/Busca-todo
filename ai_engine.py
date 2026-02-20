@@ -209,11 +209,23 @@ FORMATO DE RESPUESTA (JSON ESTRICTO - SIN TEXTO ADICIONAL):
         if "items" not in data:
             data["items"] = []
             
+        # SRE: Auto-generar tags si no vienen en la respuesta (para la galería)
+        items_list = data.get("items", [])
+        raw_tags = data.get("tags")
+        
+        if not raw_tags and items_list:
+            nombres = [it.get('nombre', 'Objeto') for it in items_list]
+            tags_string = ", ".join(nombres)
+        else:
+            tags_string = ", ".join(raw_tags) if isinstance(raw_tags, list) else (raw_tags or "")
+
         result = {
-            "items": data.get("items", []),
-            "tags": ", ".join(data.get("tags", [])) if isinstance(data.get("tags"), list) else data.get("tags", ""),
+            "items": items_list,
+            "tags": tags_string,
+            "habitacion_sugerida": data.get("habitacion_sugerida"),
+            "mueble_sugerido": data.get("mueble_sugerido"),
             "analisis_espacial": data.get("analisis_espacial", {}),
-            "texto_detectado": data.get("texto_detectado", []) # Opcional, mantener compatibilidad
+            "texto_detectado": data.get("texto_detectado", []) 
         }
 
         logger.info(f"[AI-SUCCESS] {len(result['items'])} objetos identificados por {current_used_model}")
