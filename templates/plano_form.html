@@ -10,21 +10,21 @@
     <form method="POST" enctype="multipart/form-data">
         <div class="card" style="margin-bottom: var(--space-lg);">
             <div style="margin-bottom: var(--space-lg);">
-                <label>Nombre del Plano</label>
-                <input type="text" name="nombre" placeholder="Ej: Planta Baja, Garaje, Depósito..." required
+                <label>Nombre de la Habitación / Espacio</label>
+                <input type="text" name="nombre" placeholder="Ej: Cuarto Vicente, Cocina, Terraza..." required
                     style="border-radius: 980px; padding: 16px 24px;">
             </div>
 
             <div style="margin-bottom: var(--space-lg);">
-                <label>Método de Creación</label>
+                <label>Método de Visualización</label>
                 <div class="grid grid-2" style="gap: var(--space-sm);">
                     <button type="button" id="btn-mode-upload" class="btn btn-primary"
                         style="border-radius: var(--radius-md);">
-                        🖼️ Cargar Imagen
+                        📸 Foto Maestro (Manual)
                     </button>
                     <button type="button" id="btn-mode-draw" class="btn btn-secondary"
-                        style="border-radius: var(--radius-md);">
-                        ✏️ Dibujar Croquis
+                        style="border-radius: var(--radius-md); opacity: 0.5;">
+                        ✏️ Croquis (Legacy)
                     </button>
                 </div>
                 <input type="hidden" name="metodo" id="input-metodo" value="upload">
@@ -32,15 +32,16 @@
 
             <!-- Upload Section -->
             <div id="section-upload" class="reveal visible">
-                <label>Archivo de Imagen</label>
+                <label>Foto de Referencia</label>
                 <input type="file" name="file" accept="image/*" capture="environment" class="btn btn-secondary"
                     style="width: 100%; padding: 14px;">
-                <p style="color: var(--text-dim); font-size: 0.75rem; margin-top: 8px;">Recomendado: Plano
-                    arquitectónico o foto cenital.</p>
+                <p style="color: var(--text-dim); font-size: 0.75rem; margin-top: 8px;">Misión: Saca una foto panorámica
+                    o abarcativa del espacio para poner Hotspots.</p>
             </div>
 
             <!-- Drawing Section -->
-            <div id="section-draw" style="display: none;">
+            <div id="section-draw" style="display: none; opacity: 0.6;">
+
                 <div style="display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap;">
                     <button type="button" class="btn btn-sm btn-secondary tool-btn active" data-tool="pencil"
                         title="Lápiz">✏️</button>

@@ -848,6 +848,36 @@ def check_analysis(ubi_id):
         ]
     })
 
+# ── API: Guardar Hotspot (Punto de Interés) sobre Foto de Referencia ──
+@app.route('/api/save-hotspot/<int:plano_id>', methods=['POST'])
+def save_hotspot(plano_id):
+    """Guarda o actualiza un hotspot (zona) vinculado a un mueble/sector."""
+    plano = Plano.query.get_or_404(plano_id)
+    data = request.get_json()
+    
+    nombre = data.get('nombre', 'Nuevo Punto')
+    x = data.get('x') # 0-100
+    y = data.get('y') # 0-100
+    
+    if x is None or y is None:
+        return jsonify({'success': False, 'error': 'Coordenadas faltantes'}), 400
+        
+    try:
+        # Buscamos si ya existe una zona con ese nombre para este plano o creamos una nueva
+        zona = Zona.query.filter_by(plano_id=plano_id, nombre=nombre).first()
+        if not zona:
+            zona = Zona(nombre=nombre, plano_id=plano_id)
+            db.session.add(zona)
+            
+        zona.coords_json = json.dumps({'x': x, 'y': y, 'type': 'hotspot'})
+        db.session.commit()
+        
+        return jsonify({'success': True, 'id': zona.id})
+    except Exception as e:
+        app.logger.error(f"[HOTSPOT-ERR] {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @app.route('/planos')
 def list_planos():
     planos = Plano.query.all()
@@ -960,11 +990,27 @@ def ver_plano(plano_id):
             'imagen_path': ubi.imagen_path
         })
 
+    # Preparar HOTSPOTS (Zonas interactivas)
+    hotspots_data = []
+    for zona in plano.zonas:
+        try:
+            coords = json.loads(zona.coords_json)
+            hotspots_data.append({
+                'id': zona.id,
+                'nombre': zona.nombre,
+                'x': coords.get('x'),
+                'y': coords.get('y')
+            })
+        except:
+            continue
+
     return render_template('plano_view.html', 
                          plano=plano, 
                          pins=pins_data,
                          unplaced=unplaced_data,
+                         hotspots=hotspots_data,
                          ubicaciones_sin_plano=ubicaciones_sin_plano)
+
 
     return jsonify({'status': 'error', 'message': 'Ubicación no encontrada'}), 404
 

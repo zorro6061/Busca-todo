@@ -98,8 +98,30 @@
                     </div>
                     {% endif %}
 
-                    <!-- Pins will be rendered here via JS -->
+                    <!-- Hotspots & Pins Layer -->
                     <div id="pins-layer" style="position: absolute; inset: 0; pointer-events: none;"></div>
+                    <div id="hotspots-layer" style="position: absolute; inset: 0;"></div>
+                </div>
+            </div>
+
+            <!-- Modal para Crear/Linkear Hotspot -->
+            <div id="modal-hotspot"
+                style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 3000; align-items: center; justify-content: center; backdrop-filter: blur(10px);">
+                <div class="card" style="max-width: 400px; width: 90%; padding: var(--space-xl);">
+                    <h3 style="margin-bottom: var(--space-md);">📍 Vincular Sector</h3>
+                    <p style="color: var(--text-dim); font-size: 0.8rem; margin-bottom: var(--space-lg);">Vincula este
+                        punto a un mueble o sector específico de la habitación.</p>
+                    <div style="margin-bottom: var(--space-md);">
+                        <label>Nombre del Sector / Mueble</label>
+                        <input type="text" id="hs-nombre" placeholder="Ej: Escritorio, Alacena, Estante A1"
+                            style="border-radius: 980px; padding: 12px 20px;">
+                    </div>
+                    <div style="display: flex; gap: 10px;">
+                        <button type="button" onclick="cerrarModalHotspot()" class="btn btn-secondary"
+                            style="flex: 1;">Cancelar</button>
+                        <button type="button" onclick="confirmarHotspot()" class="btn btn-primary"
+                            style="flex: 1;">Vincular</button>
+                    </div>
                 </div>
             </div>
 
@@ -190,6 +212,126 @@
     </div>
 
     <script>
+        // ── CONFIGURACIÓN FASE 4: NAVEGADOR HÍBRIDO ──
+        const hotspots = JSON.parse('{{ hotspots|tojson | safe }}') || [];
+        const pins = JSON.parse('{{ pins|tojson | safe }}') || [];
+        const planoId = {{ plano.id }};
+
+        let tempCoords = null;
+
+        function renderHotspots() {
+            const layer = document.getElementById('hotspots-layer');
+            layer.innerHTML = '';
+
+            hotspots.forEach(hs => {
+                const h = document.createElement('div');
+                h.className = 'hotspot-starlink';
+                h.style.left = hs.x + '%';
+                h.style.top = hs.y + '%';
+                h.innerHTML = `
+                <div class="hotspot-pulse"></div>
+                <div class="hotspot-label">${hs.nombre}</div>
+            `;
+                h.onclick = (e) => {
+                    e.stopPropagation();
+                    // Navegación Híbrida: Ir a Galería con filtro
+                    const habitacion = "{{ plano.nombre }}";
+                    window.location.href = `/gallery?habitacion=${encodeURIComponent(habitacion)}&mueble=${encodeURIComponent(hs.nombre)}`;
+                };
+                layer.appendChild(h);
+            });
+        }
+
+        // Crear hotspot al hacer click en la foto
+        document.getElementById('hotspots-layer').onclick = function (e) {
+            const rect = this.getBoundingClientRect();
+            const x = ((e.clientX - rect.left) / rect.width) * 100;
+            const y = ((e.clientY - rect.top) / rect.height) * 100;
+
+            tempCoords = { x, y };
+            document.getElementById('modal-hotspot').style.display = 'flex';
+            document.getElementById('hs-nombre').focus();
+        };
+
+        function cerrarModalHotspot() {
+            document.getElementById('modal-hotspot').style.display = 'none';
+            tempCoords = null;
+        }
+
+        async function confirmarHotspot() {
+            const nombre = document.getElementById('hs-nombre').value;
+            if (!nombre || !tempCoords) return;
+
+            window.showIsland("Vinculando...", 0, 'loading');
+            try {
+                const res = await fetch(`/api/save-hotspot/${planoId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        nombre: nombre,
+                        x: tempCoords.x,
+                        y: tempCoords.y
+                    })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    window.showIsland("Sector Vinculado", 2000, 'success');
+                    hotspots.push({ id: data.id, nombre, x: tempCoords.x, y: tempCoords.y });
+                    renderHotspots();
+                    cerrarModalHotspot();
+                }
+            } catch (e) {
+                window.showIsland("Error al vincular", 2000, 'error');
+            }
+        }
+
+        // ── Estilos Starlink (Injectados vía JS para no ensuciar el header) ──
+        const style = document.createElement('style');
+        style.innerHTML = `
+        .hotspot-starlink {
+            position: absolute;
+            width: 24px;
+            height: 24px;
+            transform: translate(-50%, -50%);
+            cursor: pointer;
+            z-index: 100;
+        }
+        .hotspot-pulse {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: rgba(99, 102, 241, 0.6);
+            border: 2px solid #fff;
+            box-shadow: 0 0 15px rgba(99, 102, 241, 0.8);
+            animation: pulse-starlink 2s infinite;
+        }
+        .hotspot-label {
+            position: absolute;
+            top: -25px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.8);
+            backdrop-filter: blur(5px);
+            color: #fff;
+            padding: 2px 10px;
+            border-radius: 980px;
+            font-size: 0.65rem;
+            white-space: nowrap;
+            border: 1px solid rgba(255,255,255,0.1);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .hotspot-starlink:hover .hotspot-label {
+            opacity: 1;
+        }
+        @keyframes pulse-starlink {
+            0% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.7); }
+            70% { transform: scale(1.1); box-shadow: 0 0 0 15px rgba(99, 102, 241, 0); }
+            100% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); }
+        }
+    `;
+        document.head.appendChild(style);
+
         // ── REACTIVE STATE (Single Source of Truth) ──
         const MapStore = new Proxy({
             pins: JSON.parse('{{ pins|tojson | safe }}') || [],
@@ -495,6 +637,7 @@
             dst_pts: calibDstPts
             };
         window.showIsland("Guardando...", 0, 'loading');
+
         fetch('/api/calibrar_plano', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -516,7 +659,12 @@
         document.getElementById('map-search').oninput = applySearch;
         document.getElementById('btn-nueva-ubicacion').onclick = () => document.getElementById('modal-nueva').style.display = 'flex';
 
-        window.onload = renderMap;
+        // Renderizado inicial
+        window.addEventListener('load', () => {
+            renderHotspots();
+            // Mantener compatibilidad con los pines existentes (opcional)
+            if (typeof renderMap === 'function') renderMap();
+        });
     </script>
 
     <style>

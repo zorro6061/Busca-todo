@@ -257,7 +257,48 @@
         objetosPorUbi = {};
     }
 
+    // ── NAVEGADOR HÍBRIDO: Filtrado desde URL ──
+    function applyUrlFilters() {
+        const params = new URLSearchParams(window.location.search);
+        const habitacion = params.get('habitacion');
+        const mueble = params.get('mueble');
+
+        if (habitacion || mueble) {
+            console.log('[FILTER] Aplicando filtros de navegación:', { habitacion, mueble });
+            const cards = document.querySelectorAll('.card-gallery');
+            let found = false;
+
+            cards.forEach(card => {
+                const ubiId = card.dataset.ubiId;
+                const matchesHab = !habitacion || card.innerText.includes(habitacion);
+                const matchesMueble = !mueble || card.innerText.includes(mueble);
+
+                if (habitacion && mueble) {
+                    // Si tenemos ambos, buscamos la match perfecta
+                    if (matchesHab && matchesMueble) {
+                        card.style.borderColor = 'var(--primary)';
+                        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        abrirDetalleDesdeCard(card);
+                        found = true;
+                    }
+                } else if (matchesHab || matchesMueble) {
+                    card.style.opacity = '1';
+                } else {
+                    card.style.opacity = '0.3';
+                }
+            });
+
+            if (found) window.showIsland("Sector Localizado", 2000, 'success');
+        }
+    }
+
+    function abrirDetalleDesdeCard(card) {
+        // Helper para disparar el onclick de la card programáticamente
+        card.click();
+    }
+
     function abrirDetalle(id, nombre, imagen, tags, objCount, planoId) {
+
         const imgBase = window.__gcsBase ? window.__gcsBase + '/' : '/uploads/';
         document.getElementById('det-img').src = imgBase + imagen;
         document.getElementById('det-nombre').textContent = nombre;
@@ -368,6 +409,10 @@
         }, 5000); // Cada 5 segundos
     }
 
-    window.addEventListener('load', startAnalysisPolling);
+    window.addEventListener('load', () => {
+        startAnalysisPolling();
+        applyUrlFilters();
+    });
 </script>
+
 {% endblock %}
