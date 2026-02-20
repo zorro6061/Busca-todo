@@ -1,0 +1,23 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div class="fade-up" style="max-width: 600px; margin: var(--space-2xl) auto; text-align: center;">
+    <div class="card" style="padding: var(--space-2xl); border: 2px solid var(--danger);">
+        <span class="material-symbols-rounded"
+            style="font-size: 64px; color: var(--danger); margin-bottom: var(--space-md);">warning</span>
+        <h2>Ups, algo no salió como esperábamos</h2>
+        <p style="color: var(--text-dim); margin-bottom: var(--space-xl);">Estamos reconstruyendo la experiencia y hubo
+            un tropiezo técnico en <strong>{{ context }}</strong>.</p>
+
+        <div
+            style="background: rgba(0,0,0,0.3); padding: var(--space-md); border-radius: var(--radius-md); text-align: left; margin-bottom: var(--space-xl); font-family: monospace; font-size: 0.85rem; border: 1px solid var(--glass-border);">
+            <code style="color: #ff6b6b;">Error: {{ error }}</code>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+            <a href="javascript:location.reload()" class="btn btn-primary">Reintentar</a>
+            <a href="{{ url_for('list_planos') }}" class="btn btn-secondary">Volver a mis Planos</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -86,23 +86,34 @@
 
             <!-- Map Container -->
             <div id="map-container"
-                style="position: relative; overflow: auto; min-height: 600px; display: flex; justify-content: center; background: #0a0a0a;">
-                <div style="position: relative; display: inline-block;">
+                style="position: relative; overflow: auto; min-height: 600px; display: flex; justify-content: center; background: #0a0a0a; border-radius: var(--radius-xl);">
+                <div id="map-inner" style="position: relative; display: inline-block;">
                     {% if plano.imagen_path %}
                     <img id="plano-img" src="{{ url_for('uploaded_file', filename=plano.imagen_path) }}"
-                        style="display: block; max-width: none;">
+                        style="display: block; max-width: none; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);">
                     {% else %}
-                    <div
-                        style="width: 800px; height: 600px; display: flex; align-items: center; justify-content: center; background: #111;">
-                        <p style="color: var(--text-muted);">Sin imagen de fondo</p>
+                    <div class="empty-plano-state"
+                        style="width: 800px; height: 600px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: linear-gradient(135deg, #111 0%, #050505 100%); border: 2px dashed rgba(255,255,255,0.1); border-radius: var(--radius-md);">
+                        <span class="material-symbols-rounded"
+                            style="font-size: 80px; color: var(--primary); opacity: 0.5; margin-bottom: 20px;">add_a_photo</span>
+                        <h3 style="margin-bottom: 8px;">Habitación sin Foto Maestra</h3>
+                        <p style="color: var(--text-dim); margin-bottom: 24px; max-width: 300px; text-align: center;">
+                            Para navegar al estilo Tesla, necesitamos una foto panorámica o gran angular del espacio.
+                        </p>
+                        <a href="{{ url_for('editar_plano', plano_id=plano.id) }}" class="btn btn-primary">
+                            <span class="material-symbols-rounded"
+                                style="font-size: 20px; vertical-align: -4px; margin-right: 4px;">upload</span>
+                            Subir Foto Maestra
+                        </a>
                     </div>
                     {% endif %}
 
                     <!-- Hotspots & Pins Layer -->
                     <div id="pins-layer" style="position: absolute; inset: 0; pointer-events: none;"></div>
-                    <div id="hotspots-layer" style="position: absolute; inset: 0;"></div>
+                    <div id="hotspots-layer" style="position: absolute; inset: 0; cursor: crosshair;"></div>
                 </div>
             </div>
+
 
             <!-- Modal para Crear/Linkear Hotspot -->
             <div id="modal-hotspot"
@@ -212,9 +223,10 @@
 
     <script>
         // ── CONFIGURACIÓN FASE 4: NAVEGADOR HÍBRIDO ──
-        const hotspots = JSON.parse('{{ hotspots|tojson | safe }}') || [];
-        const pins = JSON.parse('{{ pins|tojson | safe }}') || [];
-        const planoId = {{ plano.id }};
+        const hotspots = JSON.parse('{{ hotspots|tojson|safe }}') || [];
+        const pins = JSON.parse('{{ pins|tojson|safe }}') || [];
+        const planoId = Number("{{ plano.id }}");
+
 
         let tempCoords = null;
 
@@ -241,16 +253,27 @@
             });
         }
 
-        // Crear hotspot al hacer click en la foto
+        // Crear hotspot o posicionar pin al hacer click en la foto
         document.getElementById('hotspots-layer').onclick = function (e) {
             const rect = this.getBoundingClientRect();
             const x = ((e.clientX - rect.left) / rect.width) * 100;
             const y = ((e.clientY - rect.top) / rect.height) * 100;
 
+            // Lógica para Rafael: Si hay un pin sin ubicar (Unplaced), lo posicionamos con un click.
+            if (MapStore.unplaced.length > 0) {
+                const item = MapStore.unplaced[0];
+                window.showIsland(`Ubicando: ${item.nombre}`, 2000, 'success');
+                MapStore.unplaced = MapStore.unplaced.filter(p => p.id !== item.id);
+                MapStore.pins = [...MapStore.pins, { ...item, x, y }];
+                return;
+            }
+
+            // Fallback: Crear Hotspot manual si no hay unplaced
             tempCoords = { x, y };
             document.getElementById('modal-hotspot').style.display = 'flex';
             document.getElementById('hs-nombre').focus();
         };
+
 
         function cerrarModalHotspot() {
             document.getElementById('modal-hotspot').style.display = 'none';
@@ -635,6 +658,7 @@
         src_pts: calibSrcPts,
             dst_pts: calibDstPts
             };
+
         window.showIsland("Guardando...", 0, 'loading');
 
         fetch('/api/calibrar_plano', {

@@ -947,72 +947,70 @@ def eliminar_plano(plano_id):
 
 @app.route('/plano/<int:plano_id>')
 def ver_plano(plano_id):
-    plano = Plano.query.get_or_404(plano_id)
-    ubicaciones_sin_plano = Ubicacion.query.filter_by(plano_id=None).all()
-    # Ubicaciones del plano sin posición (ej: del Video Scanner)
-    ubicaciones_sin_posicion = Ubicacion.query.filter(
-        Ubicacion.plano_id == plano_id,
-        (Ubicacion.pos_x == None) | (Ubicacion.pos_y == None)
-    ).all()
-    # Preparar PINS (Ubicaciones con posición)
-    pins_data = []
-    for ubi in plano.ubicaciones:
-        if ubi.pos_x is not None and ubi.pos_y is not None:
-            # Incluir objetos con sus posiciones relativas si existen
-            obj_list = []
-            for obj in ubi.objetos:
-                obj_list.append({
-                    'id': obj.id,
-                    'nombre': obj.nombre,
-                    'x': obj.pos_x,
-                    'y': obj.pos_y,
-                    'categoria': obj.categoria_principal
+    try:
+        plano = Plano.query.get_or_404(plano_id)
+        ubicaciones_sin_plano = Ubicacion.query.filter_by(plano_id=None).all()
+        
+        # Ubicaciones del plano sin posición (ej: del Video Scanner)
+        ubicaciones_sin_posicion = Ubicacion.query.filter(
+            Ubicacion.plano_id == plano_id,
+            (Ubicacion.pos_x == None) | (Ubicacion.pos_y == None)
+        ).all()
+        
+        # Preparar PINS (Ubicaciones con posición)
+        pins_data = []
+        for ubi in (plano.ubicaciones or []):
+            if ubi.pos_x is not None and ubi.pos_y is not None:
+                obj_list = []
+                for obj in (ubi.objetos or []):
+                    obj_list.append({
+                        'id': obj.id, 'nombre': obj.nombre,
+                        'x': obj.pos_x, 'y': obj.pos_y,
+                        'categoria': obj.categoria_principal
+                    })
+                pins_data.append({
+                    'id': ubi.id, 'nombre': ubi.nombre,
+                    'x': ubi.pos_x, 'y': ubi.pos_y,
+                    'tags': ubi.tags, 'objetos_count': len(ubi.objetos),
+                    'objetos': obj_list, 'imagen_path': ubi.imagen_path
                 })
-                
-            pins_data.append({
-                'id': ubi.id,
-                'nombre': ubi.nombre,
-                'x': ubi.pos_x,
-                'y': ubi.pos_y,
-                'tags': ubi.tags,
-                'objetos_count': len(ubi.objetos),
-                'objetos': obj_list,
-                'imagen_path': ubi.imagen_path
+        
+        # Preparar UNPLACED
+        unplaced_data = []
+        for ubi in ubicaciones_sin_posicion:
+            unplaced_data.append({
+                'id': ubi.id, 'nombre': ubi.nombre,
+                'objetos_count': len(ubi.objetos), 'imagen_path': ubi.imagen_path
             })
-            
-    # Preparar UNPLACED (Ubicaciones sin posición en este plano)
-    unplaced_data = []
-    for ubi in ubicaciones_sin_posicion:
-        unplaced_data.append({
-            'id': ubi.id,
-            'nombre': ubi.nombre,
-            'objetos_count': len(ubi.objetos),
-            'imagen_path': ubi.imagen_path
-        })
 
-    # Preparar HOTSPOTS (Zonas interactivas)
-    hotspots_data = []
-    for zona in plano.zonas:
-        try:
-            coords = json.loads(zona.coords_json)
-            hotspots_data.append({
-                'id': zona.id,
-                'nombre': zona.nombre,
-                'x': coords.get('x'),
-                'y': coords.get('y')
-            })
-        except:
-            continue
+        # Preparar HOTSPOTS (Zonas interactivas)
+        hotspots_data = []
+        if hasattr(plano, 'zonas'):
+            for zona in plano.zonas:
+                try:
+                    if zona.coords_json:
+                        coords = json.loads(zona.coords_json)
+                        hotspots_data.append({
+                            'id': zona.id, 'nombre': zona.nombre,
+                            'x': coords.get('x'), 'y': coords.get('y')
+                        })
+                except: continue
 
-    return render_template('plano_view.html', 
-                         plano=plano, 
-                         pins=pins_data,
-                         unplaced=unplaced_data,
-                         hotspots=hotspots_data,
-                         ubicaciones_sin_plano=ubicaciones_sin_plano)
+        return render_template('plano_view.html', 
+                             plano=plano, 
+                             pins=pins_data,
+                             unplaced=unplaced_data,
+                             hotspots=hotspots_data,
+                             ubicaciones_sin_plano=ubicaciones_sin_plano)
+    except Exception as e:
+        app.logger.error(f"[PLANO-ERR] Error al cargar plano {plano_id}: {e}")
+        # En caso de error crítico, intentamos mostrar una versión segura o error amigable
+        return render_template('error_resiliente.html', error=str(e), context="Vista de Plano"), 500
+
 
 
     return jsonify({'status': 'error', 'message': 'Ubicación no encontrada'}), 404
+
 
 @app.route('/api/plano/<int:plano_id>/save_pins', methods=['POST'])
 def save_pin_positions(plano_id):
