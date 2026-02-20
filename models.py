@@ -31,6 +31,12 @@ class Ubicacion(db.Model):
     
     objetos = db.relationship('Objeto', backref='ubicacion', lazy=True, cascade="all, delete-orphan")
 
+    # ── Jerarquía Semántica (Fase: Ubicación Rápida por Texto) ──
+    # Todos nullable para no romper registros existentes
+    habitacion     = db.Column(db.String(50),  nullable=True)  # Ej: Living, Cocina
+    mueble_texto   = db.Column(db.String(100), nullable=True)  # Ej: Estante, Mesa de noche
+    punto_especifico = db.Column(db.String(150), nullable=True)  # Ej: Cajón derecho, Parte alta
+
     def __repr__(self):
         return f'<Ubicacion {self.nombre}>'
 

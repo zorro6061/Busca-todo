@@ -75,6 +75,52 @@
                 </div>
             </div>
 
+            <!-- ── Jerarquía de Ubicación Semántica ── -->
+            <div id="location-section"
+                style="margin-bottom: var(--space-xl); padding: var(--space-lg); background: rgba(99,102,241,0.06); border: 1px solid rgba(99,102,241,0.15); border-radius: var(--radius-xl);">
+                <p
+                    style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: var(--primary); margin-bottom: var(--space-md);">
+                    📍 ¿Dónde está?
+                </p>
+
+                <!-- Habitación -->
+                <div style="margin-bottom: var(--space-md);">
+                    <label style="font-size: 0.82rem; color: var(--text-dim);">Habitación</label>
+                    <select name="habitacion" id="habitacion-select"
+                        style="width: 100%; padding: 14px 18px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: var(--radius-lg); color: var(--text-primary); font-size: 0.9rem;"
+                        onchange="actualizarNombreAuto()">
+                        <option value="">— No especificada —</option>
+                        <option value="Living">🛋️ Living / Sala</option>
+                        <option value="Cocina">🍳 Cocina</option>
+                        <option value="Dormitorio">🛏️ Dormitorio</option>
+                        <option value="Dormitorio Juana">🎀 Dormitorio Juana</option>
+                        <option value="Dormitorio Vicente">⚽ Dormitorio Vicente</option>
+                        <option value="Baño">🚿 Baño</option>
+                        <option value="Garage">🔧 Garage</option>
+                        <option value="Lavadero">🧺 Lavadero</option>
+                        <option value="Estudio">💻 Estudio / Escritorio</option>
+                        <option value="Patio">🌿 Patio / Jardín</option>
+                        <option value="Otro">📦 Otro</option>
+                    </select>
+                </div>
+
+                <!-- Mueble -->
+                <div style="margin-bottom: var(--space-md);">
+                    <label style="font-size: 0.82rem; color: var(--text-dim);">Mueble o Superficie</label>
+                    <input type="text" name="mueble_texto" id="mueble-input"
+                        placeholder="Ej: Estante, Cajón, Mesa, Armario..." style="border-radius: var(--radius-lg);"
+                        oninput="actualizarNombreAuto()">
+                </div>
+
+                <!-- Punto específico (opcional) -->
+                <div>
+                    <label style="font-size: 0.82rem; color: var(--text-dim);">Punto específico <span
+                            style="color: var(--text-muted); font-weight: 400;">(opcional)</span></label>
+                    <input type="text" name="punto_especifico" placeholder="Ej: Cajón derecho, Parte alta, Debajo de..."
+                        style="border-radius: var(--radius-lg);">
+                </div>
+            </div>
+
             <button type="submit" class="btn btn-primary btn-lg" style="width: 100%; border-radius: 980px;">
                 Subir e Indexar con IA →
             </button>
@@ -275,6 +321,22 @@
             handleFileSelection(input);
         }
     });
-</script>
+    // ── Auto-nombre desde Jerarquía Semántica ──
+    function actualizarNombreAuto() {
+        const habitacion = document.getElementById('habitacion-select').value;
+        const mueble = document.getElementById('mueble-input').value.trim();
+        const nombreField = document.querySelector('input[name="nombre_ubicacion"]');
+        if (!nombreField) return;
+        // Solo auto-completar si el campo está vacío o fue auto-generado antes
+        if (!nombreField.dataset.manuallyEdited) {
+            const partes = [habitacion, mueble].filter(Boolean);
+            nombreField.value = partes.join(' — ');
+        }
+    }
+    // Marcar el campo nombre como “editado a mano” si el usuario lo toca directamente
+    const nombreField = document.querySelector('input[name="nombre_ubicacion"]');
+    if (nombreField) {
+        nombreField.addEventListener('input', () => { nombreField.dataset.manuallyEdited = '1'; });
+    }
 </script>
 {% endblock %}

@@ -130,10 +130,42 @@ def initialize_folders():
             except Exception as e:
                 app.logger.error(f"[VANGUARD-STARTUP] Error carpetas: {e}")
 
+def migrate_semantic_columns():
+    """
+    Migración segura (idempotente): agrega columnas de Jerarquía Semántica
+    a la tabla 'ubicaciones' si no existen aún. Funciona en Postgres y SQLite.
+    """
+    dialect = db.engine.dialect.name
+    try:
+        if dialect == 'postgresql':
+            migrations = [
+                "ALTER TABLE ubicaciones ADD COLUMN IF NOT EXISTS habitacion VARCHAR(50)",
+                "ALTER TABLE ubicaciones ADD COLUMN IF NOT EXISTS mueble_texto VARCHAR(100)",
+                "ALTER TABLE ubicaciones ADD COLUMN IF NOT EXISTS punto_especifico VARCHAR(150)",
+            ]
+        else:  # SQLite (desarrollo local)
+            # SQLite no soporta IF NOT EXISTS en ALTER TABLE, usamos try/except
+            migrations = [
+                "ALTER TABLE ubicaciones ADD COLUMN habitacion VARCHAR(50)",
+                "ALTER TABLE ubicaciones ADD COLUMN mueble_texto VARCHAR(100)",
+                "ALTER TABLE ubicaciones ADD COLUMN punto_especifico VARCHAR(150)",
+            ]
+        for sql in migrations:
+            try:
+                db.session.execute(text(sql))
+            except Exception:
+                pass  # La columna ya existe — ignorar
+        db.session.commit()
+        vanguard_log("✅ Migración de columnas semánticas completada.")
+    except Exception as e:
+        vanguard_log(f"⚠️ Migración semántica (no fatal): {e}")
+        db.session.rollback()
+
 # DIAGNÓSTICO DE ARRANQUE (Visible en Gunicorn)
 with app.app_context():
     initialize_folders()
     fix_db_sequences()
+    migrate_semantic_columns()
 
 vanguard_log("--- STAGE 1: SYSTEM READY ---")
 
@@ -457,7 +489,11 @@ def upload():
             return redirect(request.url)
         
         file = request.files['file']
-        nombre_ubicacion = request.form.get('nombre_ubicacion', 'Sin nombre')
+        # ── Leer campos de Jerarquía Semántica del formulario ──
+        nombre_ubicacion = request.form.get('nombre_ubicacion', '').strip()
+        habitacion       = request.form.get('habitacion', '').strip() or None
+        mueble_texto     = request.form.get('mueble_texto', '').strip() or None
+        punto_especifico = request.form.get('punto_especifico', '').strip() or None
         
         if file.filename == '':
             flash('No se seleccionó ningún archivo')
@@ -474,15 +510,29 @@ def upload():
             app.logger.info(f"[VANGUARD-GCS] Analizando con IA (en memoria): {filename}")
             resultado = analizar_imagen_objetos(img_bytes, tipo_espacio="general")
             
+            # SRE: Si el usuario no especificó habitación/mueble, usar sugerencia de IA
+            if not habitacion:
+                habitacion = resultado.get('habitacion_sugerida') or None
+            if not mueble_texto:
+                mueble_texto = resultado.get('mueble_sugerido') or None
+            
+            # Auto-generar nombre descriptivo si el usuario lo dejó vacío
+            if not nombre_ubicacion:
+                partes = [p for p in [habitacion, mueble_texto] if p]
+                nombre_ubicacion = " — ".join(partes) if partes else 'Sin nombre'
+            
             # 3. GCS: Subir a la nube persistente
             final_filename = upload_image_to_gcs(file, filename)
             
-            # 4. DB: Guardar registro
+            # 4. DB: Guardar registro (incluyendo jerarquía semántica)
             nueva_ubicacion = Ubicacion(
-                nombre=nombre_ubicacion, 
+                nombre=nombre_ubicacion,
                 imagen_path=final_filename,
                 tags=resultado.get('tags', ''),
-                items_json=json.dumps(resultado.get('items', []))
+                items_json=json.dumps(resultado.get('items', [])),
+                habitacion=habitacion,
+                mueble_texto=mueble_texto,
+                punto_especifico=punto_especifico
             )
             db.session.add(nueva_ubicacion)
             db.session.flush()

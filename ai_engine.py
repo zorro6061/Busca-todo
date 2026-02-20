@@ -114,12 +114,17 @@ LÓGICA DE PROPIETARIO (JUANA Y VICENTE):
 - Si parece pertenecer a un niño o tiene motivos asociados a Vicente, etiqueta "Vicente".
 - IMPORTANTE: Solo asigna el propietario en 'tags_semanticos' si tienes al menos un 80% de confianza. Si no, usa el valor "General".
 
-INSTRUCCIONES DE ANÁLISIS:
-1. DESCRIPCIÓN ESPACIAL: Genera una descripción que complemente las coordenadas pos_x/y mediante lenguaje natural (ej: 'sobre el estante blanco', 'dentro del contenedor azul').
-2. ATRIBUTOS TÉCNICOS: Identifica el color predominante, el material (madera, metal, etc.) y el estado (nuevo, usado, dañado).
+INSTRUCCIONES DE ANÁLISIS ESPACIAL:
+1. CONTEXTO DE UBICACIÓN: Analiza el fondo de la imagen para deducir:
+   - habitacion_sugerida: La habitación más probable (Living, Cocina, Dormitorio, Baño, Garage, Lavadero, Estudio, Patio, Otro). Si no estás seguro al 70%+, usa null.
+   - mueble_sugerido: El mueble en que descansan los objetos (Estante, Mesa, Cajón, Armario, Mesita de noche, Heladera, etc.). Si no estás seguro al 70%+, usa null.
+2. DESCRIPCIÓN: Genera una descripción que complemente la ubicación visual en lenguaje natural.
+3. ATRIBUTOS: Identifica color predominante, material y estado.
 
-FORMATO DE RESPUESTA (JSON):
+FORMATO DE RESPUESTA (JSON ESTRICTO - SIN TEXTO ADICIONAL):
 {{
+  "habitacion_sugerida": "Living" | null,
+  "mueble_sugerido": "Estante" | null,
   "items": [
     {{
       "nombre": "nombre descriptivo",
