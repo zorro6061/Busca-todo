@@ -592,12 +592,17 @@ def search():
         # Obtener TODOS los objetos para fuzzy search
         todos_objetos = Objeto.query.all()
         
-        # Búsqueda mejorada con ponderación de algoritmos
+        # Búsqueda mejorada con ponderación de algoritmos + Ubicación Semántica
         candidatos = []
         
         for obj in todos_objetos:
             nombre_lower = obj.nombre.lower()
             categoria_lower = (obj.categoria_principal or "").lower()
+            # ── Fase 2: Campos semánticos de ubicación ──
+            habitacion_lower = (getattr(obj.ubicacion, 'habitacion', '') or "").lower()
+            mueble_lower = (getattr(obj.ubicacion, 'mueble_texto', '') or "").lower()
+            punto_lower = (getattr(obj.ubicacion, 'punto_especifico', '') or "").lower()
+            ubicacion_nombre = (obj.ubicacion.nombre or "").lower()
             
             # 1. Similitud exacta (Ratio) - PESO MAYOR
             ratio_nombre = fuzz.ratio(query, nombre_lower)
@@ -611,31 +616,32 @@ def search():
             token_nombre = fuzz.token_sort_ratio(query, nombre_lower)
             token_categoria = fuzz.token_sort_ratio(query, categoria_lower)
             
-            # PONDERACIÓN: Dar más peso a ratio exacto
-            # Si ratio es alto (>75), úsalo directo
-            # Si ratio es bajo pero partial es alto, penalizar un poco
+            # 4. Búsqueda semántica por habitación/mueble/punto
+            ratio_habitacion = fuzz.partial_ratio(query, habitacion_lower) if habitacion_lower else 0
+            ratio_mueble = fuzz.partial_ratio(query, mueble_lower) if mueble_lower else 0
+            ratio_punto = fuzz.partial_ratio(query, punto_lower) if punto_lower else 0
+            ratio_ubicacion = fuzz.partial_ratio(query, ubicacion_nombre) if ubicacion_nombre else 0
+            
+            # PONDERACIÓN
             max_ratio = max(ratio_nombre, ratio_categoria)
             max_partial = max(partial_nombre, partial_categoria)
             max_token = max(token_nombre, token_categoria)
+            max_semantic = max(ratio_habitacion, ratio_mueble, ratio_punto, ratio_ubicacion)
             
             # Calcular score ponderado
             if max_ratio >= 75:
-                # Match exacto fuerte - usar directo
                 final_score = max_ratio
             elif max_token >= 80:
-                # Token match fuerte (orden insensible)
                 final_score = max_token
+            elif max_semantic >= 85:
+                # Match semántico de ubicación (ej: "Vicente" → "Dormitorio Vicente")
+                final_score = max_semantic * 0.95
             elif max_partial >= 85 and len(query) >= 4:
-                # Partial match solo si query es suficientemente larga
-                final_score = max_partial * 0.9  # Penalizar ligeramente
+                final_score = max_partial * 0.9
             else:
-                # Tomar el mejor pero con umbral más alto
-                final_score = max(max_ratio, max_token)
+                final_score = max(max_ratio, max_token, max_semantic * 0.85)
             
-            # UMBRALES MÁS ESTRICTOS:
-            # - 75%+ para matches normales
-            # - 85%+ para partial matches
-            if final_score >= 75:
+            if final_score >= 70:
                 candidatos.append((obj, final_score))
         
         # Ordenar por score (mayor primero)
@@ -666,6 +672,9 @@ def search():
                 'prioridad': obj.prioridad,
                 'confianza': obj.confianza,
                 'ubicacion': obj.ubicacion.nombre,
+                'habitacion': getattr(obj.ubicacion, 'habitacion', None),
+                'mueble': getattr(obj.ubicacion, 'mueble_texto', None),
+                'punto_especifico': getattr(obj.ubicacion, 'punto_especifico', None),
                 'ubicacion_id': obj.ubicacion.id,
                 'plano_id': obj.ubicacion.plano_id,
                 'imagen': obj.ubicacion.imagen_path,
@@ -678,7 +687,7 @@ def search():
 
 @app.route('/api/sugerencias')
 def sugerencias():
-    """API para auto-complete con fuzzy matching mejorado"""
+    """API para auto-complete con fuzzy matching mejorado + ubicación semántica"""
     from rapidfuzz import process, fuzz
     
     query = request.args.get('q', '').lower().strip()
@@ -686,7 +695,7 @@ def sugerencias():
     if not query or len(query) < 2:
         return jsonify([])
     
-    # Obtener nombres únicos de objetos y categorías
+    # Obtener nombres únicos de objetos, categorías Y ubicaciones semánticas
     nombres_set = set()
     objetos = Objeto.query.all()
     for obj in objetos:
@@ -694,19 +703,26 @@ def sugerencias():
         if obj.categoria_principal:
             nombres_set.add(obj.categoria_principal.capitalize())
     
+    # Fase 2: Agregar habitaciones y muebles al pool de sugerencias
+    ubicaciones = Ubicacion.query.all()
+    for ubi in ubicaciones:
+        if getattr(ubi, 'habitacion', None):
+            nombres_set.add(ubi.habitacion)
+        if getattr(ubi, 'mueble_texto', None):
+            nombres_set.add(ubi.mueble_texto.capitalize())
+        if ubi.nombre:
+            nombres_set.add(ubi.nombre)
+    
     opciones = list(nombres_set)
     
-    # Usar RapidFuzz process.extract para top matches
-    # scorer=fuzz.token_sort_ratio para mejor matching de palabras
     resultados = process.extract(
         query,
         opciones,
         scorer=fuzz.token_sort_ratio,
         limit=10,
-        score_cutoff=60
+        score_cutoff=55
     )
     
-    # Formatear resultados: [(texto, score, index), ...]
     sugerencias_list = [
         {
             'texto': match[0],
@@ -716,6 +732,95 @@ def sugerencias():
     ]
     
     return jsonify(sugerencias_list)
+
+
+@app.route('/api/smart-search')
+def smart_search_api():
+    """API JSON para la búsqueda inteligente del hero (homepage).
+    Busca en objetos, categorías, y campos semánticos de ubicación.
+    Retorna el mejor match con imagen, bbox y datos de ubicación."""
+    import json
+    from rapidfuzz import fuzz
+    
+    query = request.args.get('q', '').lower().strip()
+    
+    if not query:
+        return jsonify({'success': False, 'error': 'Query vacía'})
+    
+    todos_objetos = Objeto.query.all()
+    mejor = None
+    mejor_score = 0
+    
+    for obj in todos_objetos:
+        nombre_lower = obj.nombre.lower()
+        cat_lower = (obj.categoria_principal or "").lower()
+        habitacion_lower = (getattr(obj.ubicacion, 'habitacion', '') or "").lower()
+        mueble_lower = (getattr(obj.ubicacion, 'mueble_texto', '') or "").lower()
+        punto_lower = (getattr(obj.ubicacion, 'punto_especifico', '') or "").lower()
+        ubi_nombre = (obj.ubicacion.nombre or "").lower()
+        tags_lower = (obj.ubicacion.tags or "").lower()
+        
+        scores = [
+            fuzz.ratio(query, nombre_lower),
+            fuzz.partial_ratio(query, nombre_lower),
+            fuzz.token_sort_ratio(query, nombre_lower),
+            fuzz.ratio(query, cat_lower),
+            fuzz.partial_ratio(query, habitacion_lower) if habitacion_lower else 0,
+            fuzz.partial_ratio(query, mueble_lower) if mueble_lower else 0,
+            fuzz.partial_ratio(query, punto_lower) if punto_lower else 0,
+            fuzz.partial_ratio(query, ubi_nombre) if ubi_nombre else 0,
+            fuzz.partial_ratio(query, tags_lower) if tags_lower else 0,
+        ]
+        
+        max_score = max(scores)
+        if max_score > mejor_score:
+            mejor_score = max_score
+            mejor = obj
+    
+    if not mejor or mejor_score < 60:
+        return jsonify({'success': False, 'error': f'No encontramos nada para "{query}"'})
+    
+    # Buscar bbox
+    bbox = None
+    try:
+        if mejor.ubicacion.items_json:
+            items = json.loads(mejor.ubicacion.items_json)
+            for item in items:
+                if item.get('nombre', '').lower() == mejor.nombre.lower():
+                    bbox = item.get('bbox')
+                    break
+    except Exception:
+        pass
+    
+    # Construir ubicación descriptiva
+    loc_parts = []
+    if getattr(mejor.ubicacion, 'habitacion', None):
+        loc_parts.append(mejor.ubicacion.habitacion)
+    if getattr(mejor.ubicacion, 'mueble_texto', None):
+        loc_parts.append(mejor.ubicacion.mueble_texto)
+    if getattr(mejor.ubicacion, 'punto_especifico', None):
+        loc_parts.append(mejor.ubicacion.punto_especifico)
+    ubicacion_desc = ' → '.join(loc_parts) if loc_parts else mejor.ubicacion.nombre
+    
+    return jsonify({
+        'success': True,
+        'match': {
+            'nombre': mejor.nombre,
+            'descripcion': mejor.descripcion,
+            'categoria': mejor.categoria_principal,
+            'confianza': mejor.confianza,
+            'ubicacion_nombre': ubicacion_desc,
+            'ubicacion_raw': mejor.ubicacion.nombre,
+            'habitacion': getattr(mejor.ubicacion, 'habitacion', None),
+            'mueble': getattr(mejor.ubicacion, 'mueble_texto', None),
+            'imagen_path': mejor.ubicacion.imagen_path,
+            'plano_id': mejor.ubicacion.plano_id,
+            'plano_nombre': mejor.ubicacion.plano.nombre if mejor.ubicacion.plano_id else None,
+            'bbox': bbox,
+            'zona_coords': None,
+            'score': mejor_score
+        }
+    })
 
 @app.route('/planos')
 def list_planos():
