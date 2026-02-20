@@ -26,10 +26,17 @@
         </div>
         <div style="padding: var(--space-md) var(--space-lg) var(--space-lg);">
             <h3>{{ ubi.nombre }}</h3>
+            {% if ubi.tags %}
             <p
                 style="color: var(--text-dim); font-size: 0.82rem; line-height: 1.5; margin-top: 4px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
-                {{ ubi.tags if ubi.tags else 'Sin análisis aún' }}
+                {{ ubi.tags }}
             </p>
+            {% else %}
+            <p
+                style="color: var(--text-muted); font-size: 0.82rem; line-height: 1.5; margin-top: 4px; display: flex; align-items: center; gap: 6px;">
+                <span class="processing-dot"></span> Procesando análisis…
+            </p>
+            {% endif %}
             {% if ubi.plano_id %}
             <div style="margin-top: 8px;"><span class="badge badge-success">🗺️ En mapa</span></div>
             {% endif %}
@@ -78,25 +85,58 @@
     .card-interactive:hover img {
         transform: scale(1.06);
     }
+
+    /* Punto pulsante de "procesando" */
+    .processing-dot {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--primary, #6366f1);
+        animation: pulse-dot 1.4s ease-in-out infinite;
+    }
+
+    @keyframes pulse-dot {
+
+        0%,
+        100% {
+            opacity: 0.3;
+            transform: scale(0.8);
+        }
+
+        50% {
+            opacity: 1;
+            transform: scale(1.2);
+        }
+    }
 </style>
 
 <script>
-    // ── Contrato de Datos Backend → Frontend ──
-    // Claves esperadas por objeto: nombre, categoria_principal, descripcion, confianza (0.0-1.0)
-    const objetosPorUbi = {
-        {% for ubi in ubicaciones %}
-    "{{ ubi.id }}": [
-        {% for obj in ubi.objetos %}
-    {
-        nombre: "{{ obj.nombre | default('Objeto') | escape }}",
-            categoria: "{{ (obj.categoria_principal or 'General') | escape }}",
-                descripcion: "{{ (obj.descripcion or '') | escape }}",
-                    confianza: { { (obj.confianza * 100) | int } }
+    // ── Contrato de Datos Backend → Frontend (SRE Resilience) ──
+    // Claves esperadas por objeto: nombre, categoria, descripcion, confianza (0-100)
+    var objetosPorUbi = {};
+    try {
+        objetosPorUbi = {
+            {% for ubi in ubicaciones %}
+        "{{ ubi.id }}": [
+            {% for obj in ubi.objetos %}
+                {
+        nombre: "{{ obj.nombre|default('Objeto', true)|escape }}",
+            categoria: "{{ (obj.categoria_principal or 'General')|escape }}",
+                descripcion: "{{ (obj.descripcion or 'No disponible')|escape }}",
+                    color: "{{ (obj.color_predominante or 'No disponible')|escape }}",
+                        material: "{{ (obj.material or 'No disponible')|escape }}",
+                            estado: "{{ (obj.estado or 'No disponible')|escape }}",
+                                confianza: { { ((obj.confianza or 0.8) * 100)| int } }
     },
     {% endfor %}
-        ],
+            ],
     {% endfor %}
-    };
+        };
+    } catch (e) {
+        console.error('[UI-INIT] Error construyendo mapa de objetos:', e);
+        objetosPorUbi = {};
+    }
 
     function abrirDetalle(id, nombre, imagen, tags, objCount, planoId) {
         document.getElementById('det-img').src = '/uploads/' + imagen;
@@ -116,25 +156,29 @@
             objetos = [];
         }
 
-        // ── Renderizado con try-catch (Frontend Senior) ──
+        // ── Renderizado con try-catch (Frontend Senior — A Prueba de Balas) ──
         try {
             if (objetos.length > 0) {
                 cont.innerHTML = '<h4 style="margin-bottom: 8px;">Objetos detectados</h4>' +
-                    objetos.map(o => {
-                        // Defensa: si algún campo es nulo, no rompemos
-                        const nm = o && o.nombre ? o.nombre : 'Objeto sin nombre';
-                        const cat = o && o.categoria ? o.categoria : 'General';
-                        const pct = o && o.confianza ? o.confianza : 0;
-                        const desc = o && o.descripcion ? `<span style="display:block;color:var(--text-dim);font-size:0.78rem;margin-top:2px;">${o.descripcion.substring(0, 60)}...</span>` : '';
-                        return `
-                        <div style="padding: 10px 14px; background: rgba(255,255,255,0.03); border-radius: var(--radius-sm); margin-bottom: 4px; font-size: 0.85rem;">
-                            <div style="display:flex; justify-content:space-between; align-items:center;">
-                                <span style="text-transform: capitalize;">📦 ${nm}</span>
-                                <span class="badge badge-primary">${pct}%</span>
-                            </div>
-                            <span style="color: var(--text-dim); font-size: 0.78rem;">${cat}</span>
-                            ${desc}
-                        </div>`;
+                    objetos.map(function (o) {
+                        // Defensa total: si algún campo es nulo o undefined, valor por defecto
+                        var nm = (o && o.nombre) ? o.nombre : 'No disponible';
+                        var cat = (o && o.categoria) ? o.categoria : 'General';
+                        var pct = (o && o.confianza) ? o.confianza : 0;
+                        var col = (o && o.color) ? o.color : 'No disponible';
+                        var mat = (o && o.material) ? o.material : 'No disponible';
+                        var est = (o && o.estado) ? o.estado : 'No disponible';
+                        var desc = (o && o.descripcion && o.descripcion !== 'No disponible')
+                            ? '<span style="display:block;color:var(--text-dim);font-size:0.78rem;margin-top:2px;">' + o.descripcion.substring(0, 80) + '</span>'
+                            : '';
+                        return '<div style="padding: 10px 14px; background: rgba(255,255,255,0.03); border-radius: var(--radius-sm); margin-bottom: 4px; font-size: 0.85rem;">'
+                            + '<div style="display:flex; justify-content:space-between; align-items:center;">'
+                            + '<span style="text-transform: capitalize;">📦 ' + nm + '</span>'
+                            + '<span class="badge badge-primary">' + pct + '%</span>'
+                            + '</div>'
+                            + '<span style="color: var(--text-dim); font-size: 0.78rem;">' + cat + '</span>'
+                            + desc
+                            + '</div>';
                     }).join('');
             } else {
                 cont.innerHTML = '<p style="color: var(--text-dim); font-size: 0.85rem;">Sin objetos detectados aún.</p>';
@@ -144,12 +188,12 @@
             cont.innerHTML = '<p style="color: #ff6b6b; font-size: 0.85rem;">⚠️ Error al mostrar los objetos. Por favor, recarga la página.</p>';
         }
 
-        const link = document.getElementById('det-link-mapa');
+        var link = document.getElementById('det-link-mapa');
         if (planoId) { link.href = '/plano/' + planoId + '?highlight_ubi=' + id; link.style.display = 'flex'; }
         else { link.style.display = 'none'; }
         document.getElementById('modal-detalle').style.display = 'flex';
     }
     function cerrarDetalle() { document.getElementById('modal-detalle').style.display = 'none'; }
-    document.addEventListener('keydown', e => { if (e.key === 'Escape') cerrarDetalle(); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') cerrarDetalle(); });
 </script>
 {% endblock %}
