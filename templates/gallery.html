@@ -12,6 +12,7 @@
 <div class="grid grid-3">
     {% for ubi in ubicaciones %}
     <div class="card card-interactive card-gallery reveal {% if loop.index <= 3 %}reveal-delay-{{ loop.index }}{% endif %}"
+        data-ubi-id="{{ ubi.id }}"
         onclick="abrirDetalle('{{ ubi.id }}', '{{ ubi.nombre|escape }}', '{{ ubi.imagen_path }}', '{{ (ubi.tags|default('Sin tags', true))|escape }}', {{ ubi.objetos|length }}, {{ ubi.plano_id or 'null' }})">
         <div class="card-gallery-image">
             <img src="{% if gcs_base_url %}{{ gcs_base_url }}/{{ ubi.imagen_path }}{% else %}{{ url_for('uploaded_file', filename=ubi.imagen_path) }}{% endif %}"
@@ -314,5 +315,59 @@
     }
     function cerrarDetalle() { document.getElementById('modal-detalle').style.display = 'none'; }
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape') cerrarDetalle(); });
+
+    // ── Polling de Análisis Real-time (SRE Architecture) ──
+    function startAnalysisPolling() {
+        const cardsToPoll = document.querySelectorAll('.card-gallery:has(.processing-dot)');
+        if (cardsToPoll.length === 0) return;
+
+        console.log('[POLLING] Iniciando tracking de ' + cardsToPoll.length + ' análisis en curso...');
+
+        const pollInterval = setInterval(async () => {
+            const activePolls = document.querySelectorAll('.card-gallery:has(.processing-dot)');
+            if (activePolls.length === 0) {
+                clearInterval(pollInterval);
+                console.log('[POLLING] Todos los análisis completados.');
+                return;
+            }
+
+            for (const card of activePolls) {
+                const ubiId = card.dataset.ubiId;
+                try {
+                    const response = await fetch('/api/check-analysis/' + ubiId);
+                    const data = await response.json();
+
+                    if (data.ready) {
+                        console.log('[SYNC] Análisis listo para ID ' + ubiId);
+                        // 1. Actualizar tags en la card
+                        const tagsP = card.querySelector('.card-gallery-tags');
+                        tagsP.innerHTML = data.tags;
+                        tagsP.style.color = ''; // Reset color if was muted
+
+                        // 2. Actualizar badge de objetos
+                        const badge = card.querySelector('.card-gallery-badge');
+                        if (badge) {
+                            badge.innerHTML = '<span class="material-symbols-rounded" style="font-size: 16px;">inventory_2</span> ' + data.objetos_count;
+                        }
+
+                        // 3. Inyectar datos en el mapa global para el modal
+                        objetosPorUbi[String(ubiId)] = data.objetos;
+
+                        // 4. Actualizar el closure del onclick (opcional pero recomendado)
+                        // card.onclick ya tiene los valores inyectados por Jinja, 
+                        // pero abrirDetalle lee de objetosPorUbi, así que el modal se verá bien.
+
+                        // Pequeño efecto visual de "éxito"
+                        card.style.borderColor = 'var(--success)';
+                        setTimeout(() => card.style.borderColor = '', 2000);
+                    }
+                } catch (e) {
+                    console.error('[POLLING-ERR] Error consultando ID ' + ubiId, e);
+                }
+            }
+        }, 5000); // Cada 5 segundos
+    }
+
+    window.addEventListener('load', startAnalysisPolling);
 </script>
 {% endblock %}
