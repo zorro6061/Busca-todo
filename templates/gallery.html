@@ -14,7 +14,8 @@
     <div class="card card-interactive card-gallery reveal {% if loop.index <= 3 %}reveal-delay-{{ loop.index }}{% endif %}"
         onclick="abrirDetalle('{{ ubi.id }}', '{{ ubi.nombre|escape }}', '{{ ubi.imagen_path }}', '{{ (ubi.tags|default('Sin tags', true))|escape }}', {{ ubi.objetos|length }}, {{ ubi.plano_id or 'null' }})">
         <div class="card-gallery-image">
-            <img src="{{ url_for('uploaded_file', filename=ubi.imagen_path) }}" alt="{{ ubi.nombre }}" loading="lazy"
+            <img src="{% if gcs_base_url %}{{ gcs_base_url }}/{{ ubi.imagen_path }}{% else %}{{ url_for('uploaded_file', filename=ubi.imagen_path) }}{% endif %}"
+                alt="{{ ubi.nombre }}" loading="lazy"
                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
             <!-- Fallback Material Symbol (si la imagen falla) -->
             <div class="card-img-fallback" style="display: none;">
@@ -256,7 +257,8 @@
     }
 
     function abrirDetalle(id, nombre, imagen, tags, objCount, planoId) {
-        document.getElementById('det-img').src = '/uploads/' + imagen;
+        const imgBase = window.__gcsBase ? window.__gcsBase + '/' : '/uploads/';
+        document.getElementById('det-img').src = imgBase + imagen;
         document.getElementById('det-nombre').textContent = nombre;
         document.getElementById('det-tags').textContent = tags || 'Sin análisis aún';
         document.getElementById('det-obj-count').textContent = '📦 ' + objCount + ' objetos';

@@ -371,10 +371,10 @@ def uploaded_file(filename):
     if os.path.exists(local_path):
         return send_from_directory(upload_folder, filename)
         
-    # 2. Fallback a GCS (Si no está en disco efímero por reinicio de Render)
-    if gcs_client and GCP_BUCKET_NAME:
-        # Redirigir directamente a la URL pública de GCS
-        return redirect(f"https://storage.googleapis.com/{GCP_BUCKET_NAME}/{filename}")
+    # 2. Fallback robusto a GCS (siempre que tengamos bucket configurado)
+    if GCP_BUCKET_NAME:
+        gcs_url = f"https://storage.googleapis.com/{GCP_BUCKET_NAME}/{filename}"
+        return redirect(gcs_url)
             
     return "Archivo no encontrado", 404
 
@@ -445,21 +445,23 @@ def internal_server_error(e):
 @app.context_processor
 def inject_config():
     global _db_ready
+    # Inyectar GCS base URL para que las templates puedan renderizar imágenes directamente
+    gcs_base = f"https://storage.googleapis.com/{GCP_BUCKET_NAME}" if GCP_BUCKET_NAME else ''
+    
     if not _db_ready:
-        return dict(app_config={'subscription_type': 'free'})
+        return dict(app_config={'subscription_type': 'free'}, gcs_base_url=gcs_base)
         
     try:
         config = Config.query.first()
         if not config:
-            # Solo intentar crear si estamos seguros de que la sesión es segura
             vanguard_log("Creating default config...")
             config = Config(subscription_type='free')
             db.session.add(config)
             db.session.commit()
-        return dict(app_config=config)
+        return dict(app_config=config, gcs_base_url=gcs_base)
     except Exception as e:
         vanguard_log(f"ERROR IN INJECT_CONFIG: {e}")
-        return dict(app_config={'subscription_type': 'free'})
+        return dict(app_config={'subscription_type': 'free'}, gcs_base_url=gcs_base)
 
 @app.route('/pricing')
 def pricing():
@@ -822,6 +824,30 @@ def smart_search_api():
         }
     })
 
+# ── API: Polling de estado del análisis (auto-refresh sin recargar página) ──
+@app.route('/api/check-analysis/<int:ubi_id>')
+def check_analysis(ubi_id):
+    """Retorna el estado del análisis de una ubicación para auto-polling."""
+    ubi = Ubicacion.query.get_or_404(ubi_id)
+    objetos = Objeto.query.filter_by(ubicacion_id=ubi_id).all()
+    
+    tiene_analisis = bool(ubi.tags and ubi.tags not in ['', 'Procesando análisis...', 'Sin análisis aún'])
+    
+    return jsonify({
+        'id': ubi.id,
+        'ready': tiene_analisis,
+        'tags': ubi.tags or '',
+        'objetos_count': len(objetos),
+        'objetos': [
+            {
+                'nombre': obj.nombre,
+                'categoria': obj.categoria_principal or 'General',
+                'confianza': int((obj.confianza or 0.8) * 100)
+            }
+            for obj in objetos
+        ]
+    })
+
 @app.route('/planos')
 def list_planos():
     planos = Plano.query.all()
@@ -832,7 +858,7 @@ def nuevo_plano():
     if request.method == 'POST':
         nombre = request.form.get('nombre')
         file = request.files.get('file')
-        drawing_data = request.form.get('drawing_data')
+        drawing_data = request.form.get('canvas_data') or request.form.get('drawing_data')
         
         filename = None
         if file and file.filename != '':
@@ -1258,6 +1284,32 @@ def editar_plano(plano_id):
         return redirect(url_for('ver_plano', plano_id=plano.id))
     
     return render_template('plano_edit.html', plano=plano)
+
+# ── API: Auto-save del dibujo de plano (fetch desde canvas) ──
+@app.route('/api/save-drawing/<int:plano_id>', methods=['POST'])
+def save_drawing_api(plano_id):
+    """Guarda el dibujo del canvas automáticamente sin recargar la página."""
+    import io
+    plano = Plano.query.get_or_404(plano_id)
+    data = request.get_json()
+    drawing_data = data.get('drawing_data', '')
+    
+    if not drawing_data or ',' not in drawing_data:
+        return jsonify({'success': False, 'error': 'No drawing data'}), 400
+    
+    try:
+        header, encoded = drawing_data.split(",", 1)
+        decoded = base64.b64decode(encoded)
+        temp_filename = f"plano_autosave_{plano_id}_{uuid.uuid4().hex[:6]}.png"
+        buffer = io.BytesIO(decoded)
+        final_filename = upload_image_to_gcs(buffer, temp_filename)
+        plano.imagen_path = final_filename
+        db.session.commit()
+        return jsonify({'success': True, 'filename': final_filename})
+    except Exception as e:
+        app.logger.error(f"[AUTOSAVE] Error: {e}")
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/ai-optimizer')
 def ai_optimizer():

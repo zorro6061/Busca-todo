@@ -241,7 +241,8 @@
         document.getElementById('obj-name').textContent = match.nombre;
         document.getElementById('obj-desc').textContent = match.descripcion || 'Sin descripción';
         document.getElementById('obj-location').textContent = match.ubicacion_nombre;
-        document.getElementById('result-img').src = '/uploads/' + match.imagen_path;
+        const imgBase = window.__gcsBase ? window.__gcsBase + '/' : '/uploads/';
+        document.getElementById('result-img').src = imgBase + match.imagen_path;
 
         // BBox Logic
         if (match.bbox) {

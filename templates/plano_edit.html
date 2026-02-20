@@ -62,7 +62,7 @@
     img.onload = function () {
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
     };
-    img.src = "{{ url_for('uploaded_file', filename=plano.imagen_path) }}";
+    img.src = (window.__gcsBase ? window.__gcsBase + '/' : '') + "{{ plano.imagen_path }}" || "{{ url_for('uploaded_file', filename=plano.imagen_path) }}";
 
     // Herramientas
     document.getElementById('tool-pencil').onclick = () => tool = 'pencil';
@@ -140,13 +140,39 @@
         snapshot = null;
     }
 
+    // ── Auto-save: guardar dibujo en DB automáticamente después de cada trazo ──
+    function autoSave() {
+        const dataUrl = canvas.toDataURL('image/png');
+        drawingDataInput.value = dataUrl;
+        // Auto-guardar en la DB via API
+        fetch('/api/save-drawing/{{ plano.id }}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ drawing_data: dataUrl })
+        }).then(r => r.json()).then(d => {
+            if (d.success) console.log('[AUTOSAVE] Plano guardado');
+        }).catch(e => console.warn('[AUTOSAVE] Error:', e));
+    }
+
+    // Ejecutar auto-save al finalizar cada trazo
+    const origEnd = end;
+    function endAndSave(e) {
+        origEnd(e);
+        autoSave();
+    }
+    canvas.removeEventListener('mousedown', start);
+    canvas.removeEventListener('mousemove', move);
+    window.removeEventListener('mouseup', end);
+    canvas.removeEventListener('touchstart', start);
+    canvas.removeEventListener('touchmove', move);
+    canvas.removeEventListener('touchend', end);
+
     canvas.addEventListener('mousedown', start);
     canvas.addEventListener('mousemove', move);
-    window.addEventListener('mouseup', end);
-
+    window.addEventListener('mouseup', endAndSave);
     canvas.addEventListener('touchstart', start);
     canvas.addEventListener('touchmove', move);
-    canvas.addEventListener('touchend', end);
+    canvas.addEventListener('touchend', endAndSave);
 
     form.onsubmit = (e) => {
         drawingDataInput.value = canvas.toDataURL('image/png');
