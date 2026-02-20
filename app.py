@@ -1004,8 +1004,8 @@ def ver_plano(plano_id):
                              ubicaciones_sin_plano=ubicaciones_sin_plano)
     except Exception as e:
         app.logger.error(f"[PLANO-ERR] Error al cargar plano {plano_id}: {e}")
-        # En caso de error crítico, intentamos mostrar una versión segura o error amigable
-        return render_template('error_resiliente.html', error=str(e), context="Vista de Plano"), 500
+        flash(f"Error al cargar mapa: Redirigido al editor para estabilizar.")
+        return redirect(url_for('editar_plano', plano_id=plano_id))
 
 
 
@@ -1291,40 +1291,52 @@ def editar_plano(plano_id):
     
     if request.method == 'POST':
         nombre = request.form.get('nombre', plano.nombre)
+        file = request.files.get('file')
         drawing_data = request.form.get('drawing_data')
         
-        if drawing_data:
-            # Procesar base64 y subir a GCS
+        # 1. Procesar Archivo (Prioridad: Nueva Foto)
+        if file and file.filename != '':
             try:
-                import io
-                import base64
-                header, encoded = drawing_data.split(",", 1)
-                data = base64.b64decode(encoded)
-                temp_filename = f"plano_edit_{uuid.uuid4().hex[:8]}.png"
-                buffer = io.BytesIO(data)
+                from werkzeug.utils import secure_filename
+                from storage_manager import upload_image_to_gcs
                 
-                # Eliminar imagen anterior de GCS
+                # Borrar antigua
                 if plano.imagen_path:
                     try:
                         from storage_manager import get_storage_client, GCP_BUCKET_NAME
-                        client = get_storage_client()
-                        bucket = client.bucket(GCP_BUCKET_NAME)
-                        blob = bucket.blob(plano.imagen_path)
-                        blob.delete()
-                    except:
-                        pass
+                        bucket = get_storage_client().bucket(GCP_BUCKET_NAME)
+                        bucket.blob(plano.imagen_path).delete()
+                    except: pass
                 
-                filename = upload_image_to_gcs(buffer, temp_filename)
-                plano.imagen_path = filename
-                
+                filename = secure_filename(file.filename)
+                new_path = upload_image_to_gcs(file, filename)
+                plano.imagen_path = new_path
+                app.logger.info(f"[EDIT-PLANO] Nueva foto maestra subida: {new_path}")
             except Exception as e:
-                app.logger.error(f"Error al editar dibujo: {e}")
-                flash(f"Error al actualizar: {e}")
-                return redirect(request.url)
+                flash(f"Error al subir foto: {e}")
+                
+        # 2. Procesar Dibujo
+        elif drawing_data:
+            try:
+                import io, base64
+                header, encoded = drawing_data.split(",", 1)
+                data = base64.b64decode(encoded)
+                temp_filename = f"plano_edit_{uuid.uuid4().hex[:8]}.png"
+                
+                if plano.imagen_path:
+                    try:
+                        from storage_manager import get_storage_client, GCP_BUCKET_NAME
+                        get_storage_client().bucket(GCP_BUCKET_NAME).blob(plano.imagen_path).delete()
+                    except: pass
+                
+                new_path = upload_image_to_gcs(io.BytesIO(data), temp_filename)
+                plano.imagen_path = new_path
+            except Exception as e:
+                flash(f"Error al guardar dibujo: {e}")
         
         plano.nombre = nombre
         db.session.commit()
-        flash(f'✓ Plano "{nombre}" actualizado.')
+        flash(f'✓ Plano "{nombre}" actualizado correctamente.')
         return redirect(url_for('ver_plano', plano_id=plano.id))
     
     return render_template('plano_edit.html', plano=plano)

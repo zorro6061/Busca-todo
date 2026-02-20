@@ -100,10 +100,11 @@
                         <p style="color: var(--text-dim); margin-bottom: 24px; max-width: 300px; text-align: center;">
                             Para navegar al estilo Tesla, necesitamos una foto panorámica o gran angular del espacio.
                         </p>
-                        <a href="{{ url_for('editar_plano', plano_id=plano.id) }}" class="btn btn-primary">
+                        <a href="{{ url_for('editar_plano', plano_id=plano.id) }}" class="btn btn-primary"
+                            id="btn-nueva-foto-maestra">
                             <span class="material-symbols-rounded"
-                                style="font-size: 20px; vertical-align: -4px; margin-right: 4px;">upload</span>
-                            Subir Foto Maestra
+                                style="font-size: 20px; vertical-align: -4px; margin-right: 4px;">add_a_photo</span>
+                            Nueva Foto Maestra
                         </a>
                     </div>
                     {% endif %}
@@ -653,24 +654,23 @@
 
         function saveCalibration() {
             const payload = {
-                plano_id: {{ plano.id }
-        },
-        src_pts: calibSrcPts,
-            dst_pts: calibDstPts
+                plano_id: Number("{{ plano.id }}"),
+                src_pts: calibSrcPts,
+                dst_pts: calibDstPts
             };
 
-        window.showIsland("Guardando...", 0, 'loading');
+            window.showIsland("Guardando...", 0, 'loading');
 
-        fetch('/api/calibrar_plano', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        }).then(r => r.json()).then(data => {
-            if (data.status === 'success') {
-                window.showIsland("Completado", 2000, 'success');
-                location.reload();
-            }
-        });
+            fetch('/api/calibrar_plano', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            }).then(r => r.json()).then(data => {
+                if (data.status === 'success') {
+                    window.showIsland("Completado", 2000, 'success');
+                    location.reload();
+                }
+            });
         }
 
         // ── FALLBACK HELPERS ──
