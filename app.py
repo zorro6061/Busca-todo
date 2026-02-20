@@ -1341,6 +1341,40 @@ def editar_plano(plano_id):
     
     return render_template('plano_edit.html', plano=plano)
 
+@app.route('/api/plano/<int:plano_id>/upload_maestra', methods=['POST'])
+def upload_maestra_direct(plano_id):
+    """Carga directa de foto maestra desde la vista táctil (Cirugía de Eventos)"""
+    plano = Plano.query.get_or_404(plano_id)
+    file = request.files.get('file')
+    
+    if not file or file.filename == '':
+        return jsonify({'success': False, 'message': 'No se seleccionó ningún archivo'}), 400
+        
+    try:
+        from werkzeug.utils import secure_filename
+        from storage_manager import upload_image_to_gcs, get_storage_client, GCP_BUCKET_NAME
+        
+        # 1. Limpieza de imagen anterior
+        if plano.imagen_path:
+            try:
+                bucket = get_storage_client().bucket(GCP_BUCKET_NAME)
+                bucket.blob(plano.imagen_path).delete()
+            except: pass
+            
+        # 2. Subida a GCS
+        filename = secure_filename(file.filename)
+        new_path = upload_image_to_gcs(file, filename)
+        
+        # 3. Actualización DB
+        plano.imagen_path = new_path
+        db.session.commit()
+        
+        app.logger.info(f"[CIRUGIA-API] Foto maestra actualizada para plano {plano_id}: {new_path}")
+        return jsonify({'success': True, 'path': new_path})
+    except Exception as e:
+        app.logger.error(f"[CIRUGIA-ERR] Fallo en carga directa: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
 # ── API: Auto-save del dibujo de plano (fetch desde canvas) ──
 @app.route('/api/save-drawing/<int:plano_id>', methods=['POST'])
 def save_drawing_api(plano_id):

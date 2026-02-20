@@ -100,18 +100,22 @@
                         <p style="color: var(--text-dim); margin-bottom: 24px; max-width: 300px; text-align: center;">
                             Para navegar al estilo Tesla, necesitamos una foto panorámica o gran angular del espacio.
                         </p>
-                        <a href="{{ url_for('editar_plano', plano_id=plano.id) }}" class="btn btn-primary"
-                            id="btn-nueva-foto-maestra">
+                        <button type="button" class="btn btn-primary" id="btn-nueva-foto-maestra">
                             <span class="material-symbols-rounded"
                                 style="font-size: 20px; vertical-align: -4px; margin-right: 4px;">add_a_photo</span>
                             Nueva Foto Maestra
-                        </a>
+                        </button>
                     </div>
                     {% endif %}
 
                     <!-- Hotspots & Pins Layer -->
                     <div id="pins-layer" style="position: absolute; inset: 0; pointer-events: none;"></div>
-                    <div id="hotspots-layer" style="position: absolute; inset: 0; cursor: crosshair;"></div>
+                    <div id="hotspots-layer"
+                        style="position: absolute; inset: 0; cursor: crosshair; {% if not plano.imagen_path %}display: none;{% endif %}">
+                    </div>
+
+                    <!-- Proxy Input Quirúrgico (Cirugía de Eventos) -->
+                    <input type="file" id="file-input-maestro" style="display: none;" accept="image/*">
                 </div>
             </div>
 
@@ -223,6 +227,52 @@
     </div>
 
     <script>
+        // ── CIRUGÍA DE EVENTOS (Revisión Quirúrgica 00039) ──
+        window.addEventListener('DOMContentLoaded', () => {
+            const btn = document.getElementById('btn-nueva-foto-maestra');
+            const input = document.getElementById('file-input-maestro');
+
+            if (btn && input) {
+                console.log('[CIRUGIA] Sistema de eventos inicializado');
+
+                btn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    console.log('Interacción detectada: Botón presionado');
+                    input.click();
+                });
+
+                input.addEventListener('change', async (e) => {
+                    const file = e.target.files[0];
+                    if (!file) return;
+
+                    console.log('[CIRUGIA] Archivo seleccionado, iniciando carga directa...');
+                    window.showIsland("Subiendo Foto Maestra...", 0, 'loading');
+
+                    const formData = new FormData();
+                    formData.append('file', file);
+
+                    try {
+                        const res = await fetch(`/api/plano/${planoId}/upload_maestra`, {
+                            method: 'POST',
+                            body: formData
+                        });
+                        const data = await res.json();
+                        if (data.success) {
+                            window.showIsland("Foto Maestra Actualizada", 2000, 'success');
+                            setTimeout(() => location.reload(), 1000);
+                        } else {
+                            window.showIsland(data.message || "Error al subir", 3000, 'error');
+                        }
+                    } catch (err) {
+                        console.error('[CIRUGIA-ERR]', err);
+                        window.showIsland("Error de conexión", 3000, 'error');
+                    }
+                });
+            } else {
+                console.warn('[CIRUGIA] No se encontró el botón o el input en el DOM');
+            }
+        });
+
         // ── CONFIGURACIÓN FASE 4: NAVEGADOR HÍBRIDO ──
         const hotspots = JSON.parse('{{ hotspots|tojson|safe }}') || [];
         const pins = JSON.parse('{{ pins|tojson|safe }}') || [];
@@ -241,14 +291,15 @@
                 h.style.left = hs.x + '%';
                 h.style.top = hs.y + '%';
                 h.innerHTML = `
-                <div class="hotspot-pulse"></div>
-                <div class="hotspot-label">${hs.nombre}</div>
-            `;
+    <div class="hotspot-pulse"></div>
+    <div class="hotspot-label">${hs.nombre}</div>
+    `;
                 h.onclick = (e) => {
                     e.stopPropagation();
                     // Navegación Híbrida: Ir a Galería con filtro
                     const habitacion = "{{ plano.nombre }}";
-                    window.location.href = `/gallery?habitacion=${encodeURIComponent(habitacion)}&mueble=${encodeURIComponent(hs.nombre)}`;
+                    window.location.href =
+                        `/gallery?habitacion=${encodeURIComponent(habitacion)}&mueble=${encodeURIComponent(hs.nombre)}`;
                 };
                 layer.appendChild(h);
             });
@@ -311,47 +362,47 @@
         // ── Estilos Starlink (Injectados vía JS para no ensuciar el header) ──
         const style = document.createElement('style');
         style.innerHTML = `
-        .hotspot-starlink {
-            position: absolute;
-            width: 24px;
-            height: 24px;
-            transform: translate(-50%, -50%);
-            cursor: pointer;
-            z-index: 100;
-        }
-        .hotspot-pulse {
-            width: 100%;
-            height: 100%;
-            border-radius: 50%;
-            background: rgba(99, 102, 241, 0.6);
-            border: 2px solid #fff;
-            box-shadow: 0 0 15px rgba(99, 102, 241, 0.8);
-            animation: pulse-starlink 2s infinite;
-        }
-        .hotspot-label {
-            position: absolute;
-            top: -25px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0,0,0,0.8);
-            backdrop-filter: blur(5px);
-            color: #fff;
-            padding: 2px 10px;
-            border-radius: 980px;
-            font-size: 0.65rem;
-            white-space: nowrap;
-            border: 1px solid rgba(255,255,255,0.1);
-            opacity: 0;
-            transition: opacity 0.3s;
-        }
-        .hotspot-starlink:hover .hotspot-label {
-            opacity: 1;
-        }
-        @keyframes pulse-starlink {
-            0% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.7); }
-            70% { transform: scale(1.1); box-shadow: 0 0 0 15px rgba(99, 102, 241, 0); }
-            100% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); }
-        }
+    .hotspot-starlink {
+    position: absolute;
+    width: 24px;
+    height: 24px;
+    transform: translate(-50%, -50%);
+    cursor: pointer;
+    z-index: 100;
+    }
+    .hotspot-pulse {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: rgba(99, 102, 241, 0.6);
+    border: 2px solid #fff;
+    box-shadow: 0 0 15px rgba(99, 102, 241, 0.8);
+    animation: pulse-starlink 2s infinite;
+    }
+    .hotspot-label {
+    position: absolute;
+    top: -25px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,0.8);
+    backdrop-filter: blur(5px);
+    color: #fff;
+    padding: 2px 10px;
+    border-radius: 980px;
+    font-size: 0.65rem;
+    white-space: nowrap;
+    border: 1px solid rgba(255,255,255,0.1);
+    opacity: 0;
+    transition: opacity 0.3s;
+    }
+    .hotspot-starlink:hover .hotspot-label {
+    opacity: 1;
+    }
+    @keyframes pulse-starlink {
+    0% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.7); }
+    70% { transform: scale(1.1); box-shadow: 0 0 0 15px rgba(99, 102, 241, 0); }
+    100% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); }
+    }
     `;
         document.head.appendChild(style);
 
@@ -409,9 +460,9 @@
                 pin.style.left = '0'; pin.style.top = '0'; // Reset top/left
                 pin.setAttribute('draggable', 'true');
                 pin.innerHTML = `
-                <div class="pin-head">📍</div>
-                <div class="pin-label">${p.nombre}</div>
-            `;
+    <div class="pin-head">📍</div>
+    <div class="pin-label">${p.nombre}</div>
+    `;
                 pin.ondragstart = (e) => {
                     e.dataTransfer.setData('text/plain', JSON.stringify({ id: p.id, type: 'placed' }));
                 };
@@ -439,16 +490,19 @@
             document.getElementById('unplaced-count').textContent = MapStore.unplaced.length;
 
             unplacedList.innerHTML = MapStore.unplaced.map(p => `
-            <div class="directory-item reveal visible" draggable="true" ondragstart="event.dataTransfer.setData('text/plain', JSON.stringify({id: ${p.id}, type: 'unplaced'}))">
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <span style="font-size: 1.2rem;">📦</span>
-                    <div style="min-width: 0;">
-                        <p style="font-size: 0.85rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${p.nombre}</p>
-                        <p style="font-size: 0.72rem; color: var(--text-dim);">${p.objetos_count} objetos</p>
-                    </div>
-                </div>
+    <div class="directory-item reveal visible" draggable="true"
+        ondragstart="event.dataTransfer.setData('text/plain', JSON.stringify({id: ${p.id}, type: 'unplaced'}))">
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <span style="font-size: 1.2rem;">📦</span>
+            <div style="min-width: 0;">
+                <p
+                    style="font-size: 0.85rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                    ${p.nombre}</p>
+                <p style="font-size: 0.72rem; color: var(--text-dim);">${p.objetos_count} objetos</p>
             </div>
-        `).join('');
+        </div>
+    </div>
+    `).join('');
 
             applySearch();
         }
@@ -558,7 +612,8 @@
         let calibDstPts = [];
 
         function startCalibration() {
-            const lastUbi = MapStore.pins.length > 0 ? MapStore.pins[MapStore.pins.length - 1] : (MapStore.unplaced.length > 0 ? MapStore.unplaced[MapStore.unplaced.length - 1] : null);
+            const lastUbi = MapStore.pins.length > 0 ? MapStore.pins[MapStore.pins.length - 1] : (MapStore.unplaced.length > 0 ?
+                MapStore.unplaced[MapStore.unplaced.length - 1] : null);
             if (!lastUbi || !lastUbi.imagen_path) {
                 mostrarToast("Sube una foto primero para referencia", "info");
                 return;
@@ -591,22 +646,20 @@
                 badge.textContent = "Paso 1/2";
                 instruction.textContent = "Marca 4 puntos en la foto.";
                 counter.textContent = `Puntos: ${calibSrcPts.length}/4`;
-                btnNext.disabled = (calibSrcPts.length < 4);
-                btnNext.textContent = "Siguiente";
-                calibSrcPts.forEach(p => {
+                btnNext.disabled = (calibSrcPts.length < 4); btnNext.textContent = "Siguiente"; calibSrcPts.forEach(p => {
                     const dot = document.createElement('div');
-                    dot.style = `position: absolute; left: ${p[0]}%; top: ${p[1]}%; width: 12px; height: 12px; background: var(--primary); border: 2px solid white; border-radius: 50%; transform: translate(-50%, -50%);`;
+                    dot.style = `position: absolute; left: ${p[0]}%; top: ${p[1]}%; width: 12px; height: 12px; background:
+        var(--primary); border: 2px solid white; border-radius: 50%; transform: translate(-50%, -50%);`;
                     ptsLayer.appendChild(dot);
                 });
             } else {
                 badge.textContent = "Paso 2/2";
                 instruction.textContent = "Marca esos 4 puntos en el plano.";
                 counter.textContent = `Puntos: ${calibDstPts.length}/4`;
-                btnNext.disabled = (calibDstPts.length < 4);
-                btnNext.textContent = "Finalizar";
-                calibDstPts.forEach(p => {
+                btnNext.disabled = (calibDstPts.length < 4); btnNext.textContent = "Finalizar"; calibDstPts.forEach(p => {
                     const dot = document.createElement('div');
-                    dot.style = `position: absolute; left: ${p[0]}%; top: ${p[1]}%; width: 12px; height: 12px; background: var(--success); border: 2px solid white; border-radius: 50%; transform: translate(-50%, -50%);`;
+                    dot.style = `position: absolute; left: ${p[0]}%; top: ${p[1]}%; width: 12px; height: 12px; background:
+            var(--success); border: 2px solid white; border-radius: 50%; transform: translate(-50%, -50%);`;
                     ptsLayer.appendChild(dot);
                 });
             }
@@ -617,34 +670,27 @@
             const rect = this.getBoundingClientRect();
             const x = ((e.clientX - rect.left) / rect.width) * 100;
             const y = ((e.clientY - rect.top) / rect.height) * 100;
-            if (calibSrcPts.length < 4) {
-                calibSrcPts.push([x, y]);
-                updateCalibUI();
-            }
-        };
-
-        function calibNext() {
-            if (calibStep === 1) {
-                calibStep = 2;
-                document.getElementById('modal-calibrar').style.display = 'none';
+            if (calibSrcPts.length < 4) { calibSrcPts.push([x, y]); updateCalibUI(); }
+        }; function calibNext() {
+            if
+                (calibStep === 1) {
+                    calibStep = 2; document.getElementById('modal-calibrar').style.display = 'none';
                 document.getElementById('map-calib-overlay').style.display = 'block';
                 document.getElementById('map-calib-overlay').onclick = function (e) {
-                    const rect = img.getBoundingClientRect();
-                    const x = ((e.clientX - rect.left) / (rect.width || 1)) * 100;
-                    const y = ((e.clientY - rect.top) / (rect.height || 1)) * 100;
-                    if (calibDstPts.length < 4) {
-                        calibDstPts.push([x, y]);
-                        const dot = document.createElement('div');
-                        dot.style = `position: absolute; left: ${x}%; top: ${y}%; width: 12px; height: 12px; background: var(--success); border: 2px solid white; border-radius: 50%; transform: translate(-50%, -50%); z-index: 1000;`;
-                        this.appendChild(dot);
-                        if (calibDstPts.length === 4) {
-                            setTimeout(() => {
-                                document.getElementById('modal-calibrar').style.display = 'flex';
-                                document.getElementById('map-calib-overlay').style.display = 'none';
-                                updateCalibUI();
-                            }, 500);
+                    const
+                    rect = img.getBoundingClientRect(); const x = ((e.clientX - rect.left) / (rect.width || 1)) * 100; const
+                        y = ((e.clientY - rect.top) / (rect.height || 1)) * 100; if (calibDstPts.length < 4) {
+                            calibDstPts.push([x, y]); const dot = document.createElement('div'); dot.style = `position: absolute; left:
+                ${x}%; top: ${y}%; width: 12px; height: 12px; background: var(--success); border: 2px solid white;
+                border-radius: 50%; transform: translate(-50%, -50%); z-index: 1000;`; this.appendChild(dot); if
+                                (calibDstPts.length === 4) {
+                                    setTimeout(() => {
+                                        document.getElementById('modal-calibrar').style.display = 'flex';
+                                        document.getElementById('map-calib-overlay').style.display = 'none';
+                                        updateCalibUI();
+                                    }, 500);
+                            }
                         }
-                    }
                 };
                 updateCalibUI();
             } else {
@@ -680,7 +726,8 @@
         }
 
         document.getElementById('map-search').oninput = applySearch;
-        document.getElementById('btn-nueva-ubicacion').onclick = () => document.getElementById('modal-nueva').style.display = 'flex';
+        document.getElementById('btn-nueva-ubicacion').onclick = () =>
+            document.getElementById('modal-nueva').style.display = 'flex';
 
         // Renderizado inicial
         window.addEventListener('load', () => {
