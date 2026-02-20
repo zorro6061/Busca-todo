@@ -81,11 +81,18 @@
 </style>
 
 <script>
+    // ── Contrato de Datos Backend → Frontend ──
+    // Claves esperadas por objeto: nombre, categoria_principal, descripcion, confianza (0.0-1.0)
     const objetosPorUbi = {
         {% for ubi in ubicaciones %}
     "{{ ubi.id }}": [
         {% for obj in ubi.objetos %}
-    { nombre: "{{ obj.nombre|escape }}", categoria: "{{ (obj.categoria_principal or '')|escape }}", confianza: { { (obj.confianza * 100) | int } } },
+    {
+        nombre: "{{ obj.nombre | default('Objeto') | escape }}",
+            categoria: "{{ (obj.categoria_principal or 'General') | escape }}",
+                descripcion: "{{ (obj.descripcion or '') | escape }}",
+                    confianza: { { (obj.confianza * 100) | int } }
+    },
     {% endfor %}
         ],
     {% endfor %}
@@ -94,18 +101,49 @@
     function abrirDetalle(id, nombre, imagen, tags, objCount, planoId) {
         document.getElementById('det-img').src = '/uploads/' + imagen;
         document.getElementById('det-nombre').textContent = nombre;
-        document.getElementById('det-tags').textContent = tags;
+        document.getElementById('det-tags').textContent = tags || 'Sin análisis aún';
         document.getElementById('det-obj-count').textContent = '📦 ' + objCount + ' objetos';
-        const objetos = objetosPorUbi[id] || [];
+
         const cont = document.getElementById('det-objetos');
-        if (objetos.length > 0) {
-            cont.innerHTML = '<h4 style="margin-bottom: 8px;">Objetos detectados</h4>' +
-                objetos.map(o => `
-                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: rgba(255,255,255,0.03); border-radius: var(--radius-sm); margin-bottom: 4px; font-size: 0.85rem;">
-                        <span style="text-transform: capitalize;">📦 ${o.nombre}</span>
-                        <span class="badge badge-primary">${o.confianza}%</span>
-                    </div>`).join('');
-        } else { cont.innerHTML = '<p style="color: var(--text-dim); font-size: 0.85rem;">Sin objetos detectados</p>'; }
+
+        // ── Validación de datos (Arquitecto de Software) ──
+        let objetos = [];
+        try {
+            objetos = objetosPorUbi[String(id)] || [];
+            if (!Array.isArray(objetos)) { objetos = []; }
+        } catch (err) {
+            console.error('[UI-ERROR] Error leyendo lista de objetos:', err);
+            objetos = [];
+        }
+
+        // ── Renderizado con try-catch (Frontend Senior) ──
+        try {
+            if (objetos.length > 0) {
+                cont.innerHTML = '<h4 style="margin-bottom: 8px;">Objetos detectados</h4>' +
+                    objetos.map(o => {
+                        // Defensa: si algún campo es nulo, no rompemos
+                        const nm = o && o.nombre ? o.nombre : 'Objeto sin nombre';
+                        const cat = o && o.categoria ? o.categoria : 'General';
+                        const pct = o && o.confianza ? o.confianza : 0;
+                        const desc = o && o.descripcion ? `<span style="display:block;color:var(--text-dim);font-size:0.78rem;margin-top:2px;">${o.descripcion.substring(0, 60)}...</span>` : '';
+                        return `
+                        <div style="padding: 10px 14px; background: rgba(255,255,255,0.03); border-radius: var(--radius-sm); margin-bottom: 4px; font-size: 0.85rem;">
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <span style="text-transform: capitalize;">📦 ${nm}</span>
+                                <span class="badge badge-primary">${pct}%</span>
+                            </div>
+                            <span style="color: var(--text-dim); font-size: 0.78rem;">${cat}</span>
+                            ${desc}
+                        </div>`;
+                    }).join('');
+            } else {
+                cont.innerHTML = '<p style="color: var(--text-dim); font-size: 0.85rem;">Sin objetos detectados aún.</p>';
+            }
+        } catch (err) {
+            console.error('[UI-ERROR] Fallo al renderizar objetos:', err);
+            cont.innerHTML = '<p style="color: #ff6b6b; font-size: 0.85rem;">⚠️ Error al mostrar los objetos. Por favor, recarga la página.</p>';
+        }
+
         const link = document.getElementById('det-link-mapa');
         if (planoId) { link.href = '/plano/' + planoId + '?highlight_ubi=' + id; link.style.display = 'flex'; }
         else { link.style.display = 'none'; }
