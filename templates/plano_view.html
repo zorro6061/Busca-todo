@@ -1,10 +1,10 @@
 {% extends 'layout.html' %}
 
 {% block content %}
-<div id="map-layout" style="display: flex; gap: var(--space-lg); align-items: start; min-height: calc(100vh - 120px);">
+<div id="map-layout" style="display: flex; flex-wrap: wrap; gap: var(--space-lg); align-items: start; min-height: calc(100vh - 120px);">
 
     <!-- Left Sidebar: Unplaced / Directory (Premium Dock style) -->
-    <aside id="map-sidebar" class="reveal" style="width: 280px; flex-shrink: 0; position: sticky; top: 80px;">
+    <aside id="map-sidebar" class="reveal" style="width: 280px; flex-shrink: 0; position: sticky; top: 80px; min-width: 0;">
         <div class="card" style="padding: var(--space-lg); max-height: 80vh; display: flex; flex-direction: column;">
             <div style="margin-bottom: var(--space-md);">
                 <h3 style="display: flex; align-items: center; justify-content: space-between;">
@@ -34,7 +34,7 @@
     </aside>
 
     <!-- Main Map Panel -->
-    <main style="flex: 1; min-width: 0;">
+    <main style="flex: 1; min-width: 0; width: 100%;">
         <div class="page-header fade-up" style="margin-bottom: var(--space-md);">
             <div>
                 <h2><span class="gradient-text">{{ plano.nombre }}</span></h2>
@@ -43,13 +43,11 @@
                     <p class="page-subtitle" style="margin-top: 0;">Posicioná tus descubrimientos</p>
                 </div>
             </div>
-            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
-                <a href="{{ url_for('video_scanner', plano_id=plano.id) }}" class="btn btn-sm btn-secondary">📹
-                    Scanner</a>
+            <div id="map-action-btns" style="display: flex; gap: 6px; flex-wrap: wrap; align-items: center;">
+                <a href="{{ url_for('video_scanner', plano_id=plano.id) }}" class="btn btn-sm btn-secondary">📹 Scanner</a>
                 <a href="{{ url_for('ver_plano_3d', plano_id=plano.id) }}" class="btn btn-sm btn-secondary">🧊 3D</a>
                 <a href="{{ url_for('editar_plano', plano_id=plano.id) }}" class="btn btn-sm btn-secondary">✏️ Zonas</a>
-                <button id="btn-calibrar" class="btn btn-sm btn-secondary" onclick="startCalibration()">⚖️
-                    Calibrar</button>
+                <button id="btn-calibrar" class="btn btn-sm btn-secondary" onclick="startCalibration()">⚖️ Calibrar</button>
                 <button id="btn-nueva-ubicacion" class="btn btn-sm btn-primary">➕ Nueva</button>
             </div>
         </div>
@@ -86,7 +84,7 @@
 
             <!-- Map Container -->
             <div id="map-container"
-                style="position: relative; overflow: auto; min-height: 600px; display: flex; justify-content: center; background: #0a0a0a; border-radius: var(--radius-xl);">
+                style="position: relative; overflow: auto; min-height: 400px; width: 100%; display: flex; justify-content: center; background: #0a0a0a; border-radius: var(--radius-xl);">
                 <div id="map-inner" style="position: relative; display: inline-block;">
                     {% if plano.imagen_path %}
                     <img id="plano-img" src="{{ url_for('uploaded_file', filename=plano.imagen_path) }}"
@@ -100,22 +98,25 @@
                         <p style="color: var(--text-dim); margin-bottom: 24px; max-width: 300px; text-align: center;">
                             Para navegar al estilo Tesla, necesitamos una foto panorámica o gran angular del espacio.
                         </p>
-                        <button type="button" class="btn btn-primary" id="btn-nueva-foto-maestra">
+                        <!-- CIRUGÍA NATIVA: label envuelve el input → abre galería directamente sin JS.click() -->
+                        <label for="file-input-maestro" class="btn btn-primary" id="btn-nueva-foto-maestra"
+                            style="cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
                             <span class="material-symbols-rounded"
-                                style="font-size: 20px; vertical-align: -4px; margin-right: 4px;">add_a_photo</span>
+                                style="font-size: 20px; vertical-align: -4px;">add_a_photo</span>
                             Nueva Foto Maestra
-                        </button>
+                        </label>
+                        <!-- Input nativo vinculado al label: NO synthetic click, abre galería de Rafael directo -->
+                        <input type="file" id="file-input-maestro" accept="image/*"
+                            style="position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none;">
                     </div>
                     {% endif %}
 
                     <!-- Hotspots & Pins Layer -->
                     <div id="pins-layer" style="position: absolute; inset: 0; pointer-events: none;"></div>
+                    <!-- ESCUDO DESACTIVADO: pointer-events: none por defecto. Solo se activa en modo edición. -->
                     <div id="hotspots-layer"
-                        style="position: absolute; inset: 0; cursor: crosshair; {% if not plano.imagen_path %}display: none;{% endif %}">
+                        style="position: absolute; inset: 0; cursor: crosshair; pointer-events: none; {% if not plano.imagen_path %}display: none;{% endif %}">
                     </div>
-
-                    <!-- Proxy Input Quirúrgico (Cirugía de Eventos) -->
-                    <input type="file" id="file-input-maestro" style="display: none;" accept="image/*">
                 </div>
             </div>
 
@@ -227,51 +228,61 @@
     </div>
 
     <script>
-        // ── CIRUGÍA DE EVENTOS (Revisión Quirúrgica 00039) ──
+        // ── CIRUGÍA DE EVENTOS v2 (Label nativo + pointer-events gate) ──
+        // El <label for="file-input-maestro"> ya conecta nativo. Solo necesitamos el change handler.
         window.addEventListener('DOMContentLoaded', () => {
-            const btn = document.getElementById('btn-nueva-foto-maestra');
             const input = document.getElementById('file-input-maestro');
+            if (!input) return;
 
-            if (btn && input) {
-                console.log('[CIRUGIA] Sistema de eventos inicializado');
+            input.addEventListener('change', async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
 
-                btn.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    console.log('Interacción detectada: Botón presionado');
-                    input.click();
-                });
+                console.log('[CIRUGIA-v2] Archivo seleccionado:', file.name);
+                window.showIsland('Subiendo Foto Maestra...', 0, 'loading');
 
-                input.addEventListener('change', async (e) => {
-                    const file = e.target.files[0];
-                    if (!file) return;
+                const formData = new FormData();
+                formData.append('file', file);
 
-                    console.log('[CIRUGIA] Archivo seleccionado, iniciando carga directa...');
-                    window.showIsland("Subiendo Foto Maestra...", 0, 'loading');
-
-                    const formData = new FormData();
-                    formData.append('file', file);
-
-                    try {
-                        const res = await fetch(`/api/plano/${planoId}/upload_maestra`, {
-                            method: 'POST',
-                            body: formData
-                        });
-                        const data = await res.json();
-                        if (data.success) {
-                            window.showIsland("Foto Maestra Actualizada", 2000, 'success');
-                            setTimeout(() => location.reload(), 1000);
-                        } else {
-                            window.showIsland(data.message || "Error al subir", 3000, 'error');
-                        }
-                    } catch (err) {
-                        console.error('[CIRUGIA-ERR]', err);
-                        window.showIsland("Error de conexión", 3000, 'error');
+                try {
+                    const res = await fetch(`/api/plano/${planoId}/upload_maestra`, {
+                        method: 'POST',
+                        body: formData
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                        window.showIsland('Foto Maestra Actualizada ✓', 2000, 'success');
+                        setTimeout(() => location.reload(), 1000);
+                    } else {
+                        window.showIsland(data.message || 'Error al subir', 3000, 'error');
                     }
-                });
-            } else {
-                console.warn('[CIRUGIA] No se encontró el botón o el input en el DOM');
-            }
+                } catch (err) {
+                    console.error('[CIRUGIA-v2-ERR]', err);
+                    window.showIsland('Error de conexión', 3000, 'error');
+                }
+            });
         });
+
+        // ── HOTSPOT EDIT MODE (pointer-events gate) ──
+        // #hotspots-layer está DESACTIVADO por defecto. Solo se activa si hay un pin sin ubicar
+        // o explícitamente al tocar el mapa (habilitado aquí via JS).
+        let hotspotModeActive = false;
+
+        function enableHotspotMode() {
+            hotspotModeActive = true;
+            const layer = document.getElementById('hotspots-layer');
+            layer.style.pointerEvents = 'auto';
+            layer.style.cursor = 'crosshair';
+            console.log('[HOTSPOT] Modo edición ACTIVO');
+        }
+
+        function disableHotspotMode() {
+            hotspotModeActive = false;
+            const layer = document.getElementById('hotspots-layer');
+            layer.style.pointerEvents = 'none';
+            layer.style.cursor = 'default';
+            console.log('[HOTSPOT] Modo edición INACTIVO');
+        }
 
         // ── CONFIGURACIÓN FASE 4: NAVEGADOR HÍBRIDO ──
         const hotspots = JSON.parse('{{ hotspots|tojson|safe }}') || [];
@@ -306,25 +317,37 @@
         }
 
         // Crear hotspot o posicionar pin al hacer click en la foto
-        document.getElementById('hotspots-layer').onclick = function (e) {
-            const rect = this.getBoundingClientRect();
-            const x = ((e.clientX - rect.left) / rect.width) * 100;
-            const y = ((e.clientY - rect.top) / rect.height) * 100;
+        // El layer ya tiene pointer-events: none; se activa solo cuando corresponde.
+        const hotspotsLayerEl = document.getElementById('hotspots-layer');
 
-            // Lógica para Rafael: Si hay un pin sin ubicar (Unplaced), lo posicionamos con un click.
+        function handleHotspotClick(e) {
+            const rect = hotspotsLayerEl.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            const x = ((clientX - rect.left) / rect.width) * 100;
+            const y = ((clientY - rect.top) / rect.height) * 100;
+
+            // Si hay un pin sin ubicar lo posicionamos y desactivamos el modo
             if (MapStore.unplaced.length > 0) {
                 const item = MapStore.unplaced[0];
                 window.showIsland(`Ubicando: ${item.nombre}`, 2000, 'success');
                 MapStore.unplaced = MapStore.unplaced.filter(p => p.id !== item.id);
                 MapStore.pins = [...MapStore.pins, { ...item, x, y }];
+                if (MapStore.unplaced.length === 0) disableHotspotMode();
                 return;
             }
 
-            // Fallback: Crear Hotspot manual si no hay unplaced
-            tempCoords = { x, y };
-            document.getElementById('modal-hotspot').style.display = 'flex';
-            document.getElementById('hs-nombre').focus();
-        };
+            // Crear Hotspot de sector
+            if (hotspotModeActive) {
+                tempCoords = { x, y };
+                document.getElementById('modal-hotspot').style.display = 'flex';
+                document.getElementById('hs-nombre').focus();
+                disableHotspotMode(); // Volver a modo pasivo después de colocar
+            }
+        }
+
+        hotspotsLayerEl.addEventListener('click', handleHotspotClick);
+        hotspotsLayerEl.addEventListener('touchend', handleHotspotClick, { passive: false });
 
 
         function cerrarModalHotspot() {
@@ -488,6 +511,12 @@
             document.getElementById('hud-obj-count').textContent = totalObjects;
             document.getElementById('hud-zoom').textContent = Math.round(MapStore.currentZoom * 100) + '%';
             document.getElementById('unplaced-count').textContent = MapStore.unplaced.length;
+            // Auto-activar modo hotspot si hay pines sin ubicar (para tap en móvil)
+            if (MapStore.unplaced.length > 0) {
+                enableHotspotMode();
+            } else {
+                disableHotspotMode();
+            }
 
             unplacedList.innerHTML = MapStore.unplaced.map(p => `
     <div class="directory-item reveal visible" draggable="true"
@@ -826,6 +855,67 @@
             transform: translate(-50%, -50%) scale(1.5);
             z-index: 15;
             box-shadow: 0 0 15px var(--primary);
+        }
+
+        /* ── RESPONSIVE MOBILE LAYOUT ── */
+        @media (max-width: 768px) {
+            #map-layout {
+                flex-direction: column !important;
+            }
+
+            #map-sidebar {
+                width: 100% !important;
+                position: static !important;
+                order: 2; /* Sidebar va debajo del mapa en móvil */
+            }
+
+            #map-sidebar .card {
+                max-height: 220px !important;
+            }
+
+            main {
+                width: 100% !important;
+                order: 1;
+            }
+
+            #map-container {
+                width: 100% !important;
+                min-height: 300px !important;
+                overflow-x: auto !important;
+            }
+
+            /* Botones de acción: grid 2 columnas en móvil */
+            #map-action-btns {
+                display: grid !important;
+                grid-template-columns: 1fr 1fr !important;
+                width: 100% !important;
+                gap: 6px !important;
+            }
+
+            #map-action-btns .btn {
+                justify-content: center;
+                text-align: center;
+            }
+
+            /* Page header en columna en móvil */
+            .page-header {
+                flex-direction: column !important;
+                align-items: flex-start !important;
+                gap: 12px !important;
+            }
+
+            /* Chip container scroll horizontal en móvil */
+            .chip-container {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                flex-wrap: nowrap !important;
+                padding-bottom: 4px;
+            }
+
+            /* HUD panel más compacto en móvil */
+            .hud-panel {
+                font-size: 0.6rem !important;
+            }
         }
     </style>
     {% endblock %}
