@@ -66,7 +66,7 @@
                         style="width: 36px; height: 36px; padding: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.1rem;">
                         ⚙️
                     </button>
-                    <div id="utils-dropdown" style="
+                <div id="utils-dropdown" style="
                         display: none; position: absolute; right: 0; top: calc(100% + 8px);
                         background: rgba(15,15,15,0.95); backdrop-filter: blur(25px);
                         border: 1px solid var(--glass-border);
@@ -74,6 +74,7 @@
                         min-width: 180px; box-shadow: 0 25px 50px rgba(0,0,0,0.8);
                         flex-direction: column; gap: 4px;
                     ">
+                        <a href="{{ url_for('moldes_selection', plano_id=plano.id) }}" class="btn btn-sm btn-secondary" style="width:100%; text-align:left; border:none; background:transparent;">📐 Sistema de Moldes</a>
                         <a href="{{ url_for('ver_plano_3d', plano_id=plano.id) }}" class="btn btn-sm btn-secondary" style="width:100%; text-align:left; border:none; background:transparent;">🧊 Ver en 3D</a>
                         <button class="btn btn-sm btn-secondary" onclick="startCalibration(); closeUtilsMenu()" style="width:100%; text-align:left; border:none; background:transparent;">⚖️ Calibrar</button>
                         <hr style="border-color: var(--glass-border); margin: 4px 0; opacity: 0.3;">
@@ -546,8 +547,9 @@
                     (p.categoria_principal && p.categoria_principal.includes(MapStore.currentChip));
 
                 if (!isChipMatch) return;
-                // FIX: usar objetos.length si objetos_count es 0 o undefined
-                totalObjects += (p.objetos_count || (p.objetos ? p.objetos.length : 0));
+                // FIX: asegurar que sumamos objetos reales inclusive si el contador de caché es 0
+                const count = (p.objetos ? p.objetos.length : (p.objetos_count || 0));
+                totalObjects += count;
 
                 // Pin Principal (Ubicación)
                 const pin = document.createElement('div');
@@ -851,7 +853,7 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            z-index: 10;
+            z-index: 50;
             pointer-events: auto;
             transition: transform 0.2s;
         }
@@ -920,13 +922,13 @@
             border-radius: 50%;
             transform: translate(-50%, -50%);
             box-shadow: 0 0 8px var(--primary);
-            z-index: 5;
+            z-index: 60;
             pointer-events: auto;
             transition: all 0.2s;
         }
         .obj-dot:hover {
             transform: translate(-50%, -50%) scale(1.5);
-            z-index: 15;
+            z-index: 70;
             box-shadow: 0 0 15px var(--primary);
         }
 

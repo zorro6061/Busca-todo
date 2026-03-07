@@ -90,11 +90,11 @@ db.init_app(app) # Registro obligatorio en el top-level
 from werkzeug.exceptions import RequestEntityTooLarge
 @app.errorhandler(RequestEntityTooLarge)
 def handle_file_too_large(e):
-    app.logger.error(f"[VANGUARD-UPLOAD] Archivo excedió el límite de 10MB: {request.content_length} bytes")
+    app.logger.error(f"[VANGUARD-UPLOAD] Archivo excedió el límite de 200MB: {request.content_length} bytes")
     return jsonify({
         "status": "error",
         "message": "El archivo es demasiado grande",
-        "detail": "El límite máximo es 10MB. Intenta subir una foto con menor resolución o comprimida."
+        "detail": "El límite máximo es 200MB para videos cinemáticos. Probá con un video más corto o usá el Modo Foto Automático."
     }), 413
 
 # --- UTILS & STARTUP ---

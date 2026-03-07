@@ -1,0 +1,96 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div class="fade-up" style="max-width: 900px; margin: var(--space-xl) auto;">
+    <div style="text-align: center; margin-bottom: var(--space-2xl);">
+        <h1><span class="gradient-text">Sistema de Moldes</span></h1>
+        <p class="page-subtitle">Seleccioná una estructura para organizar {{ plano.nombre }}</p>
+    </div>
+
+    <div class="grid grid-3" style="gap: var(--space-lg);">
+        {% for molde in moldes %}
+        <div class="card reveal" style="padding: var(--space-xl); text-align: center; transition: all 0.3s; cursor: pointer;"
+             onclick="selectMold('{{ molde.id }}')">
+            <div style="font-size: 3rem; margin-bottom: var(--space-md);">{{ molde.icon }}</div>
+            <h3 style="margin-bottom: 8px;">{{ molde.nombre }}</h3>
+            <div style="display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; margin-top: var(--space-md);">
+                {% for sector in molde.sectores %}
+                <span class="badge" style="font-size: 0.6rem; opacity: 0.7;">{{ sector }}</span>
+                {% endfor %}
+            </div>
+            <button class="btn btn-secondary btn-sm" style="margin-top: var(--space-lg); width: 100%;">Elegir Molde</button>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Panel de Detalle del Molde (Hidden by default) -->
+    <div id="mold-detail" class="card reveal" style="display: none; margin-top: var(--space-2xl); padding: var(--space-2xl);">
+        <h2 id="mold-name-header" style="margin-bottom: var(--space-lg);"></h2>
+        <p style="color: var(--text-dim); margin-bottom: var(--space-xl);">Toca un sector para subir la foto y vincularla automáticamente.</p>
+        
+        <div id="mold-sectors-container" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px;">
+            <!-- Sectores dinámicos -->
+        </div>
+        
+        <div style="margin-top: var(--space-2xl); text-align: center;">
+            <button class="btn btn-secondary" onclick="resetSelection()">Volver a Galería de Moldes</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const moldes = {{ moldes|tojson | safe }};
+    const planoId = {{ plano.id }};
+    let selectedMolde = null;
+
+    function selectMold(id) {
+        selectedMolde = moldes.find(m => m.id === id);
+        document.querySelector('.grid').style.display = 'none';
+        const detail = document.getElementById('mold-detail');
+        detail.style.display = 'block';
+        document.getElementById('mold-name-header').textContent = `Estructura: ${selectedMolde.nombre}`;
+        
+        const container = document.getElementById('mold-sectors-container');
+        container.innerHTML = '';
+        selectedMolde.sectores.forEach(sector => {
+            const div = document.createElement('div');
+            div.className = 'card';
+            div.style.padding = 'var(--space-md)';
+            div.style.textAlign = 'center';
+            div.style.cursor = 'pointer';
+            div.style.border = '1px solid var(--glass-border)';
+            div.innerHTML = `
+                <div style="font-size: 1.5rem; margin-bottom: 8px;">📍</div>
+                <h4 style="font-size: 0.9rem;">${sector}</h4>
+                <p style="font-size: 0.7rem; color: var(--text-muted); margin-top: 4px;">Toca para cargar foto</p>
+            `;
+            div.onclick = () => vincularSector(sector);
+            container.appendChild(div);
+        });
+    }
+
+    function resetSelection() {
+        document.querySelector('.grid').style.display = 'grid';
+        document.getElementById('mold-detail').style.display = 'none';
+    }
+
+    function vincularSector(sector) {
+        // Redirigir al upload con el sector como meta o simplemente abrir un input
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*';
+        input.onchange = (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                 window.showIsland(`Cargando foto para ${sector}...`, 2000, 'success');
+                 // Aquí se enviaría al backend para crear el Pin automáticamente en esa zona del molde
+                 // Por ahora, simulamos éxito y redirigimos al plano
+                 setTimeout(() => {
+                     window.location.href = `/plano/${planoId}`;
+                 }, 1500);
+            }
+        };
+        input.click();
+    }
+</script>
+{% endblock %}
