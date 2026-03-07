@@ -1,33 +1,30 @@
 {% extends 'layout.html' %}
 
 {% block content %}
-<div id="map-layout" style="display: flex; flex-wrap: wrap; gap: var(--space-lg); align-items: start; min-height: calc(100vh - 120px);">
+<div id="map-layout" style="display: flex; gap: var(--space-lg); align-items: start; min-height: calc(100vh - 120px); position: relative;">
 
-    <!-- Left Sidebar: Unplaced / Directory (Premium Dock style) -->
-    <aside id="map-sidebar" class="reveal" style="width: 280px; flex-shrink: 0; position: sticky; top: 80px; min-width: 0;">
-        <div class="card" style="padding: var(--space-lg); max-height: 80vh; display: flex; flex-direction: column;">
+    <!-- LEFT SIDEBAR: Colapsado por defecto — se abre con toggle -->
+    <aside id="map-sidebar" style="
+        width: 270px; flex-shrink: 0; position: sticky; top: 80px;
+        transition: width 0.3s ease, opacity 0.3s ease;
+        overflow: hidden; opacity: 0; width: 0; pointer-events: none;
+    ">
+        <div class="card" style="width: 270px; padding: var(--space-lg); max-height: 80vh; display: flex; flex-direction: column;">
             <div style="margin-bottom: var(--space-md);">
                 <h3 style="display: flex; align-items: center; justify-content: space-between;">
                     Directorio
                     <span id="unplaced-count" class="badge badge-primary">0</span>
                 </h3>
-                <p style="color: var(--text-dim); font-size: 0.75rem; margin-top: 4px;">Arrastrá los pines al mapa</p>
+                <p style="color: var(--text-dim); font-size: 0.75rem; margin-top: 4px;">Tocá el mapa para ubicar pines</p>
             </div>
-
-            <div id="unplaced-list"
-                style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 4px;">
-                <!-- Pins will be injected here -->
+            <div id="unplaced-list" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 4px;">
+                <!-- Pins injected here -->
             </div>
-
-            <div id="save-panel"
-                style="display: none; margin-top: var(--space-lg); padding-top: var(--space-md); border-top: 1px solid var(--glass-border);">
-                <p style="font-size: 0.75rem; color: var(--success); margin-bottom: 8px; text-align: center;">✓ Cambios
-                    pendientes</p>
+            <div id="save-panel" style="display: none; margin-top: var(--space-lg); padding-top: var(--space-md); border-top: 1px solid var(--glass-border);">
+                <p style="font-size: 0.75rem; color: var(--success); margin-bottom: 8px; text-align: center;">✓ Cambios pendientes</p>
                 <div style="display: flex; gap: 6px;">
-                    <button onclick="cancelarCambios()" class="btn btn-sm btn-secondary"
-                        style="flex: 1;">Revertir</button>
-                    <button onclick="guardarPosiciones()" class="btn btn-sm btn-primary"
-                        style="flex: 1;">Guardar</button>
+                    <button onclick="cancelarCambios()" class="btn btn-sm btn-secondary" style="flex: 1;">Revertir</button>
+                    <button onclick="guardarPosiciones()" class="btn btn-sm btn-primary" style="flex: 1;">Guardar</button>
                 </div>
             </div>
         </div>
@@ -36,19 +33,52 @@
     <!-- Main Map Panel -->
     <main style="flex: 1; min-width: 0; width: 100%;">
         <div class="page-header fade-up" style="margin-bottom: var(--space-md);">
-            <div>
-                <h2><span class="gradient-text">{{ plano.nombre }}</span></h2>
-                <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px;">
-                    <span class="badge badge-success">Interactivo</span>
-                    <p class="page-subtitle" style="margin-top: 0;">Posicioná tus descubrimientos</p>
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <!-- Toggle Directorio: badge muestra el conteo sin abrir el panel -->
+                <button id="btn-toggle-sidebar" onclick="toggleSidebar()"
+                    title="Abrir directorio de pines"
+                    style="position: relative; width: 40px; height: 40px; border-radius: 50%; border: 1.5px solid var(--glass-border); background: rgba(255,255,255,0.04); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; transition: all 0.2s; flex-shrink: 0;">
+                    📦
+                    <span id="sidebar-badge" style="
+                        position: absolute; top: -4px; right: -4px;
+                        background: var(--primary); color: white; border-radius: 50%;
+                        width: 18px; height: 18px; font-size: 0.6rem; font-weight: 800;
+                        display: none; align-items: center; justify-content: center;
+                    ">0</span>
+                </button>
+                <div>
+                    <h2 style="margin:0;"><span class="gradient-text">{{ plano.nombre }}</span></h2>
+                    <div style="display: flex; align-items: center; gap: 8px; margin-top: 2px;">
+                        <span class="badge badge-success">Interactivo</span>
+                    </div>
                 </div>
             </div>
-            <div id="map-action-btns" style="display: flex; gap: 6px; flex-wrap: wrap; align-items: center;">
+
+            <!-- Barra de acciones: solo Scanner visible, resto en submenú -->
+            <div style="display: flex; gap: 6px; align-items: center;">
                 <a href="{{ url_for('video_scanner', plano_id=plano.id) }}" class="btn btn-sm btn-secondary">📹 Scanner</a>
-                <a href="{{ url_for('ver_plano_3d', plano_id=plano.id) }}" class="btn btn-sm btn-secondary">🧊 3D</a>
-                <a href="{{ url_for('editar_plano', plano_id=plano.id) }}" class="btn btn-sm btn-secondary">✏️ Zonas</a>
-                <button id="btn-calibrar" class="btn btn-sm btn-secondary" onclick="startCalibration()">⚖️ Calibrar</button>
-                <button id="btn-nueva-ubicacion" class="btn btn-sm btn-primary">➕ Nueva</button>
+
+                <!-- Submenú de utilidades -->
+                <div style="position: relative;" id="utils-menu-wrapper">
+                    <button class="btn btn-sm btn-secondary" onclick="toggleUtilsMenu()" id="btn-utils"
+                        style="display: flex; align-items: center; gap: 4px;">
+                        ⚙️ Más
+                        <span style="font-size: 0.6rem; opacity: 0.6;">▾</span>
+                    </button>
+                    <div id="utils-dropdown" style="
+                        display: none; position: absolute; right: 0; top: calc(100% + 6px);
+                        background: var(--surface, #111); border: 1px solid var(--glass-border);
+                        border-radius: var(--radius-lg); padding: 6px; z-index: 500;
+                        min-width: 160px; box-shadow: 0 20px 50px rgba(0,0,0,0.6);
+                        flex-direction: column; gap: 4px;
+                    ">
+                        <a href="{{ url_for('ver_plano_3d', plano_id=plano.id) }}" class="btn btn-sm btn-secondary" style="width:100%; text-align:left;">🧊 Ver en 3D</a>
+                        <a href="{{ url_for('editar_plano', plano_id=plano.id) }}" class="btn btn-sm btn-secondary" style="width:100%; text-align:left;">✏️ Editar Zonas</a>
+                        <button class="btn btn-sm btn-secondary" onclick="startCalibration(); closeUtilsMenu()" style="width:100%; text-align:left;">⚖️ Calibrar</button>
+                        <hr style="border-color: var(--glass-border); margin: 2px 0;">
+                        <button id="btn-nueva-ubicacion" class="btn btn-sm btn-primary" style="width:100%; text-align:left;">➕ Nueva Ubicación</button>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -74,12 +104,10 @@
         <div class="card reveal visible"
             style="padding: 0; overflow: hidden; position: relative; background: #000; border-radius: var(--radius-2xl);">
 
-            <!-- Tesla HUD Panel -->
-            <div class="hud-panel reveal">
-                <div class="hud-data">SISTEMA: <span class="hud-val">ACTIVO</span></div>
-                <div class="hud-data">OBJETOS: <span class="hud-val" id="hud-obj-count">0</span></div>
-                <div class="hud-data">ZOOM: <span class="hud-val" id="hud-zoom">100%</span></div>
-                <div class="hud-data">LATENCIA IA: <span class="hud-val">120ms</span></div>
+            <!-- HUD Minimalista: solo lo esencial -->
+            <div class="hud-panel reveal" style="gap: 10px;">
+                <div class="hud-data">📍 <span class="hud-val" id="hud-obj-count">0</span></div>
+                <div class="hud-data">🔍 <span class="hud-val" id="hud-zoom">100%</span></div>
             </div>
 
             <!-- Map Container -->
@@ -890,7 +918,6 @@
             pointer-events: auto;
             transition: all 0.2s;
         }
-
         .obj-dot:hover {
             transform: translate(-50%, -50%) scale(1.5);
             z-index: 15;
@@ -903,10 +930,9 @@
                 flex-direction: column !important;
             }
 
+            /* Sidebar oculto: no afectar en ninguna resolución (el JS lo controla) */
             #map-sidebar {
-                width: 100% !important;
-                position: static !important;
-                order: 2; /* Sidebar va debajo del mapa en móvil */
+                display: none !important; /* Móvil: el panel se reemplaza por la barra inferior */
             }
 
             #map-sidebar .card {
@@ -958,4 +984,106 @@
             }
         }
     </style>
+
+    <!-- ―― BARRA DE NAVEGACIÓN INFERIOR MÓVIL ―― -->
+    <div id="map-mobile-nav" style="
+        display: none;
+        position: fixed; bottom: 0; left: 0; right: 0;
+        background: rgba(0,0,0,0.85); backdrop-filter: blur(20px);
+        border-top: 1px solid rgba(255,255,255,0.08);
+        z-index: 1100; padding: 8px 0 calc(8px + env(safe-area-inset-bottom));
+        justify-content: space-around; align-items: center;
+    ">
+        <a href="{{ url_for('list_planos') }}" style="display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--text-dim);font-size:0.65rem;font-weight:600;text-decoration:none;padding:6px 16px;">
+            <span style="font-size:1.4rem;">🗺️</span> Mapas
+        </a>
+        <a href="{{ url_for('video_scanner', plano_id=plano.id) }}" style="display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--primary);font-size:0.65rem;font-weight:700;text-decoration:none;padding:6px 16px;">
+            <span style="font-size:1.4rem;">📹</span> Scanner
+        </a>
+        <a href="{{ url_for('search') }}" style="display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--text-dim);font-size:0.65rem;font-weight:600;text-decoration:none;padding:6px 16px;">
+            <span style="font-size:1.4rem;">🔍</span> Buscar
+        </a>
+        <button onclick="toggleSidebar()" style="display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--text-dim);font-size:0.65rem;font-weight:600;background:none;border:none;cursor:pointer;padding:6px 16px;position:relative;">
+            <span style="font-size:1.4rem;">📦</span>
+            <span>Pines</span>
+            <span id="mobile-sidebar-badge" style="position:absolute;top:2px;right:10px;background:var(--primary);color:white;border-radius:50%;width:16px;height:16px;font-size:0.55rem;font-weight:800;display:none;align-items:center;justify-content:center;">0</span>
+        </button>
+    </div>
+
+    <script>
+        // ── SIDEBAR TOGGLE ──
+        let sidebarOpen = false;
+        function toggleSidebar() {
+            const aside = document.getElementById('map-sidebar');
+            sidebarOpen = !sidebarOpen;
+            if (sidebarOpen) {
+                aside.style.width = '270px';
+                aside.style.opacity = '1';
+                aside.style.pointerEvents = 'auto';
+            } else {
+                aside.style.width = '0';
+                aside.style.opacity = '0';
+                aside.style.pointerEvents = 'none';
+            }
+        }
+
+        // Sync badge con conteo de pines sin ubicar
+        const _origUpdateBadge = window._origUpdateBadge;
+        function syncSidebarBadge(count) {
+            const badge = document.getElementById('sidebar-badge');
+            const mobileBadge = document.getElementById('mobile-sidebar-badge');
+            if (count > 0) {
+                [badge, mobileBadge].forEach(b => {
+                    if (b) { b.textContent = count; b.style.display = 'flex'; }
+                });
+            } else {
+                [badge, mobileBadge].forEach(b => {
+                    if (b) b.style.display = 'none';
+                });
+            }
+        }
+
+        // ── UTILS DROPDOWN ──
+        function toggleUtilsMenu() {
+            const dd = document.getElementById('utils-dropdown');
+            const isOpen = dd.style.display === 'flex';
+            dd.style.display = isOpen ? 'none' : 'flex';
+        }
+        function closeUtilsMenu() {
+            document.getElementById('utils-dropdown').style.display = 'none';
+        }
+        // Cerrar al hacer click fuera
+        document.addEventListener('click', function(e) {
+            const wrapper = document.getElementById('utils-menu-wrapper');
+            if (wrapper && !wrapper.contains(e.target)) closeUtilsMenu();
+        });
+
+        // ── BARRA MÓVIL: mostrar solo en pantallas pequeñas ──
+        function checkMobileNav() {
+            const nav = document.getElementById('map-mobile-nav');
+            if (window.innerWidth <= 768) {
+                nav.style.display = 'flex';
+                // Agregar padding-bottom al main para no quedar tapado
+                document.querySelector('main').style.paddingBottom = '70px';
+            } else {
+                nav.style.display = 'none';
+                document.querySelector('main').style.paddingBottom = '';
+            }
+        }
+        checkMobileNav();
+        window.addEventListener('resize', checkMobileNav);
+
+        // Hook al renderMap para actualizar badges
+        const _origRenderMap = window.renderMap;
+        document.addEventListener('DOMContentLoaded', () => {
+            // Parchar renderMap para llamar syncSidebarBadge
+            const mapStoreProxy = new Proxy(MapStore, {
+                set(target, prop, value) {
+                    target[prop] = value;
+                    if (prop === 'unplaced') syncSidebarBadge(value.length);
+                    return true;
+                }
+            });
+        });
+    </script>
     {% endblock %}
