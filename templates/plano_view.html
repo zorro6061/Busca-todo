@@ -112,7 +112,7 @@
                     {% endif %}
 
                     <!-- Hotspots & Pins Layer -->
-                    <div id="pins-layer" style="position: absolute; inset: 0; pointer-events: none;"></div>
+                    <div id="pins-layer" style="position: absolute; inset: 0; pointer-events: none; z-index: 10;"></div>
                     <!-- ESCUDO DESACTIVADO: pointer-events: none por defecto. Solo se activa en modo edición. -->
                     <div id="hotspots-layer"
                         style="position: absolute; inset: 0; cursor: crosshair; pointer-events: none; {% if not plano.imagen_path %}display: none;{% endif %}">
@@ -320,29 +320,68 @@
         // El layer ya tiene pointer-events: none; se activa solo cuando corresponde.
         const hotspotsLayerEl = document.getElementById('hotspots-layer');
 
+        function showTapRipple(clientX, clientY) {
+            // Feedback visual INSTANTÁNEO: círculo brillante aparece al toque
+            const ripple = document.createElement('div');
+            const inner = document.getElementById('map-inner');
+            const innerRect = inner.getBoundingClientRect();
+            const rx = clientX - innerRect.left;
+            const ry = clientY - innerRect.top;
+            ripple.style.cssText = `
+                position: absolute;
+                left: ${rx}px; top: ${ry}px;
+                width: 0; height: 0;
+                border-radius: 50%;
+                background: radial-gradient(circle, rgba(99,102,241,0.9) 0%, rgba(99,102,241,0) 70%);
+                transform: translate(-50%, -50%);
+                pointer-events: none;
+                z-index: 999;
+                transition: width 0.35s ease-out, height 0.35s ease-out, opacity 0.35s ease-out;
+                opacity: 1;
+            `;
+            inner.appendChild(ripple);
+            // Trigger animation
+            requestAnimationFrame(() => {
+                ripple.style.width = '80px';
+                ripple.style.height = '80px';
+            });
+            setTimeout(() => { ripple.style.opacity = '0'; }, 250);
+            setTimeout(() => ripple.remove(), 600);
+        }
+
         function handleHotspotClick(e) {
+            if (e.cancelable) e.preventDefault();
             const rect = hotspotsLayerEl.getBoundingClientRect();
             const clientX = e.touches ? e.touches[0].clientX : e.clientX;
             const clientY = e.touches ? e.touches[0].clientY : e.clientY;
             const x = ((clientX - rect.left) / rect.width) * 100;
             const y = ((clientY - rect.top) / rect.height) * 100;
 
-            // Si hay un pin sin ubicar lo posicionamos y desactivamos el modo
+            // Feedback immediato ANTES de cualquier otra acción
+            showTapRipple(clientX, clientY);
+
+            // Si hay un pin sin ubicar lo posicionamos
             if (MapStore.unplaced.length > 0) {
                 const item = MapStore.unplaced[0];
-                window.showIsland(`Ubicando: ${item.nombre}`, 2000, 'success');
+                // Mostrar pin fantasma INMEDIATO en el canvas
+                const ghostPin = document.createElement('div');
+                ghostPin.style.cssText = `position:absolute;left:${x}%;top:${y}%;transform:translate(-50%,-120%);z-index:20;font-size:2rem;pointer-events:none;filter:drop-shadow(0 0 8px rgba(99,102,241,0.9));animation:none;`;
+                ghostPin.textContent = '📍';
+                pinsLayer.appendChild(ghostPin);
+
+                window.showIsland(`📍 Ubicando: ${item.nombre}`, 2000, 'success');
                 MapStore.unplaced = MapStore.unplaced.filter(p => p.id !== item.id);
                 MapStore.pins = [...MapStore.pins, { ...item, x, y }];
-                if (MapStore.unplaced.length === 0) disableHotspotMode();
+                // hotspot mode se recalcula en el próximo renderMap via subscriber
                 return;
             }
 
-            // Crear Hotspot de sector
+            // Crear Hotspot de sector (cuando hotspotModeActive y no hay unplaced)
             if (hotspotModeActive) {
                 tempCoords = { x, y };
                 document.getElementById('modal-hotspot').style.display = 'flex';
                 document.getElementById('hs-nombre').focus();
-                disableHotspotMode(); // Volver a modo pasivo después de colocar
+                // No desactivar aquí — el usuario puede crear varios hotspots seguidos
             }
         }
 
@@ -473,7 +512,8 @@
                     (p.categoria_principal && p.categoria_principal.includes(MapStore.currentChip));
 
                 if (!isChipMatch) return;
-                totalObjects += (p.objetos_count || 0);
+                // FIX: usar objetos.length si objetos_count es 0 o undefined
+                totalObjects += (p.objetos_count || (p.objetos ? p.objetos.length : 0));
 
                 // Pin Principal (Ubicación)
                 const pin = document.createElement('div');
@@ -512,11 +552,11 @@
             document.getElementById('hud-zoom').textContent = Math.round(MapStore.currentZoom * 100) + '%';
             document.getElementById('unplaced-count').textContent = MapStore.unplaced.length;
             // Auto-activar modo hotspot si hay pines sin ubicar (para tap en móvil)
+            // NOTA: No desactivar si no hay unplaced — el usuario puede querer crear un nuevo hotspot
             if (MapStore.unplaced.length > 0) {
                 enableHotspotMode();
-            } else {
-                disableHotspotMode();
             }
+            // No llamar disableHotspotMode() aquí: se desactiva sólo al salir de modos explícitos
 
             unplacedList.innerHTML = MapStore.unplaced.map(p => `
     <div class="directory-item reveal visible" draggable="true"
