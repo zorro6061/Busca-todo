@@ -34,16 +34,17 @@
     <main style="flex: 1; min-width: 0; width: 100%;">
         <div class="page-header fade-up" style="margin-bottom: var(--space-md);">
             <div style="display: flex; align-items: center; gap: 12px;">
-                <!-- Toggle Directorio: badge muestra el conteo sin abrir el panel -->
+                <!-- Toggle Directorio: Pestaña lateral premium -->
                 <button id="btn-toggle-sidebar" onclick="toggleSidebar()"
-                    title="Abrir directorio de pines"
-                    style="position: relative; width: 40px; height: 40px; border-radius: 50%; border: 1.5px solid var(--glass-border); background: rgba(255,255,255,0.04); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; transition: all 0.2s; flex-shrink: 0;">
+                    title="Directorio de pines"
+                    style="position: relative; width: 44px; height: 44px; border-radius: 12px; border: 1.5px solid var(--glass-border); background: rgba(255,255,255,0.05); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); flex-shrink: 0; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
                     📦
                     <span id="sidebar-badge" style="
-                        position: absolute; top: -4px; right: -4px;
+                        position: absolute; top: -5px; right: -5px;
                         background: var(--primary); color: white; border-radius: 50%;
-                        width: 18px; height: 18px; font-size: 0.6rem; font-weight: 800;
+                        width: 20px; height: 20px; font-size: 0.7rem; font-weight: 900;
                         display: none; align-items: center; justify-content: center;
+                        border: 2px solid #000;
                     ">0</span>
                 </button>
                 <div>
@@ -54,42 +55,42 @@
                 </div>
             </div>
 
-            <!-- Barra de acciones: solo Scanner visible, resto en submenú -->
-            <div style="display: flex; gap: 6px; align-items: center;">
-                <a href="{{ url_for('video_scanner', plano_id=plano.id) }}" class="btn btn-sm btn-secondary">📹 Scanner</a>
+            <!-- Barra de acciones: Scanner y Zonas visibles, resto en submenú -->
+            <div style="display: flex; gap: 8px; align-items: center;">
+                <a href="{{ url_for('video_scanner', plano_id=plano.id) }}" class="btn btn-sm btn-secondary" style="border-radius: 980px; padding: 6px 16px;">📹 Scanner</a>
+                <a href="{{ url_for('editar_plano', plano_id=plano.id) }}" class="btn btn-sm btn-secondary" style="border-radius: 980px; padding: 6px 16px;">✏️ Zonas</a>
 
-                <!-- Submenú de utilidades -->
+                <!-- Submenú de utilidades (Icono de Engranaje) -->
                 <div style="position: relative;" id="utils-menu-wrapper">
                     <button class="btn btn-sm btn-secondary" onclick="toggleUtilsMenu()" id="btn-utils"
-                        style="display: flex; align-items: center; gap: 4px;">
-                        ⚙️ Más
-                        <span style="font-size: 0.6rem; opacity: 0.6;">▾</span>
+                        style="width: 36px; height: 36px; padding: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.1rem;">
+                        ⚙️
                     </button>
                     <div id="utils-dropdown" style="
-                        display: none; position: absolute; right: 0; top: calc(100% + 6px);
-                        background: var(--surface, #111); border: 1px solid var(--glass-border);
-                        border-radius: var(--radius-lg); padding: 6px; z-index: 500;
-                        min-width: 160px; box-shadow: 0 20px 50px rgba(0,0,0,0.6);
+                        display: none; position: absolute; right: 0; top: calc(100% + 8px);
+                        background: rgba(15,15,15,0.95); backdrop-filter: blur(25px);
+                        border: 1px solid var(--glass-border);
+                        border-radius: var(--radius-xl); padding: 8px; z-index: 500;
+                        min-width: 180px; box-shadow: 0 25px 50px rgba(0,0,0,0.8);
                         flex-direction: column; gap: 4px;
                     ">
-                        <a href="{{ url_for('ver_plano_3d', plano_id=plano.id) }}" class="btn btn-sm btn-secondary" style="width:100%; text-align:left;">🧊 Ver en 3D</a>
-                        <a href="{{ url_for('editar_plano', plano_id=plano.id) }}" class="btn btn-sm btn-secondary" style="width:100%; text-align:left;">✏️ Editar Zonas</a>
-                        <button class="btn btn-sm btn-secondary" onclick="startCalibration(); closeUtilsMenu()" style="width:100%; text-align:left;">⚖️ Calibrar</button>
-                        <hr style="border-color: var(--glass-border); margin: 2px 0;">
-                        <button id="btn-nueva-ubicacion" class="btn btn-sm btn-primary" style="width:100%; text-align:left;">➕ Nueva Ubicación</button>
+                        <a href="{{ url_for('ver_plano_3d', plano_id=plano.id) }}" class="btn btn-sm btn-secondary" style="width:100%; text-align:left; border:none; background:transparent;">🧊 Ver en 3D</a>
+                        <button class="btn btn-sm btn-secondary" onclick="startCalibration(); closeUtilsMenu()" style="width:100%; text-align:left; border:none; background:transparent;">⚖️ Calibrar</button>
+                        <hr style="border-color: var(--glass-border); margin: 4px 0; opacity: 0.3;">
+                        <button id="btn-nueva-ubicacion" class="btn btn-sm btn-primary" style="width:100%; text-align:left; border-radius: var(--radius-md);">➕ Nueva Ubicación</button>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Search Overlay (Google Maps style) -->
+        <!-- Search Overlay (Estilo Google Buscador) -->
         <div class="card reveal"
-            style="padding: 10px 16px; margin-bottom: var(--space-md); border-radius: 980px; display: flex; align-items: center; gap: 12px; background: rgba(0,0,0,0.6);">
-            <span style="opacity: 0.5;">🔍</span>
-            <input type="text" id="map-search" placeholder="Buscar en este mapa..."
-                style="background: none; border: none; padding: 0; padding-bottom: 0; box-shadow: none; font-size: 0.9rem;">
+            style="padding: 12px 24px; margin: var(--space-lg) auto var(--space-xl); border-radius: 980px; display: flex; align-items: center; gap: 16px; background: rgba(255,255,255,0.03); border: 1.5px solid var(--glass-border); max-width: 600px; box-shadow: 0 10px 40px rgba(0,0,0,0.4); transition: all 0.3s;">
+            <span style="font-size: 1.2rem; opacity: 0.7;">🔍</span>
+            <input type="text" id="map-search" placeholder="Busca cualquier objeto en {{ plano.nombre }}..."
+                style="background: none; border: none; padding: 0; box-shadow: none; font-size: 1rem; width: 100%; color: #fff;">
             <div id="search-count"
-                style="font-size: 0.75rem; color: var(--text-dim); white-space: nowrap; margin-left: auto;"></div>
+                style="font-size: 0.8rem; color: var(--primary); white-space: nowrap; font-weight: 700;"></div>
         </div>
 
         <!-- Smart Chips (Google style) -->
@@ -104,10 +105,15 @@
         <div class="card reveal visible"
             style="padding: 0; overflow: hidden; position: relative; background: #000; border-radius: var(--radius-2xl);">
 
-            <!-- HUD Minimalista: solo lo esencial -->
-            <div class="hud-panel reveal" style="gap: 10px;">
-                <div class="hud-data">📍 <span class="hud-val" id="hud-obj-count">0</span></div>
-                <div class="hud-data">🔍 <span class="hud-val" id="hud-zoom">100%</span></div>
+            <!-- HUD Minimalista con LED IA ONLINE -->
+            <div class="hud-panel reveal" style="gap: 12px; align-items: center; background: rgba(0,0,0,0.7); padding: 6px 12px; border-radius: 980px; margin: 10px; border: 1px solid rgba(255,255,255,0.1);">
+                <div style="display: flex; align-items: center; gap: 6px;">
+                    <div class="ia-led-pulse"></div>
+                    <span style="font-size: 0.65rem; font-weight: 800; letter-spacing: 0.5px; color: var(--success);">IA ONLINE</span>
+                </div>
+                <div style="width: 1px; height: 12px; background: rgba(255,255,255,0.2);"></div>
+                <div class="hud-data" style="margin:0;">📍 <span class="hud-val" id="hud-obj-count">0</span></div>
+                <div class="hud-data" style="margin:0;">🔍 <span class="hud-val" id="hud-zoom">100%</span></div>
             </div>
 
             <!-- Map Container -->
@@ -922,6 +928,22 @@
             transform: translate(-50%, -50%) scale(1.5);
             z-index: 15;
             box-shadow: 0 0 15px var(--primary);
+        }
+
+        /* ── IA LED PULSE ── */
+        .ia-led-pulse {
+            width: 8px;
+            height: 8px;
+            background-color: var(--success);
+            border-radius: 50%;
+            box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
+            animation: led-pulse 2s infinite;
+        }
+
+        @keyframes led-pulse {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(34, 197, 94, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
         }
 
         /* ── RESPONSIVE MOBILE LAYOUT ── */
