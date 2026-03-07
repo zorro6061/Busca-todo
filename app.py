@@ -1403,11 +1403,12 @@ def save_drawing_api(plano_id):
 
 @app.route('/ai-optimizer')
 def ai_optimizer():
-    from ai_engine import client
+    # El cliente se importa vía get_client() más abajo para ser resilientes
+    # from ai_engine import client # BUG: No existe 'client' en ai_engine, solo get_client() o _client
     
     objetos = Objeto.query.all()
     if not objetos:
-        return render_template('ai_optimizer.html', tips="Todavía no he analizado suficientes objetos para optimizar tu espacio.")
+        return render_template('ai_optimizer.html', tips=[])
     
     # Crear un resumen para la IA
     resumen = []
@@ -1417,29 +1418,42 @@ def ai_optimizer():
     resumen_texto = "\n".join(resumen)
     
     # Llamada a Gemini para consejos pro usando la nueva SDK
-    tips_html = "<p>Error consultando al cerebro maestro. Intentá más tarde.</p>"
+    tips = []
     from ai_engine import get_client
     client = get_client()
     if client:
         try:
             prompt = f"""
-            Eres un experto en ingeniería de espacios y organización doméstica. 
+            Eres un experto en ingeniería de espacios y organización doméstica estilo "Premium/Tesla". 
             Basado en este inventario detectado por mi sistema de visión, dame 3 consejos de "Ingeniería de Élite" para organizar mi casa y ahorrar tiempo.
             
             Inventario:
             {resumen_texto}
             
-            Responde en formato HTML sencillo (solo tags <p>, <ul>, <li>) con un tono profesional y motivador.
+            Responde ÚNICAMENTE en formato JSON con esta estructura:
+            [
+              {{"titulo": "Título del consejo", "contenido": "Explicación detallada"}},
+              ...
+            ]
             """
             response = client.models.generate_content(
                 model='gemini-1.5-flash',
                 contents=prompt
             )
-            tips_html = response.text
+            # Limpieza de JSON
+            clean_json = response.text.strip()
+            if '```json' in clean_json:
+                clean_json = clean_json.split('```json')[1].split('```')[0].strip()
+            elif '```' in clean_json:
+                clean_json = clean_json.split('```')[1].split('```')[0].strip()
+            
+            import json
+            tips = json.loads(clean_json)
         except Exception as e:
             app.logger.error(f"Error en AI Optimizer: {e}")
+            tips = [{"titulo": "Cerebro en mantenimiento", "contenido": "La IA está procesando otros datos. Volvé a intentar en unos segundos."}]
             
-    return render_template('ai_optimizer.html', tips=tips_html)
+    return render_template('ai_optimizer.html', tips=tips)
 
 # --- API Búsqueda en Mapa (Ctrl+F Físico) ---
 @app.route('/api/buscar_en_mapa')
