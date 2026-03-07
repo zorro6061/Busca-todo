@@ -26,4 +26,4 @@ COPY . .
 ENV PORT 8080
 
 # Comando para arrancar con Gunicorn (optimizado)
-CMD gunicorn --bind :$PORT --workers 1 --threads 8 --timeout 0 app:app
+CMD gunicorn --bind :$PORT --workers 1 --threads 8 --timeout 120 --graceful-timeout 30 app:app

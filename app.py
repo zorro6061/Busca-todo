@@ -81,7 +81,7 @@ else:
     app.config['SQLALCHEMY_DATABASE_URI'] = default_sqlite
     vanguard_log("Usando SQLite local (instancia de desarrollo)")
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024 # Límite de 10MB para robustez en móvil
+app.config['MAX_CONTENT_LENGTH'] = 200 * 1024 * 1024  # 200MB — permite videos del Scanner
 app.config.setdefault("UPLOAD_FOLDER", os.environ.get('UPLOAD_FOLDER', os.path.join(basedir, 'uploads')))
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev_key_ctrl_f_123456789')
 
@@ -1542,6 +1542,20 @@ def video_scanner(plano_id):
     plano = Plano.query.get_or_404(plano_id)
     step = 1
     frames = []
+
+    # Plan B: Redirigido desde upload_frames con frames ya analizados en sesión
+    if request.args.get('plan_b') == '1':
+        from flask import session
+        import json
+        temp_file = session.get('temp_frames_file')
+        if temp_file:
+            temp_path = os.path.join(app.config.get('UPLOAD_FOLDER'), temp_file)
+            if os.path.exists(temp_path):
+                with open(temp_path, 'r') as f:
+                    raw = json.load(f)
+                frames = [{'path': fr['path'], 'objects': fr.get('objects', [])} for fr in raw]
+                step = 3
+
     
     if request.method == 'POST':
         file = request.files.get('video')
@@ -1550,33 +1564,101 @@ def video_scanner(plano_id):
             video_filename = f"video_{uuid.uuid4().hex[:8]}_{secure_filename(file.filename)}"
             video_path = os.path.join(app.config.get('UPLOAD_FOLDER'), video_filename)
             file.save(video_path)
-            
+
             from video_processor import extraer_fotogramas
             frame_filenames = extraer_fotogramas(video_path, app.config.get('UPLOAD_FOLDER'))
-            
-            # Analizar frames
+
+            # Analizar frames — FIX: leer bytes antes de llamar a la IA
             from ai_engine import analizar_imagen_objetos
             for f_name in frame_filenames:
                 f_path = os.path.join(app.config.get('UPLOAD_FOLDER'), f_name)
-                res = analizar_imagen_objetos(f_path)
-                frames.append({
-                    'path': f_name,
-                    'objects': res.get('items', [])
-                })
-            
+                try:
+                    with open(f_path, 'rb') as img_file:
+                        img_bytes = img_file.read()
+                    res = analizar_imagen_objetos(img_bytes)
+                    frames.append({
+                        'path': f_name,
+                        'objects': res.get('items', [])
+                    })
+                except Exception as e:
+                    app.logger.error(f"[SCANNER] Error analizando frame {f_name}: {e}")
+                    frames.append({'path': f_name, 'objects': []})
+
             # Guardar frames en archivo temporal (evitar cookie overflow)
             import json
             from flask import session
             temp_frames_file = f"frames_{uuid.uuid4().hex}.json"
             temp_frames_path = os.path.join(app.config.get('UPLOAD_FOLDER'), temp_frames_file)
-            
+
             with open(temp_frames_path, 'w') as f:
                 json.dump(frames, f)
-                
+
             session['temp_frames_file'] = temp_frames_file
             step = 3
-            
+
     return render_template('video_scanner.html', plano=plano, step=step, frames=frames)
+
+
+@app.route('/api/scanner/<int:plano_id>/upload_frames', methods=['POST'])
+def scanner_upload_frames(plano_id):
+    """Plan B: Recibe fotos capturadas cada 2s desde el celular (base64 JSON).
+    NO requiere video — evita el problema de payload y timeout."""
+    import json, base64, io
+    from ai_engine import analizar_imagen_objetos
+    from flask import session
+
+    plano = Plano.query.get_or_404(plano_id)
+
+    try:
+        data = request.get_json(force=True)
+        fotos_b64 = data.get('frames', [])  # Lista de strings base64
+
+        if not fotos_b64:
+            return jsonify({'success': False, 'error': 'No se recibieron frames'}), 400
+
+        app.logger.info(f"[SCANNER-PLAN-B] Recibidos {len(fotos_b64)} frames para plano {plano_id}")
+        frames = []
+
+        for i, foto_b64 in enumerate(fotos_b64[:12]):  # Máximo 12 fotos
+            try:
+                # Decodificar base64 (puede venir con o sin header data:image/jpeg;base64,)
+                if ',' in foto_b64:
+                    foto_b64 = foto_b64.split(',', 1)[1]
+                img_bytes = base64.b64decode(foto_b64)
+
+                # Subir a GCS
+                frame_filename = f"scanner_frame_{plano_id}_{uuid.uuid4().hex[:8]}.jpg"
+                upload_image_to_gcs(io.BytesIO(img_bytes), frame_filename)
+
+                # Analizar con IA
+                res = analizar_imagen_objetos(img_bytes)
+                frames.append({
+                    'path': frame_filename,
+                    'objects': res.get('items', [])
+                })
+                app.logger.info(f"[SCANNER-PLAN-B] Frame {i+1}: {len(res.get('items', []))} objetos detectados")
+
+            except Exception as e:
+                app.logger.error(f"[SCANNER-PLAN-B] Error en frame {i}: {e}")
+                frames.append({'path': f'frame_{i}.jpg', 'objects': []})
+
+        # Guardar en sesión para que save_video_scans lo recoja
+        temp_frames_file = f"frames_planb_{uuid.uuid4().hex}.json"
+        temp_frames_path = os.path.join(app.config.get('UPLOAD_FOLDER'), temp_frames_file)
+        with open(temp_frames_path, 'w') as f:
+            json.dump(frames, f)
+        session['temp_frames_file'] = temp_frames_file
+
+        return jsonify({
+            'success': True,
+            'frames_analizados': len(frames),
+            'frames': frames
+        })
+
+    except Exception as e:
+        app.logger.error(f"[SCANNER-PLAN-B] Error general: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 
 @app.route('/api/plano/<int:plano_id>/save_video_scans', methods=['POST'])
 def save_video_scans(plano_id):

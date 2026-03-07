@@ -7,7 +7,7 @@
         <p class="page-subtitle">Procesamiento cinemático de espacios con IA</p>
     </div>
 
-    <!-- Step Pills (Premium Starlink style) -->
+    <!-- Step Pills -->
     <div style="display: flex; justify-content: center; gap: 8px; margin-bottom: var(--space-2xl);">
         <div class="step-pill {{ 'active' if step == 1 else 'done' }}" id="pill-step-1">
             <span class="step-num">1</span> <span class="step-txt">Captura</span>
@@ -22,45 +22,84 @@
         </div>
     </div>
 
-    <!-- Step 1: Upload Video -->
+    <!-- Step 1: Modo Selección -->
     <div id="step-1" class="card reveal visible"
-        style="display: {{ 'block' if step == 1 else 'none' }}; text-align: center; padding: var(--space-3xl) var(--space-xl);">
+        style="display: {{ 'block' if step == 1 else 'none' }}; padding: var(--space-2xl) var(--space-xl);">
+
+        <!-- MODO B — Plan B: FOTO A FOTO (recomendado móvil) -->
+        <div id="modo-foto" style="text-align: center; margin-bottom: var(--space-2xl);">
+            <div style="font-size: 3rem; margin-bottom: var(--space-md);">📸</div>
+            <h2 style="margin-bottom: 8px;">Modo Foto Automático</h2>
+            <p style="color: var(--text-dim); margin-bottom: var(--space-lg); max-width: 400px; margin-left: auto; margin-right: auto;">
+                Recomendado para Rafael. La cámara toma una foto cada 2 segundos mientras recorrés el espacio. Sin videos pesados.
+            </p>
+
+            <!-- Vista de cámara -->
+            <div id="camera-container" style="display: none; position: relative; max-width: 480px; margin: 0 auto var(--space-lg);">
+                <video id="camera-preview" autoplay playsinline muted
+                    style="width: 100%; border-radius: var(--radius-xl); background: #000; display: block;"></video>
+                <div id="frame-flash" style="position: absolute; inset: 0; border-radius: var(--radius-xl); background: white; opacity: 0; pointer-events: none; transition: opacity 0.1s;"></div>
+                <div id="frame-counter-badge"
+                    style="position: absolute; top: 12px; right: 12px; background: rgba(0,0,0,0.7); backdrop-filter: blur(10px); color: white; padding: 6px 14px; border-radius: 980px; font-size: 0.8rem; font-weight: 700;">
+                    📸 <span id="frame-count">0</span>/8 fotos
+                </div>
+                <div id="countdown-badge"
+                    style="position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); background: var(--primary); color: white; padding: 8px 20px; border-radius: 980px; font-size: 0.85rem; font-weight: 700; display: none;">
+                    ⏱ Próxima en <span id="countdown-sec">2</span>s
+                </div>
+            </div>
+
+            <canvas id="capture-canvas" style="display: none;"></canvas>
+
+            <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+                <button id="btn-start-camera" class="btn btn-primary btn-lg" onclick="startCamera()">
+                    📸 Iniciar Cámara
+                </button>
+                <button id="btn-stop-camera" class="btn btn-secondary btn-lg" onclick="stopCamera()" style="display: none;">
+                    ⏹ Detener y Analizar
+                </button>
+            </div>
+            <p id="camera-status" style="color: var(--text-dim); font-size: 0.8rem; margin-top: 12px;"></p>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: var(--space-2xl); opacity: 0.4;">
+            <div style="flex: 1; height: 1px; background: var(--glass-border);"></div>
+            <span style="font-size: 0.75rem; color: var(--text-dim); white-space: nowrap;">O subí un video</span>
+            <div style="flex: 1; height: 1px; background: var(--glass-border);"></div>
+        </div>
+
+        <!-- MODO A — Video clásico -->
         <form action="{{ url_for('video_scanner', plano_id=plano.id) }}" method="POST" enctype="multipart/form-data"
             id="video-form">
             <div id="video-drop-zone"
-                style="border: 2px dashed rgba(255,255,255,0.08); border-radius: var(--radius-2xl); padding: var(--space-3xl) var(--space-xl); cursor: pointer; transition: all 0.4s;"
+                style="border: 2px dashed rgba(255,255,255,0.08); border-radius: var(--radius-2xl); padding: var(--space-2xl) var(--space-xl); cursor: pointer; transition: all 0.4s; text-align: center;"
                 onclick="document.getElementById('video-input').click();">
-                <div style="font-size: 4rem; opacity: 0.3; margin-bottom: var(--space-lg);">📹</div>
-                <h2 style="margin-bottom: 8px;">Cargar Video del Recorrido</h2>
-                <p style="color: var(--text-dim); margin-bottom: var(--space-xl);">Grabá el espacio lentamente para
-                    mejores resultados.</p>
+                <div style="font-size: 3rem; opacity: 0.3; margin-bottom: var(--space-md);">📹</div>
+                <h3 style="margin-bottom: 8px;">Cargar Video del Recorrido</h3>
+                <p style="color: var(--text-dim); margin-bottom: var(--space-lg); font-size: 0.85rem;">Grabá el espacio lentamente. Máximo 200 MB.</p>
                 <button type="button" class="btn btn-secondary">Seleccionar Archivo</button>
                 <input type="file" id="video-input" name="video" accept="video/*" style="display: none;"
-                    onchange="submitVideo()">
+                    onchange="checkAndSubmitVideo()">
             </div>
+            <p id="video-warn" style="color: var(--warning, #f59e0b); font-size: 0.8rem; margin-top: 8px; display: none; text-align: center;">
+                ⚠️ Video muy grande. Preferí el modo Foto Automático para mejores resultados.
+            </p>
         </form>
     </div>
 
-    <!-- Step 2: Processing / Analysis -->
+    <!-- Step 2: Procesando -->
     <div id="step-2" class="card reveal visible"
         style="display: {{ 'block' if step == 2 else 'none' }}; text-align: center; padding: var(--space-3xl) var(--space-xl);">
         <div style="position: relative; width: 80px; height: 80px; margin: 0 auto var(--space-xl);">
-            <div style="position: absolute; inset: 0; border: 3px solid var(--primary-subtle); border-radius: 50%;">
-            </div>
-            <div
-                style="position: absolute; inset: 0; border: 3px solid transparent; border-top-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite;">
-            </div>
+            <div style="position: absolute; inset: 0; border: 3px solid var(--primary-subtle); border-radius: 50%;"></div>
+            <div style="position: absolute; inset: 0; border: 3px solid transparent; border-top-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite;"></div>
         </div>
-        <h2 style="margin-bottom: 8px;">Analizando Recorrido</h2>
-        <p style="color: var(--text-dim); margin-bottom: var(--space-xl);">La IA está extrayendo escenas y detectando
-            objetos...</p>
-
+        <h2 style="margin-bottom: 8px;">Analizando con IA</h2>
+        <p style="color: var(--text-dim); margin-bottom: var(--space-xl);">Gemini está detectando objetos en cada foto...</p>
         <div style="max-width: 400px; margin: 0 auto;">
-            <div
-                style="height: 6px; background: rgba(255,255,255,0.05); border-radius: 10px; overflow: hidden; margin-bottom: 12px;">
+            <div style="height: 6px; background: rgba(255,255,255,0.05); border-radius: 10px; overflow: hidden; margin-bottom: 12px;">
                 <div id="scan-progress"
-                    style="width: 10%; height: 100%; background: linear-gradient(90deg, var(--primary), var(--accent)); transition: width 0.5s;">
-                </div>
+                    style="width: 10%; height: 100%; background: linear-gradient(90deg, var(--primary), var(--accent)); transition: width 0.5s;"></div>
             </div>
             <p id="scan-status"
                 style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted);">
@@ -68,7 +107,7 @@
         </div>
     </div>
 
-    <!-- Step 3: Review Scans & Create Locations -->
+    <!-- Step 3: Escenas Detectadas -->
     <div id="step-3" style="display: {{ 'block' if step == 3 else 'none' }};">
         <div class="page-header">
             <div>
@@ -111,82 +150,175 @@
 </div>
 
 <style>
-    .step-pill {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        padding: 6px 16px;
-        border-radius: 980px;
-        background: rgba(255, 255, 255, 0.03);
-        border: 1px solid var(--glass-border);
-        color: var(--text-muted);
-        transition: all 0.3s;
-    }
-
-    .step-pill.active {
-        background: var(--primary-subtle);
-        border-color: var(--primary);
-        color: var(--text-main);
-        box-shadow: 0 0 15px var(--primary-glow);
-    }
-
-    .step-pill.done {
-        color: var(--success);
-        border-color: var(--success-dim);
-    }
-
-    .step-num {
-        width: 20px;
-        height: 20px;
-        border-radius: 50%;
-        background: rgba(255, 255, 255, 0.05);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 0.7rem;
-        font-weight: 800;
-    }
-
-    .active .step-num {
-        background: var(--primary);
-        color: white;
-    }
-
-    .done .step-num {
-        background: var(--success);
-        color: white;
-    }
-
-    .step-txt {
-        font-size: 0.75rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-    }
-
-    .frame-card.selected {
-        border-color: var(--primary);
-        transform: scale(0.98);
-    }
-
-    .frame-card.selected .frame-overlay {
-        display: flex;
-    }
-
-    @keyframes spin {
-        to {
-            transform: rotate(360deg);
-        }
-    }
+    .step-pill { display: flex; align-items: center; gap: 8px; padding: 6px 16px; border-radius: 980px; background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border); color: var(--text-muted); transition: all 0.3s; }
+    .step-pill.active { background: var(--primary-subtle); border-color: var(--primary); color: var(--text-main); box-shadow: 0 0 15px var(--primary-glow); }
+    .step-pill.done { color: var(--success); border-color: var(--success-dim); }
+    .step-num { width: 20px; height: 20px; border-radius: 50%; background: rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 800; }
+    .active .step-num { background: var(--primary); color: white; }
+    .done .step-num { background: var(--success); color: white; }
+    .step-txt { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+    .frame-card.selected { border-color: var(--primary); transform: scale(0.98); }
+    .frame-card.selected .frame-overlay { display: flex !important; }
+    @keyframes spin { to { transform: rotate(360deg); } }
 </style>
 
 <script>
-    function submitVideo() {
-        if (document.getElementById('video-input').files.length > 0) {
+    const planoId = {{ plano.id }};
+
+    // ── PLAN B: MODO FOTO A FOTO ──
+    let stream = null;
+    let captureInterval = null;
+    let capturedFrames = [];
+    let countdownTimer = null;
+    let nextCaptureIn = 2;
+
+    async function startCamera() {
+        try {
+            stream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
+                audio: false
+            });
+            const video = document.getElementById('camera-preview');
+            video.srcObject = stream;
+            document.getElementById('camera-container').style.display = 'block';
+            document.getElementById('btn-start-camera').style.display = 'none';
+            document.getElementById('btn-stop-camera').style.display = 'inline-flex';
+            document.getElementById('camera-status').textContent = '🟢 Grabando — recorre el espacio lentamente...';
+            document.getElementById('countdown-badge').style.display = 'block';
+            capturedFrames = [];
+            updateFrameCount();
+            startCountdown();
+        } catch (err) {
+            document.getElementById('camera-status').textContent = '❌ No se pudo acceder a la cámara: ' + err.message;
+            console.error('[SCANNER-B] Camera error:', err);
+        }
+    }
+
+    function startCountdown() {
+        nextCaptureIn = 2;
+        document.getElementById('countdown-sec').textContent = nextCaptureIn;
+
+        countdownTimer = setInterval(() => {
+            nextCaptureIn--;
+            document.getElementById('countdown-sec').textContent = nextCaptureIn;
+            if (nextCaptureIn <= 0) {
+                captureFrame();
+                nextCaptureIn = 2;
+            }
+        }, 1000);
+    }
+
+    function captureFrame() {
+        if (capturedFrames.length >= 8) {
+            stopCamera();
+            return;
+        }
+        const video = document.getElementById('camera-preview');
+        const canvas = document.getElementById('capture-canvas');
+        canvas.width = video.videoWidth || 1280;
+        canvas.height = video.videoHeight || 720;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        // Flash visual
+        const flash = document.getElementById('frame-flash');
+        flash.style.opacity = '0.7';
+        setTimeout(() => flash.style.opacity = '0', 150);
+
+        // Comprimir a JPEG 60% para reducir payload
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
+        capturedFrames.push(dataUrl);
+        updateFrameCount();
+        document.getElementById('camera-status').textContent = `📸 ${capturedFrames.length}/8 fotos tomadas`;
+    }
+
+    function updateFrameCount() {
+        document.getElementById('frame-count').textContent = capturedFrames.length;
+    }
+
+    async function stopCamera() {
+        clearInterval(countdownTimer);
+        if (stream) {
+            stream.getTracks().forEach(t => t.stop());
+            stream = null;
+        }
+        document.getElementById('countdown-badge').style.display = 'none';
+        document.getElementById('btn-stop-camera').style.display = 'none';
+
+        if (capturedFrames.length === 0) {
+            document.getElementById('camera-status').textContent = '⚠️ No se capturó ninguna foto.';
+            document.getElementById('btn-start-camera').style.display = 'inline-flex';
+            return;
+        }
+
+        // Mostrar pantalla de análisis
+        document.getElementById('camera-status').textContent = `✓ ${capturedFrames.length} fotos listas. Enviando a la IA...`;
+        document.getElementById('step-1').style.display = 'none';
+        document.getElementById('step-2').style.display = 'block';
+        startProgressAnimation();
+
+        try {
+            const res = await fetch(`/api/scanner/${planoId}/upload_frames`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ frames: capturedFrames })
+            });
+
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+
+            if (data.success) {
+                // Redirigir al scanner con step=3 para mostrar resultados
+                window.location.href = `{{ url_for('video_scanner', plano_id=plano.id) }}?plan_b=1`;
+            } else {
+                throw new Error(data.error || 'Error desconocido');
+            }
+        } catch (err) {
+            console.error('[SCANNER-B] Upload error:', err);
+            document.getElementById('step-2').style.display = 'none';
+            document.getElementById('step-1').style.display = 'block';
+            document.getElementById('btn-start-camera').style.display = 'inline-flex';
+            document.getElementById('camera-status').textContent = '❌ Error al enviar: ' + err.message;
+        }
+    }
+
+    function startProgressAnimation() {
+        let p = 10;
+        const bar = document.getElementById('scan-progress');
+        const status = document.getElementById('scan-status');
+        const interval = setInterval(() => {
+            p += Math.random() * 8;
+            if (p >= 92) { clearInterval(interval); return; }
+            bar.style.width = p + '%';
+            if (p > 25) status.textContent = 'Analizando objetos con Gemini...';
+            if (p > 55) status.textContent = 'Clasificando por categorías...';
+            if (p > 80) status.textContent = 'Generando escenas finales...';
+        }, 700);
+    }
+
+    // ── MODO A: Video clásico con validación de tamaño ──
+    function checkAndSubmitVideo() {
+        const input = document.getElementById('video-input');
+        const warn = document.getElementById('video-warn');
+        if (input.files.length === 0) return;
+
+        const sizeMB = input.files[0].size / (1024 * 1024);
+        if (sizeMB > 100) {
+            warn.style.display = 'block';
+            // No bloquear — solo advertir, el usuario puede continuar
+        } else {
+            warn.style.display = 'none';
+        }
+
+        if (sizeMB <= 200) {
+            document.getElementById('step-1').style.display = 'none';
+            document.getElementById('step-2').style.display = 'block';
+            startProgressAnimation();
             document.getElementById('video-form').submit();
         }
     }
 
+    // ── STEP 3: Selección de escenas ──
     let selectedFrames = [];
     function toggleFrame(el, idx) {
         el.classList.toggle('selected');
@@ -199,7 +331,6 @@
 
     function finishScanning() {
         if (selectedFrames.length === 0) return alert('Seleccioná al menos una escena para guardar.');
-
         const btn = event.target;
         btn.disabled = true;
         btn.textContent = 'Guardando...';
@@ -211,27 +342,18 @@
         }).then(r => r.json()).then(data => {
             if (data.success) {
                 window.location.href = "{{ url_for('ver_plano', plano_id=plano.id) }}";
+            } else {
+                btn.disabled = false;
+                btn.textContent = 'Guardar Selección →';
+                alert('Error al guardar: ' + (data.message || 'Intentá de nuevo'));
             }
         });
     }
 
-    // Progress simulation if in step 2
+    // Progress simulation para step 2 (desde POST de video)
     if (document.getElementById('step-2').style.display === 'block') {
-        let p = 10;
-        const bar = document.getElementById('scan-progress');
-        const status = document.getElementById('scan-status');
-        const interval = setInterval(() => {
-            p += Math.random() * 5;
-            if (p >= 95) {
-                clearInterval(interval);
-                // The actual logic would be waiting for backend, but we'll reload after a bit in this demo/skeleton
-                setTimeout(() => location.reload(), 2000);
-            }
-            bar.style.width = p + '%';
-            if (p > 30) status.textContent = 'Analizando objetos con Gemini...';
-            if (p > 60) status.textContent = 'Mapeando trayectorias...';
-            if (p > 85) status.textContent = 'Generando escenas finales...';
-        }, 800);
+        startProgressAnimation();
+        setTimeout(() => location.reload(), 30000); // Reload after 30s si no hubo redirect
     }
 </script>
 {% endblock %}
