@@ -1,14 +1,35 @@
 {% extends 'layout.html' %}
 
 {% block content %}
-<div class="page-header fade-up">
+<div class="page-header fade-up" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
     <div>
-        <h2>Editor de Zonas</h2>
-        <p class="page-subtitle">{{ plano.nombre }} · Definí áreas para organizar tus espacios</p>
+        <h2 style="margin:0;"><span class="gradient-text">Aperture Zen</span> Editor</h2>
+        <p class="page-subtitle" style="margin: 2px 0 0 0;">{{ plano.nombre }} · Dibujá las zonas de stock</p>
     </div>
-    <div style="display: flex; gap: var(--space-sm);">
-        <button id="btn-nueva-zona" class="btn btn-primary">➕ Nueva Zona</button>
-        <a href="{{ url_for('ver_plano', plano_id=plano.id) }}" class="btn btn-secondary">Terminar</a>
+    
+    <div style="display: flex; gap: 8px; align-items: center;">
+        <button id="btn-nueva-zona" class="btn btn-primary" style="border-radius: 980px; padding: 8px 20px;">➕ Nueva Zona</button>
+        <a href="{{ url_for('ver_plano', plano_id=plano.id) }}" class="btn btn-secondary" style="border-radius: 980px; padding: 8px 20px;">Terminar</a>
+
+        <!-- Submenú de utilidades (Icono de Engranaje) -->
+        <div style="position: relative;" id="utils-menu-wrapper">
+            <button type="button" class="btn btn-secondary" onclick="toggleUtilsMenu()" id="btn-utils"
+                style="width: 38px; height: 38px; padding: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; background: rgba(255,255,255,0.05);">
+                ⚙️
+            </button>
+            <div id="utils-dropdown" style="
+                display: none; position: absolute; right: 0; top: calc(100% + 8px);
+                background: rgba(15,15,15,0.95); backdrop-filter: blur(25px);
+                border: 1px solid var(--glass-border);
+                border-radius: var(--radius-xl); padding: 8px; z-index: 500;
+                min-width: 200px; box-shadow: 0 25px 50px rgba(0,0,0,0.8);
+                flex-direction: column; gap: 4px;
+            ">
+                <a href="{{ url_for('moldes_selection', plano_id=plano.id) }}" class="btn btn-sm btn-secondary" style="width:100%; text-align:left; border:none; background:transparent;">📐 Sistema de Moldes</a>
+                <a href="{{ url_for('editar_plano', plano_id=plano.id) }}" class="btn btn-sm btn-secondary" style="width:100%; text-align:left; border:none; background:transparent;">✏️ Croquis Legacy</a>
+                <a href="{{ url_for('video_scanner', plano_id=plano.id) }}" class="btn btn-sm btn-secondary" style="width:100%; text-align:left; border:none; background:transparent;">📹 Scanner IA</a>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -194,6 +215,19 @@
     });
     // Init first color
     document.querySelector('.color-option').style.borderColor = '#fff';
+    // --- Utilities Menu ---
+    function toggleUtilsMenu() {
+        const d = document.getElementById('utils-dropdown');
+        d.style.display = d.style.display === 'none' ? 'flex' : 'none';
+    }
+    
+    document.addEventListener('click', (e) => {
+        const wrapper = document.getElementById('utils-menu-wrapper');
+        const dropdown = document.getElementById('utils-dropdown');
+        if (wrapper && dropdown && !wrapper.contains(e.target)) {
+            dropdown.style.display = 'none';
+        }
+    });
 </script>
 
 <style>

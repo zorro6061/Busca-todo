@@ -997,9 +997,15 @@ def ver_plano(plano_id):
                              hotspots=hotspots_data,
                              ubicaciones_sin_plano=ubicaciones_sin_plano)
     except Exception as e:
-        app.logger.error(f"[PLANO-ERR] Error al cargar plano {plano_id}: {e}")
-        flash(f"Error al cargar mapa: Redirigido al editor para estabilizar.")
-        return redirect(url_for('editar_plano', plano_id=plano_id))
+        app.logger.error(f"[VANGUARD-HOTFIX] Falla en render de plano {plano_id}: {e}")
+        # En caso de error de datos, forzamos la vista 'Zen' con lo mínimo para que Rafael pueda re-subir o usar moldes
+        flash("Modo de Recuperación Activado: Algunos datos podrían no mostrarse.")
+        return render_template('plano_view.html', 
+                             plano=plano, 
+                             pins=[],
+                             unplaced=[],
+                             hotspots=[],
+                             ubicaciones_sin_plano=[])
 
 
 
@@ -2089,7 +2095,22 @@ def get_ubicacion_full(ubi_id):
 @app.route('/plano/<int:plano_id>/editor')
 def editor_plano(plano_id):
     plano = Plano.query.get_or_404(plano_id)
-    return render_template('editor_plano.html', plano=plano)
+    # Preparar zonas para el JS
+    zonas_data = []
+    for z in (plano.zonas or []):
+        try:
+            coords = json.loads(z.coords_json)
+            zonas_data.append({
+                'id': z.id,
+                'nombre': z.nombre,
+                'color': z.color,
+                'x': coords.get('x', 0),
+                'y': coords.get('y', 0),
+                'w': coords.get('w', 100),
+                'h': coords.get('h', 100)
+            })
+        except: continue
+    return render_template('editor_plano.html', plano=plano, original_zonas=zonas_data)
 
 @app.route('/api/plano/<int:plano_id>/save_zonas', methods=['POST'])
 def save_zonas(plano_id):
