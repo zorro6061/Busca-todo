@@ -62,7 +62,7 @@
     const canvas = document.getElementById('editor-canvas');
     const ctx = canvas.getContext('2d');
     const img = new Image();
-    img.src = "{{ url_for('uploaded_file', filename=plano.imagen_path) }}";
+    img.src = "{{ safe_gcs_url(plano.imagen_path) }}";
 
     let zonas = {{ original_zonas| tojson if original_zonas else '[]' }};
     let isDrawing = false;

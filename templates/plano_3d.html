@@ -294,7 +294,7 @@
     {
         "id": {{ plano.id }},
         "nombre": "{{ plano.nombre }}",
-        "imagen": "{{ url_for('uploaded_file', filename=plano.imagen_path) }}",
+        "imagen": "{{ safe_gcs_url(plano.imagen_path) }}",
         "ubicaciones": [
             {% for ubi in plano.ubicaciones %}
             {

@@ -122,7 +122,7 @@
                 style="position: relative; overflow: auto; min-height: 400px; width: 100%; display: flex; justify-content: center; background: #0a0a0a; border-radius: var(--radius-xl);">
                 <div id="map-inner" style="position: relative; display: inline-block;">
                     {% if plano.imagen_path %}
-                    <img id="plano-img" src="{{ url_for('uploaded_file', filename=plano.imagen_path) }}"
+                    <img id="plano-img" src="{{ safe_gcs_url(plano.imagen_path) }}"
                         style="display: block; max-width: none; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);">
                     {% else %}
                     <div class="empty-plano-state"

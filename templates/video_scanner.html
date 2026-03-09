@@ -123,7 +123,7 @@
             <div class="card frame-card reveal" style="padding: 0; overflow: hidden; cursor: pointer;"
                 onclick="toggleFrame(this, {{ loop.index0 }})">
                 <div style="position: relative;">
-                    <img src="{{ url_for('uploaded_file', filename=frame.path) }}"
+                    <img src="{{ safe_gcs_url(frame.path) }}"
                         style="width: 100%; height: 180px; object-fit: cover;">
                     <div class="frame-overlay"
                         style="position: absolute; inset: 0; background: rgba(99, 102, 241, 0.4); display: none; align-items: center; justify-content: center;">

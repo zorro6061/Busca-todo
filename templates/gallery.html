@@ -15,7 +15,7 @@
         data-ubi-id="{{ ubi.id }}"
         onclick="abrirDetalle('{{ ubi.id }}', '{{ ubi.nombre|escape }}', '{{ ubi.imagen_path }}', '{{ (ubi.tags|default('Sin tags', true))|escape }}', {{ ubi.objetos|length }}, {{ ubi.plano_id or 'null' }})">
         <div class="card-gallery-image">
-            <img src="{% if gcs_base_url %}{{ gcs_base_url }}/{{ ubi.imagen_path }}{% else %}{{ url_for('uploaded_file', filename=ubi.imagen_path) }}{% endif %}"
+            <img src="{{ safe_gcs_url(ubi.imagen_path) }}"
                 alt="{{ ubi.nombre }}" loading="lazy"
                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
             <!-- Fallback Material Symbol (si la imagen falla) -->

@@ -23,16 +23,7 @@ load_dotenv()
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
 GCP_BUCKET_NAME = os.environ.get('GCP_BUCKET_NAME', 'busca-todo-fotos-2024')
 
-# Inicialización de GCS (Lazy/Global)
-gcs_client = None
-try:
-    from google.cloud import storage
-    # En Cloud Run no hace falta gcp-credentials.json, usa la identidad por defecto
-    gcs_client = storage.Client()
-    vanguard_log(f"GCS Cliente inicializado | Bucket: {GCP_BUCKET_NAME}")
-except Exception as e:
-    vanguard_log(f"GCS en modo pasivo (sin credenciales o error): {e}")
-    gcs_client = None
+# Inicialización de GCS (Ahora completamente remota en storage_manager)
 
 app = Flask(__name__)
 app.url_map.strict_slashes = False
@@ -444,24 +435,27 @@ def internal_server_error(e):
 
 @app.context_processor
 def inject_config():
-    global _db_ready
-    # Inyectar GCS base URL para que las templates puedan renderizar imágenes directamente
-    gcs_base = f"https://storage.googleapis.com/{GCP_BUCKET_NAME}" if GCP_BUCKET_NAME else ''
+    gcs_base = f"https://storage.googleapis.com/{GCP_BUCKET_NAME}" if GCP_BUCKET_NAME else ""
     
-    if not _db_ready:
-        return dict(app_config={'subscription_type': 'free'}, gcs_base_url=gcs_base)
-        
+    def safe_gcs_url(path):
+        if not path: return ""
+        if path.startswith("http://") or path.startswith("https://"): return path
+        if gcs_base: return f"{gcs_base}/{path}"
+        try:
+            return url_for('uploaded_file', filename=path)
+        except:
+            return path
+
     try:
         config = Config.query.first()
         if not config:
-            vanguard_log("Creating default config...")
             config = Config(subscription_type='free')
             db.session.add(config)
             db.session.commit()
-        return dict(app_config=config, gcs_base_url=gcs_base)
+        return dict(app_config=config, gcs_base_url=gcs_base, safe_gcs_url=safe_gcs_url)
     except Exception as e:
         vanguard_log(f"ERROR IN INJECT_CONFIG: {e}")
-        return dict(app_config={'subscription_type': 'free'}, gcs_base_url=gcs_base)
+        return dict(app_config={'subscription_type': 'free'}, gcs_base_url=gcs_base, safe_gcs_url=safe_gcs_url)
 
 @app.route('/pricing')
 def pricing():

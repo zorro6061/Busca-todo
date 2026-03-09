@@ -4,7 +4,29 @@
 <div class="card" style="max-width: 900px; margin: 0 auto; padding: 2rem;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
         <h2>✏️ Editar Plano: {{ plano.nombre }}</h2>
-        <a href="{{ url_for('ver_plano', plano_id=plano.id) }}" class="btn btn-secondary">← Volver al Mapa</a>
+        <div style="display: flex; gap: 8px; align-items: center;">
+            <a href="{{ url_for('ver_plano', plano_id=plano.id) }}" class="btn btn-secondary">← Volver al Mapa</a>
+
+            <!-- Submenú de utilidades (Icono de Engranaje) -->
+            <div style="position: relative;" id="utils-menu-wrapper">
+                <button type="button" class="btn btn-secondary" onclick="toggleUtilsMenu()" id="btn-utils"
+                    style="width: 36px; height: 36px; padding: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.1rem;">
+                    ⚙️
+                </button>
+                <div id="utils-dropdown" style="
+                    display: none; position: absolute; right: 0; top: calc(100% + 8px);
+                    background: rgba(15,15,15,0.95); backdrop-filter: blur(25px);
+                    border: 1px solid var(--glass-border);
+                    border-radius: var(--radius-xl); padding: 8px; z-index: 500;
+                    min-width: 180px; box-shadow: 0 25px 50px rgba(0,0,0,0.8);
+                    flex-direction: column; gap: 4px;
+                ">
+                    <a href="{{ url_for('moldes_selection', plano_id=plano.id) }}" class="btn btn-sm btn-secondary" style="width:100%; text-align:left; border:none; background:transparent;">📐 Sistema de Moldes</a>
+                    <a href="{{ url_for('editor_plano', plano_id=plano.id) }}" class="btn btn-sm btn-secondary" style="width:100%; text-align:left; border:none; background:transparent;">🟩 Editor de Zonas</a>
+                    <a href="{{ url_for('video_scanner', plano_id=plano.id) }}" class="btn btn-sm btn-secondary" style="width:100%; text-align:left; border:none; background:transparent;">📹 Scanner</a>
+                </div>
+            </div>
+        </div>
     </div>
 
     <form id="edit-form" method="POST" enctype="multipart/form-data">
@@ -78,7 +100,7 @@
     img.onload = function () {
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
     };
-    img.src = (window.__gcsBase ? window.__gcsBase + '/' : '') + "{{ plano.imagen_path }}" || "{{ url_for('uploaded_file', filename=plano.imagen_path) }}";
+    img.src = "{{ safe_gcs_url(plano.imagen_path) }}";
 
     // Herramientas
     document.getElementById('tool-pencil').onclick = () => tool = 'pencil';
