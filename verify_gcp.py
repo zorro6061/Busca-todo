@@ -5,7 +5,7 @@ import sys
 
 def verify_gcp():
     print("Iniciando verificación de GCP...")
-    os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = 'gcp-credentials.json'
+    # Se espera que GOOGLE_APPLICATION_CREDENTIALS ya esté definida en el entorno (ej. Render/Cloud Run)
     try:
         client = storage.Client()
         print(f"Proyecto ID: {client.project}")
