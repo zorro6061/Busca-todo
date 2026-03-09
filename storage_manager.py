@@ -13,7 +13,18 @@ _storage_client = None
 def get_storage_client():
     global _storage_client
     if _storage_client is None:
-        _storage_client = storage.Client()
+        raw_json = os.environ.get('GCP_CREDENTIALS_JSON')
+        if raw_json:
+            try:
+                import json
+                from google.oauth2 import service_account
+                creds = service_account.Credentials.from_service_account_info(json.loads(raw_json))
+                _storage_client = storage.Client(credentials=creds)
+            except Exception as e:
+                print(f"Error parsing GCP_CREDENTIALS_JSON: {e}")
+                _storage_client = storage.Client()
+        else:
+            _storage_client = storage.Client()
     return _storage_client
 
 def upload_image_to_gcs(file_stream, filename, max_size=1280, quality=85):
