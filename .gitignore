@@ -6,6 +6,7 @@ venv/
 .venv/
 env/
 .env
+gcp-credentials.json
 
 # Database & Instances
 instance/
