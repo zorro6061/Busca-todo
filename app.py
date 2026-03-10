@@ -298,8 +298,8 @@ _db_ready = False
 
 @app.before_request
 def initialize_vanguard():
-    # BYPASS CRÍTICO: Salud y Auth no deben bloquearse
-    whitelist = ['/alive', '/health', '/static/manifest.json', '/static/sw.js', '/login', '/callback', '/login-google']
+    # BYPASS CRÍTICO: Salud, Auth y HOME (Landing) no deben bloquearse
+    whitelist = ['/', '/alive', '/health', '/static/manifest.json', '/static/sw.js', '/login', '/callback', '/login-google']
     if request.path in whitelist or request.path.startswith('/static/'):
         return
         

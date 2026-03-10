@@ -105,6 +105,7 @@
             <span class="logo-text">APERTURE<span class="logo-subtext">CLOUD</span></span>
         </a>
         <div class="nav-links">
+            {% if session.user_id %}
             <a href="{{ url_for('gallery') }}">Galería</a>
             <a href="{{ url_for('list_planos') }}">Mapas</a>
             <a href="{{ url_for('upload') }}">Indexar</a>
@@ -117,8 +118,9 @@
                     {{ app_config.subscription_type | upper }}
                 </span>
             </a>
-            {% if session.user_id %}
             <a href="{{ url_for('logout') }}" style="color: #ff3b30; font-weight: 600;">Cerrar Sesión</a>
+            {% else %}
+            <a href="{{ url_for('login') }}" style="font-weight: 600; color: var(--accent);">Acceso Clientes</a>
             {% endif %}
         </div>
     </nav>
@@ -149,6 +151,7 @@
             </span>
             <span>Inicio</span>
         </a>
+        {% if session.user_id %}
         <a href="{{ url_for('gallery') }}"
             class="mobile-nav-item {% if request.endpoint == 'gallery' %}active{% endif %}">
             <span class="mobile-nav-icon">
@@ -176,9 +179,23 @@
             </span>
             <span>Mapas</span>
         </a>
+        <a href="{{ url_for('ai_optimizer') }}"
+            class="mobile-nav-item {% if request.endpoint == 'ai_optimizer' %}active{% endif %}">
+            <span class="mobile-nav-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                    stroke-linejoin="round">
+                    <path d="M12 2v4"></path>
+                    <path d="M12 18v4"></path>
+                    <path d="M4.93 4.93l2.83 2.83"></path>
+                    <path d="M16.24 16.24l2.83 2.83"></path>
+                    <path d="M2 12h4"></path>
+                    <path d="M18 12h4"></path>
+                    <path d="M4.93 19.07l2.83-2.83"></path>
+                    <path d="M16.24 7.76l2.83-2.83"></path>
+                </svg>
+            </span>
             <span>IA</span>
         </a>
-        {% if session.user_id %}
         <a href="{{ url_for('logout') }}" class="mobile-nav-item" style="color: #ff3b30;">
             <span class="mobile-nav-icon">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -189,10 +206,22 @@
             </span>
             <span>Salir</span>
         </a>
+        {% else %}
+        <a href="{{ url_for('login') }}" class="mobile-nav-item">
+            <span class="mobile-nav-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
+                    <polyline points="10 17 15 12 10 7"></polyline>
+                    <line x1="15" y1="12" x2="3" y2="12"></line>
+                </svg>
+            </span>
+            <span>Entrar</span>
+        </a>
         {% endif %}
     </div>
 
     <!-- Floating Action Button (Aperture Home Style) -->
+    {% if session.user_id %}
     <a href="{{ url_for('upload') }}" class="fab-camera" aria-label="Indexar nuevo objeto">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
             stroke-linejoin="round">
@@ -200,6 +229,7 @@
             <circle cx="12" cy="13" r="4"></circle>
         </svg>
     </a>
+    {% endif %}
 
     <style>
         .fab-camera {
