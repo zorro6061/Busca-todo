@@ -11,7 +11,10 @@ vanguard_log("--- STAGE 0: MODULE LOAD START ---")
 vanguard_log(f"PID: {os.getpid()} | CWD: {os.getcwd()}")
 vanguard_log(f"Python Version: {sys.version}")
 
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, send_from_directory
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, send_from_directory, session
+import google.oauth2.credentials
+import google_auth_oauthlib.flow
+from google.auth.transport.requests import Request
 from sqlalchemy import text
 from models import db, Ubicacion, Objeto, Plano, Config
 from werkzeug.utils import secure_filename
@@ -22,6 +25,13 @@ vanguard_log("Cargando variables de entorno...")
 load_dotenv()
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
 GCP_BUCKET_NAME = os.environ.get('GCP_BUCKET_NAME', 'busca-todo-fotos-2024')
+
+# Configuración de OAuth 2.0
+GOOGLE_CLIENT_ID = os.environ.get('GOOGLE_OAUTH_CLIENT_ID')
+GOOGLE_CLIENT_SECRET = os.environ.get('GOOGLE_OAUTH_CLIENT_SECRET')
+SCOPES = ['https://www.googleapis.com/auth/userinfo.email', 'openid', 'https://www.googleapis.com/auth/userinfo.profile']
+AUTHORIZED_DOMAIN = 'aperturezen.com'
+WHITELISTED_EMAILS = ['zorro6061@gmail.com', 'pepe.dev.zen@gmail.com'] # Agregando tu cuenta y mi placeholder
 
 # Inicialización de GCS (Ahora completamente remota en storage_manager)
 
@@ -288,9 +298,14 @@ _db_ready = False
 
 @app.before_request
 def initialize_vanguard():
-    # BYPASS CRÍTICO: El chequeo de salud NO debe activar la base de datos (rápido)
-    if request.path in ['/alive', '/health', '/static/manifest.json', '/static/sw.js']:
+    # BYPASS CRÍTICO: Salud y Auth no deben bloquearse
+    whitelist = ['/alive', '/health', '/static/manifest.json', '/static/sw.js', '/login', '/callback', '/login-google']
+    if request.path in whitelist or request.path.startswith('/static/'):
         return
+        
+    # Guardián de Seguridad: Requiere login para cualquier otra ruta
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
         
     global _initialized, _db_ready
     if not _initialized:
@@ -375,6 +390,98 @@ def handle_404(e):
     """Manejador centralizado de 404 con diagnóstico de logs."""
     app.logger.warning(f"[404-DIAGNOSTIC] Ruta no encontrada: {request.path} | Method: {request.method}")
     return render_template('404.html'), 404
+
+# --- AUTH ROUTES ---
+@app.route('/login')
+def login():
+    if 'user_id' in session:
+        return redirect(url_for('index'))
+    return render_template('login.html')
+
+@app.route('/login-google')
+def login_google():
+    """Inicia el flujo de OAuth con Google."""
+    flow = google_auth_oauthlib.flow.Flow.from_client_config(
+        {
+            "web": {
+                "client_id": GOOGLE_CLIENT_ID,
+                "client_secret": GOOGLE_CLIENT_SECRET,
+                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                "token_uri": "https://oauth2.googleapis.com/token",
+            }
+        },
+        scopes=SCOPES
+    )
+    
+    # La URI de redirección debe coincidir exactamente con la configurada en la consola
+    flow.redirect_uri = url_for('callback', _external=True)
+    
+    authorization_url, state = flow.authorization_url(
+        access_type='offline',
+        include_granted_scopes='true'
+    )
+    session['state'] = state
+    return redirect(authorization_url)
+
+@app.route('/callback')
+def callback():
+    """Maneja la respuesta de Google."""
+    state = session.get('state')
+    flow = google_auth_oauthlib.flow.Flow.from_client_config(
+        {
+            "web": {
+                "client_id": GOOGLE_CLIENT_ID,
+                "client_secret": GOOGLE_CLIENT_SECRET,
+                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                "token_uri": "https://oauth2.googleapis.com/token",
+            }
+        },
+        scopes=SCOPES,
+        state=state
+    )
+    flow.redirect_uri = url_for('callback', _external=True)
+
+    authorization_response = request.url
+    # fix para http/https en proxy
+    if authorization_response.startswith('http://') and 'https://' in url_for('index', _external=True):
+         authorization_response = authorization_response.replace('http://', 'https://', 1)
+
+    flow.fetch_token(authorization_response=authorization_response)
+
+    credentials = flow.credentials
+    request_session = google.auth.transport.requests.Request()
+    id_info = google.oauth2.id_token.verify_oauth2_token(
+        credentials.id_token, request_session, GOOGLE_CLIENT_ID
+    )
+
+    email = id_info.get('email')
+    
+    # VALIDACIÓN: Solo permitir el dominio oficial o la lista blanca explícita
+    is_authorized = False
+    if email:
+        if email.endswith(f"@{AUTHORIZED_DOMAIN}"):
+            is_authorized = True
+        elif email in WHITELISTED_EMAILS:
+            is_authorized = True
+
+    if not is_authorized:
+        vanguard_log(f"ACCESO DENEGADO: Intento de entrada con {email}")
+        flash(f"Error: El acceso está restringido. Tu cuenta ({email}) no está en la lista autorizada.")
+        return redirect(url_for('login'))
+
+    session['user_id'] = email
+    session['user_name'] = id_info.get('name')
+    session['user_picture'] = id_info.get('picture')
+    
+    vanguard_log(f"ACCESO CONCEDIDO: {email} logueado con éxito.")
+    flash(f"Bienvenido, {session['user_name']}.")
+    return redirect(url_for('index'))
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    flash("Has cerrado sesión.")
+    return redirect(url_for('login'))
 
 @app.route('/')
 def index():
