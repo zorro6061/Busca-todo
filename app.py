@@ -298,15 +298,11 @@ _db_ready = False
 
 @app.before_request
 def initialize_vanguard():
-    # BYPASS CRÍTICO: Salud, Auth y HOME (Landing) no deben bloquearse
-    whitelist = ['/', '/alive', '/health', '/static/manifest.json', '/static/sw.js', '/login', '/callback', '/login-google']
-    if request.path in whitelist or request.path.startswith('/static/'):
+    # RUTAS DE SALUD: Bypass total (no DB, no auth)
+    if request.path in ['/alive', '/health'] or request.path.startswith('/static/'):
         return
-        
-    # Guardián de Seguridad: Requiere login para cualquier otra ruta
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
-        
+
+    # --- INICIALIZACIÓN DE BD: Corre para TODAS las rutas (incluyendo home pública) ---
     global _initialized, _db_ready
     if not _initialized:
         _initialized = True
@@ -337,7 +333,6 @@ def initialize_vanguard():
                     
                     for sql, name in migraciones:
                         try:
-                            # Solo intentar si el SQL no falla catastróficamente
                             db.session.execute(text(sql))
                             db.session.commit()
                             vanguard_log(f"DB: Migración {name} aplicada.")
@@ -348,10 +343,19 @@ def initialize_vanguard():
                     _db_ready = True
                 except Exception as e:
                     vanguard_log(f"DB: ERROR CRÍTICO en arranque: {e}")
-                    # No marcamos _db_ready como True para que las rutas sepan que hay fallo
         
         threading.Thread(target=robust_db_init, daemon=True).start()
         vanguard_log("Vanguard Engine: Hilo de BD lanzado.")
+
+    # --- GUARDIÁN DE SEGURIDAD: Solo para rutas PRIVADAS ---
+    # Rutas públicas: home y flujo de autenticación
+    public_paths = ['/', '/login', '/callback', '/login-google', '/manifest.json', '/sw.js']
+    if request.path in public_paths:
+        return  # Acceso libre, la BD ya está inicializando
+
+    # Requiere login para todo lo demás
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
 
 
 
