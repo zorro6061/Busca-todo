@@ -48,17 +48,19 @@
                     ">0</span>
                 </button>
                 <div>
-                    <h2 style="margin:0;"><span class="gradient-text">{{ plano.nombre }}</span></h2>
+                    <h2 style="margin:0;"><span class="gradient-text">{{ plano.nombre if plano else 'Plano no encontrado' }}</span></h2>
                     <div style="display: flex; align-items: center; gap: 8px; margin-top: 2px;">
-                        <span class="badge badge-success">Interactivo</span>
+                        <span class="badge badge-{{ 'success' if plano else 'secondary' }}">{{ 'Interactivo' if plano else 'Error de Datos' }}</span>
                     </div>
                 </div>
             </div>
 
             <!-- Barra de acciones: Scanner y Zonas visibles, resto en submenú -->
             <div style="display: flex; gap: 8px; align-items: center;">
+                {% if plano %}
                 <a href="{{ url_for('video_scanner', plano_id=plano.id) }}" class="btn btn-sm btn-secondary" style="border-radius: 980px; padding: 6px 16px;">📹 Scanner</a>
                 <a href="{{ url_for('editar_plano', plano_id=plano.id) }}" class="btn btn-sm btn-secondary" style="border-radius: 980px; padding: 6px 16px;">✏️ Zonas</a>
+                {% endif %}
 
                 <!-- Submenú de utilidades (Icono de Engranaje) -->
                 <div style="position: relative;" id="utils-menu-wrapper">
@@ -74,8 +76,10 @@
                         min-width: 180px; box-shadow: 0 25px 50px rgba(0,0,0,0.8);
                         flex-direction: column; gap: 4px;
                     ">
+                        {% if plano %}
                         <a href="{{ url_for('moldes_selection', plano_id=plano.id) }}" class="btn btn-sm btn-secondary" style="width:100%; text-align:left; border:none; background:transparent;">📐 Sistema de Moldes</a>
                         <a href="{{ url_for('ver_plano_3d', plano_id=plano.id) }}" class="btn btn-sm btn-secondary" style="width:100%; text-align:left; border:none; background:transparent;">🧊 Ver en 3D</a>
+                        {% endif %}
                         <button class="btn btn-sm btn-secondary" onclick="startCalibration(); closeUtilsMenu()" style="width:100%; text-align:left; border:none; background:transparent;">⚖️ Calibrar</button>
                         <hr style="border-color: var(--glass-border); margin: 4px 0; opacity: 0.3;">
                         <button id="btn-nueva-ubicacion" class="btn btn-sm btn-primary" style="width:100%; text-align:left; border-radius: var(--radius-md);">➕ Nueva Ubicación</button>
@@ -121,7 +125,7 @@
             <div id="map-container"
                 style="position: relative; overflow: auto; min-height: 400px; width: 100%; display: flex; justify-content: center; background: #0a0a0a; border-radius: var(--radius-xl);">
                 <div id="map-inner" style="position: relative; display: inline-block;">
-                    {% if plano.imagen_path %}
+                    {% if plano and plano.imagen_path %}
                     <img id="plano-img" src="{{ safe_gcs_url(plano.imagen_path) }}"
                         style="display: block; max-width: none; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);">
                     {% else %}
@@ -234,7 +238,9 @@
                 para este plano.</p>
             <form action="{{ url_for('upload') }}" method="POST" enctype="multipart/form-data">
                 <!-- Pasamos el plano_id para que al volver sepamos dónde estamos -->
+                {% if plano %}
                 <input type="hidden" name="plano_id" value="{{ plano.id }}">
+                {% endif %}
                 <div style="margin-bottom: var(--space-md);">
                     <label>Nombre</label>
                     <input type="text" name="nombre_ubicacion" placeholder="Ej: Cajón 1" required
@@ -322,7 +328,7 @@
         // ── CONFIGURACIÓN FASE 4: NAVEGADOR HÍBRIDO ──
         const hotspots = JSON.parse('{{ hotspots|tojson|safe }}') || [];
         const pins = JSON.parse('{{ pins|tojson|safe }}') || [];
-        const planoId = Number("{{ plano.id }}");
+        const planoId = Number("{{ plano.id if plano else 0 }}");
 
 
         let tempCoords = null;

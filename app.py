@@ -1136,11 +1136,19 @@ def ver_plano(plano_id):
                              hotspots=hotspots_data,
                              ubicaciones_sin_plano=ubicaciones_sin_plano)
     except Exception as e:
-        app.logger.error(f"[VANGUARD-HOTFIX] Falla en render de plano {plano_id}: {e}")
-        # En caso de error de datos, forzamos la vista 'Zen' con lo mínimo para que Rafael pueda re-subir o usar moldes
+        vanguard_log(f"ERROR CRÍTICO en ver_plano({plano_id}): {str(e)}")
+        import traceback
+        vanguard_log(traceback.format_exc())
+        
+        # Intentar recuperar el objeto plano por fuera si falló antes
+        try:
+            plano_fb = Plano.query.get(plano_id)
+        except:
+            plano_fb = None
+            
         flash("Modo de Recuperación Activado: Algunos datos podrían no mostrarse.")
         return render_template('plano_view.html', 
-                             plano=plano, 
+                             plano=plano_fb, 
                              pins=[],
                              unplaced=[],
                              hotspots=[],
