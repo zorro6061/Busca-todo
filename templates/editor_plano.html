@@ -36,7 +36,10 @@
 <div class="card reveal visible" style="padding: 0; overflow: hidden; position: relative; background: #000;">
     <div id="editor-container"
         style="position: relative; overflow: auto; max-height: 75vh; display: flex; justify-content: center; background: #111;">
-        <canvas id="editor-canvas" style="display: block; cursor: crosshair;"></canvas>
+        <canvas id="editor-canvas" 
+            data-plano-id="{{ plano.id }}"
+            data-original-zonas='{{ (original_zonas or []) | tojson | safe }}'
+            style="display: block; cursor: crosshair;"></canvas>
     </div>
 
     <!-- Zone Legend / Sidebar (Overlay) -->
@@ -59,13 +62,10 @@
                 style="border-radius: var(--radius-md);">
         </div>
 
-        <div style="margin-bottom: var(--space-xl);">
-            <label>Color de Referencia</label>
             <div style="display: flex; gap: 8px; flex-wrap: wrap;" id="color-options">
-                {% for color, hex in [('Azul', '#6366f1'), ('Verde', '#10b981'), ('Naranja', '#f59e0b'), ('Rojo',
-                '#ef4444'), ('Violeta', '#8b5cf6'), ('Gris', '#64748b')] %}
+                {% for color, hex in [('Azul', '#6366f1'), ('Verde', '#10b981'), ('Naranja', '#f59e0b'), ('Rojo', '#ef4444'), ('Violeta', '#8b5cf6'), ('Gris', '#64748b')] %}
                 <div class="color-option" data-color="{{ hex }}"
-                    style="width: 32px; height: 32px; border-radius: 50%; background: {{ hex }}; cursor: pointer; border: 2px solid transparent; transition: all 0.2s;">
+                    style="width: 32px; height: 32px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; transition: all 0.2s;">
                 </div>
                 {% endfor %}
             </div>
@@ -80,12 +80,17 @@
 </div>
 
 <script>
+    // Set background colors for dots (Jinja-friendly)
+    document.querySelectorAll('.color-option').forEach(opt => {
+        opt.style.backgroundColor = opt.dataset.color;
+    });
     const canvas = document.getElementById('editor-canvas');
     const ctx = canvas.getContext('2d');
     const img = new Image();
     img.src = "{{ safe_gcs_url(plano.imagen_path) }}";
 
-    let zonas = {{ original_zonas| tojson if original_zonas else '[]' }};
+    const planoId = Number(canvas.dataset.planoId);
+    let zonas = JSON.parse(canvas.dataset.originalZonas);
     let isDrawing = false;
     let startX, startY, currentX, currentY;
     let scale = 1;
