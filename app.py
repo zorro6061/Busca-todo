@@ -29,6 +29,10 @@ GCP_BUCKET_NAME = os.environ.get('GCP_BUCKET_NAME', 'busca-todo-fotos-2024')
 # Configuración de OAuth 2.0
 GOOGLE_CLIENT_ID = os.environ.get('GOOGLE_OAUTH_CLIENT_ID')
 GOOGLE_CLIENT_SECRET = os.environ.get('GOOGLE_OAUTH_CLIENT_SECRET')
+
+if not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET:
+    vanguard_log("CRÍTICO: Faltan GOOGLE_OAUTH_CLIENT_ID o CLIENT_SECRET en el entorno.")
+
 SCOPES = ['https://www.googleapis.com/auth/userinfo.email', 'openid', 'https://www.googleapis.com/auth/userinfo.profile']
 AUTHORIZED_DOMAIN = 'aperturezen.com'
 WHITELISTED_EMAILS = ['zorro6061@gmail.com', 'pepe.dev.zen@gmail.com'] # Agregando tu cuenta y mi placeholder
@@ -418,7 +422,8 @@ def login_google():
     )
     
     # La URI de redirección debe coincidir exactamente con la configurada en la consola
-    flow.redirect_uri = url_for('callback', _external=True)
+    # Forzamos HTTPS para Cloud Run
+    flow.redirect_uri = url_for('callback', _external=True, _scheme='https')
     
     authorization_url, state = flow.authorization_url(
         access_type='offline',
@@ -430,56 +435,70 @@ def login_google():
 @app.route('/callback')
 def callback():
     """Maneja la respuesta de Google."""
-    state = session.get('state')
-    flow = google_auth_oauthlib.flow.Flow.from_client_config(
-        {
-            "web": {
-                "client_id": GOOGLE_CLIENT_ID,
-                "client_secret": GOOGLE_CLIENT_SECRET,
-                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-                "token_uri": "https://oauth2.googleapis.com/token",
-            }
-        },
-        scopes=SCOPES,
-        state=state
-    )
-    flow.redirect_uri = url_for('callback', _external=True)
+    try:
+        state = session.get('state')
+        if not state:
+            vanguard_log("CALLBACK ERROR: No se encontró 'state' en la sesión. ¿Cookies bloqueadas?")
+        
+        flow = google_auth_oauthlib.flow.Flow.from_client_config(
+            {
+                "web": {
+                    "client_id": GOOGLE_CLIENT_ID,
+                    "client_secret": GOOGLE_CLIENT_SECRET,
+                    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                    "token_uri": "https://oauth2.googleapis.com/token",
+                }
+            },
+            scopes=SCOPES,
+            state=state
+        )
+        # Forzar HTTPS aquí también para consistencia
+        flow.redirect_uri = url_for('callback', _external=True, _scheme='https')
 
-    authorization_response = request.url
-    # fix para http/https en proxy
-    if authorization_response.startswith('http://') and 'https://' in url_for('index', _external=True):
-         authorization_response = authorization_response.replace('http://', 'https://', 1)
+        authorization_response = request.url
+        # fix para http/https en proxy
+        if authorization_response.startswith('http://') and 'https://' in url_for('index', _external=True, _scheme='https'):
+             authorization_response = authorization_response.replace('http://', 'https://', 1)
 
-    flow.fetch_token(authorization_response=authorization_response)
+        vanguard_log(f"CALLBACK: Fetching token for {authorization_response}")
+        flow.fetch_token(authorization_response=authorization_response)
 
-    credentials = flow.credentials
-    request_session = google.auth.transport.requests.Request()
-    id_info = google.oauth2.id_token.verify_oauth2_token(
-        credentials.id_token, request_session, GOOGLE_CLIENT_ID
-    )
+        credentials = flow.credentials
+        request_session = google.auth.transport.requests.Request()
+        id_info = google.oauth2.id_token.verify_oauth2_token(
+            credentials.id_token, request_session, GOOGLE_CLIENT_ID
+        )
 
-    email = id_info.get('email')
-    
-    # VALIDACIÓN: Solo permitir el dominio oficial o la lista blanca explícita
-    is_authorized = False
-    if email:
-        if email.endswith(f"@{AUTHORIZED_DOMAIN}"):
-            is_authorized = True
-        elif email in WHITELISTED_EMAILS:
-            is_authorized = True
+        email = id_info.get('email')
+        vanguard_log(f"CALLBACK: Validando usuario {email}")
+        
+        # VALIDACIÓN: Solo permitir el dominio oficial o la lista blanca explícita
+        is_authorized = False
+        if email:
+            if email.endswith(f"@{AUTHORIZED_DOMAIN}"):
+                is_authorized = True
+            elif email in WHITELISTED_EMAILS:
+                is_authorized = True
 
-    if not is_authorized:
-        vanguard_log(f"ACCESO DENEGADO: Intento de entrada con {email}")
-        flash(f"Error: El acceso está restringido. Tu cuenta ({email}) no está en la lista autorizada.")
-        return redirect(url_for('login'))
+        if not is_authorized:
+            vanguard_log(f"ACCESO DENEGADO: Intento de entrada con {email}")
+            flash(f"Error: El acceso está restringido. Tu cuenta ({email}) no está en la lista autorizada.")
+            return redirect(url_for('login'))
 
-    session['user_id'] = email
-    session['user_name'] = id_info.get('name')
-    session['user_picture'] = id_info.get('picture')
-    
-    vanguard_log(f"ACCESO CONCEDIDO: {email} logueado con éxito.")
-    flash(f"Bienvenido, {session['user_name']}.")
-    return redirect(url_for('index'))
+        session['user_id'] = email
+        session['user_name'] = id_info.get('name')
+        session['user_picture'] = id_info.get('picture')
+        
+        vanguard_log(f"ACCESO CONCEDIDO: {email} logueado con éxito.")
+        flash(f"Bienvenido, {session['user_name']}.")
+        return redirect(url_for('index'))
+        
+    except Exception as e:
+        import traceback
+        error_msg = f"ERROR EN CALLBACK OAUTH: {str(e)}\n{traceback.format_exc()}"
+        vanguard_log(error_msg)
+        # No usamos flash aquí para evitar loop si el error es de sesión
+        return f"Error de Autenticación: {str(e)}", 500
 
 @app.route('/logout')
 def logout():
