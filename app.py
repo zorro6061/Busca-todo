@@ -430,6 +430,10 @@ def login_google():
         include_granted_scopes='true'
     )
     session['state'] = state
+    # CRÍTICO: Guardar el verificador de código (PKCE) para recuperarlo en el callback
+    if hasattr(flow, 'code_verifier'):
+        session['code_verifier'] = flow.code_verifier
+        
     return redirect(authorization_url)
 
 @app.route('/callback')
@@ -452,6 +456,10 @@ def callback():
             scopes=SCOPES,
             state=state
         )
+        # CRÍTICO: Restaurar el verificador de código (PKCE)
+        if 'code_verifier' in session:
+            flow.code_verifier = session.get('code_verifier')
+            
         # Forzar HTTPS aquí también para consistencia
         flow.redirect_uri = url_for('callback', _external=True, _scheme='https')
 
