@@ -13,6 +13,7 @@ vanguard_log(f"Python Version: {sys.version}")
 
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, send_from_directory, session
 import google.oauth2.credentials
+import google.oauth2.id_token
 import google_auth_oauthlib.flow
 from google.auth.transport.requests import Request
 from sqlalchemy import text
