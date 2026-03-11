@@ -2249,10 +2249,6 @@ def borrar_mueble(mueble_id):
 def ar_view():
     return render_template('ar_view.html')
 
-@app.route('/plano/<int:plano_id>/3d')
-def ver_plano_3d(plano_id):
-    plano = Plano.query.get_or_404(plano_id)
-    return render_template('plano_3d.html', plano=plano)
 
 @app.route('/api/ubicacion/actualizar_posicion', methods=['POST'])
 def actualizar_posicion_ubicacion():
@@ -2313,51 +2309,6 @@ def get_ubicacion_full(ubi_id):
 
 # --- API ZONAS (MAPA ANOTADO) ---
 
-@app.route('/plano/<int:plano_id>/editor')
-def editor_plano(plano_id):
-    plano = Plano.query.get_or_404(plano_id)
-    # Preparar zonas para el JS
-    zonas_data = []
-    for z in (plano.zonas or []):
-        try:
-            coords = json.loads(z.coords_json)
-            zonas_data.append({
-                'id': z.id,
-                'nombre': z.nombre,
-                'color': z.color,
-                'x': coords.get('x', 0),
-                'y': coords.get('y', 0),
-                'w': coords.get('w', 100),
-                'h': coords.get('h', 100)
-            })
-        except: continue
-    return render_template('editor_plano.html', plano=plano, original_zonas=zonas_data)
-
-@app.route('/api/plano/<int:plano_id>/save_zonas', methods=['POST'])
-def save_zonas(plano_id):
-    """Guarda/Actualiza todas las zonas de un plano (reemplazo total)"""
-    from models import Zona
-    data = request.json
-    zonas_data = data.get('zonas', [])
-    try:
-        # Borrar zonas actuales para este plano (reemplazo total para simplificar editor)
-        Zona.query.filter_by(plano_id=plano_id).delete()
-        
-        for z in zonas_data:
-            nueva = Zona(
-                nombre=z['nombre'],
-                color=z['color'],
-                tipo='rect', # Por ahora solo rectangulares en el editor premium
-                coords_json=json.dumps({'x': z['x'], 'y': z['y'], 'w': z['w'], 'h': z['h']}),
-                plano_id=plano_id
-            )
-            db.session.add(nueva)
-        
-        db.session.commit()
-        return jsonify({'success': True})
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'success': False, 'message': str(e)}), 500
 
 @app.route('/api/planos/<int:plano_id>/zonas', methods=['GET'])
 def get_zonas_plano(plano_id):
