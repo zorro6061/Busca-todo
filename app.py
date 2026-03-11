@@ -1155,6 +1155,80 @@ def ver_plano(plano_id):
                              ubicaciones_sin_plano=[])
 
 
+@app.route('/plano/editar-zonas/<int:plano_id>')
+def editor_plano(plano_id):
+    """Editor de zonas inteligente (Tesla style)"""
+    plano = Plano.query.get_or_404(plano_id)
+    # Cargar zonas existentes
+    original_zonas = []
+    if hasattr(plano, 'zonas'):
+        for zona in plano.zonas:
+            try:
+                if zona.coords_json:
+                    coords = json.loads(zona.coords_json)
+                    # El editor espera {x, y, w, h, nombre, color}
+                    if coords.get('type') != 'hotspot': # Solo zonas rectangulares
+                        original_zonas.append({
+                            'id': zona.id,
+                            'nombre': zona.nombre,
+                            'x': coords.get('x'),
+                            'y': coords.get('y'),
+                            'w': coords.get('w'),
+                            'h': coords.get('h'),
+                            'color': coords.get('color', '#6366f1')
+                        })
+            except: continue
+            
+    return render_template('editor_plano.html', plano=plano, original_zonas=original_zonas)
+
+@app.route('/api/plano/<int:plano_id>/save_zonas', methods=['POST'])
+def save_zonas(plano_id):
+    """Guarda las zonas dibujadas en el editor"""
+    try:
+        data = request.json
+        zonas_data = data.get('zonas', [])
+        plano = Plano.query.get_or_404(plano_id)
+        
+        # SRE: Nuke de zonas anteriores que no sean hotspots (para evitar duplicados al redibujar)
+        # Opcional: Podríamos ser más selectivos, pero el editor suele re-enviar todo el set
+        for zona in list(plano.zonas):
+            try:
+                c = json.loads(zona.coords_json)
+                if c.get('type') != 'hotspot':
+                    db.session.delete(zona)
+            except: pass
+            
+        for z in zonas_data:
+            nueva = Zona(
+                nombre=z['nombre'],
+                plano_id=plano_id,
+                coords_json=json.dumps({
+                    'x': z['x'], 'y': z['y'], 'w': z['w'], 'h': z['h'],
+                    'color': z.get('color', '#6366f1'),
+                    'type': 'rect'
+                })
+            )
+            db.session.add(nueva)
+            
+        db.session.commit()
+        return jsonify({'success': True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/plano/<int:plano_id>/moldes')
+def moldes_selection(plano_id):
+    """Selección de moldes para el plano"""
+    plano = Plano.query.get_or_404(plano_id)
+    return render_template('moldes.html', plano=plano)
+
+@app.route('/plano/<int:plano_id>/3d')
+def ver_plano_3d(plano_id):
+    """Vista 3D experimental del plano"""
+    plano = Plano.query.get_or_404(plano_id)
+    return render_template('plano_3d.html', plano=plano)
+
+
 
     return jsonify({'status': 'error', 'message': 'Ubicación no encontrada'}), 404
 
