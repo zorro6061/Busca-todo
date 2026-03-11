@@ -73,15 +73,59 @@
 </section>
 {% else %}
 <section class="hero-search-section">
-    <div class="fade-up">
-        <h1 class="hero-title">
-            BIENVENIDO A <span class="gradient-text">APERTURE</span>
+    <div class="reveal">
+        <h1 class="hero-title" style="margin-bottom: 24px;">
+            Tu mundo físico,<br><span class="gradient-text">con motor de búsqueda.</span>
         </h1>
-        <p class="hero-subtitle">
-            Gestión inteligente de objetos reales con potentes modelos multimodales.
+        <p class="hero-subtitle" style="max-width: 600px; margin-bottom: 40px;">
+            Dejá de buscar objetos. Empezá a encontrarlos. <br>
+            <strong>ApertureZen</strong> es el cerebro digital que organiza tus espacios con <span style="color: var(--primary);">Inteligencia Artificial Multimodal</span>.
         </p>
-        <div style="margin-top: 30px;">
-            <a href="{{ url_for('login') }}" class="btn btn-primary" style="padding: 12px 30px; border-radius: 980px;">Comenzar ahora</a>
+        <div style="display: flex; gap: 16px; justify-content: center; margin-bottom: 60px;">
+            <a href="{{ url_for('login') }}" class="btn btn-primary" style="padding: 14px 40px; border-radius: 980px; font-size: 1.1rem; font-weight: 700; box-shadow: 0 10px 30px var(--primary-glow);">Comenzar ahora</a>
+        </div>
+    </div>
+</section>
+
+<!-- ══ VALOR DIFERENCIAL (Domo Semántico) ══ -->
+<section class="reveal" style="padding: 60px 20px; text-align: center; background: radial-gradient(circle at center, rgba(99,102,241,0.05) 0%, transparent 70%); border-top: 1px solid rgba(255,255,255,0.03);">
+    <div style="max-width: 800px; margin: 0 auto;">
+        <h2 style="font-size: 2rem; font-weight: 800; margin-bottom: 16px;">Buscá por conceptos, <span class="gradient-text">no solo por palabras.</span></h2>
+        <p style="color: var(--text-dim); line-height: 1.8; font-size: 1.1rem;">
+            ¿No recordás el nombre? Describilo: <span style="color: #fff; font-style: italic;">'algo para abrir cajas'</span> o <span style="color: #fff; font-style: italic;">'lo que uso para el mate'</span>. 
+            Nuestra IA entiende la utilidad y el contexto visual de tus objetos gracias al nuevo <strong>Domo Semántico</strong>.
+        </p>
+    </div>
+</section>
+
+<!-- ══ LOS 3 PILARES ══ -->
+<section style="padding: 40px 20px 80px;">
+    <div class="bento-grid-pillars">
+        <!-- Tarjeta 1: Navegación -->
+        <div class="card glass-card pillar-card reveal">
+            <div class="pillar-icon-wrapper">
+                <span class="material-symbols-rounded">explore</span>
+            </div>
+            <h3>Navegación Antygrabyty</h3>
+            <p>Olvidate de las listas. Ubicá tus herramientas en mapas 3D y planos tácticos con precisión quirúrgica.</p>
+        </div>
+
+        <!-- Tarjeta 2: Cerebro Gemini -->
+        <div class="card glass-card pillar-card reveal">
+            <div class="pillar-icon-wrapper ia-accent">
+                <span class="material-symbols-rounded">psychology</span>
+            </div>
+            <h3>Cerebro Gemini 3</h3>
+            <p>Procesamos fotos y texto en tiempo real para que la app 'vea' y aprenda de tu inventario automáticamente.</p>
+        </div>
+
+        <!-- Tarjeta 3: Privacidad -->
+        <div class="card glass-card pillar-card reveal">
+            <div class="pillar-icon-wrapper privacy-accent">
+                <span class="material-symbols-rounded">shield_with_heart</span>
+            </div>
+            <h3>Privacidad Total</h3>
+            <p>Tu información es sagrada. Solo vos tenés la llave de acceso a tu inventario privado y geolocalizado.</p>
         </div>
     </div>
 </section>
@@ -513,6 +557,59 @@
     /* ═══════════════════════════════════════════════
        RESPONSIVE — Mobile First
        ═══════════════════════════════════════════════ */
+
+    .bento-grid-pillars {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 24px;
+        max-width: 1100px;
+        margin: 0 auto;
+    }
+
+    .pillar-card {
+        padding: 40px 30px;
+        text-align: center;
+        transition: all 0.4s var(--transition-bounce);
+    }
+
+    .pillar-card:hover {
+        transform: translateY(-10px);
+        border-color: var(--primary);
+    }
+
+    .pillar-icon-wrapper {
+        width: 60px;
+        height: 60px;
+        background: rgba(99, 102, 241, 0.1);
+        border-radius: 18px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 24px;
+        color: var(--primary);
+    }
+
+    .pillar-icon-wrapper.ia-accent {
+        background: rgba(139, 92, 246, 0.1);
+        color: #8b5cf6;
+    }
+
+    .pillar-icon-wrapper.privacy-accent {
+        background: rgba(16, 185, 129, 0.1);
+        color: #10b981;
+    }
+
+    .pillar-card h3 {
+        font-size: 1.25rem;
+        font-weight: 700;
+        margin-bottom: 12px;
+    }
+
+    .pillar-card p {
+        color: var(--text-dim);
+        font-size: 0.95rem;
+        line-height: 1.6;
+    }
 
     @media (max-width: 640px) {
         .hero-search-section {
