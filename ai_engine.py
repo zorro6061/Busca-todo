@@ -37,7 +37,7 @@ def get_client():
             from google import genai as genai_module
             _client = genai_module.Client(
                 api_key=client_key,
-                http_options={'api_version': 'v1'}
+                http_options={'api_version': 'v1beta'}
             )
             key_prefix = GEMINI_API_KEY[:6] if GEMINI_API_KEY else "None"
             # Confirmación explícita para diagnóstico
