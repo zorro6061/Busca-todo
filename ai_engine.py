@@ -250,13 +250,22 @@ def generar_embedding(contents, task_type="RETRIEVAL_DOCUMENT"):
         return None
         
     try:
-        # El modelo de embeddings espera una estructura específica en google-genai SDK
-        # Dependiendo de la versión de la SDK, se usa embed_content o similar
-        # Para gemini-embedding-2-preview, es multimodal nativo.
-        
+        # SRE Fix (Revision 68.1): La SDK google-genai espera contenedores explícitos para bytes
+        processed_contents = []
+        if isinstance(contents, list):
+            for part in contents:
+                if isinstance(part, bytes):
+                    processed_contents.append({'inline_data': {'mime_type': 'image/jpeg', 'data': part}})
+                else:
+                    processed_contents.append(part)
+        elif isinstance(contents, bytes):
+            processed_contents = [{'inline_data': {'mime_type': 'image/jpeg', 'data': contents}}]
+        else:
+            processed_contents = contents
+
         response = client.models.embed_content(
             model="gemini-embedding-2-preview",
-            contents=contents,
+            contents=processed_contents,
             config={
                 'task_type': task_type,
                 'output_dimensionality': 768 # Estándar para este modelo
