@@ -2,6 +2,7 @@
 
 {% block content %}
 <!-- ══ SMART SEARCH HERO (Starlink Aesthetic) ══ -->
+{% if session.user_id %}
 <section class="hero-search-section">
     <div class="fade-up">
         <h1 class="hero-title">
@@ -70,6 +71,21 @@
         </div>
     </div>
 </section>
+{% else %}
+<section class="hero-search-section">
+    <div class="fade-up">
+        <h1 class="hero-title">
+            BIENVENIDO A <span class="gradient-text">APERTURE</span>
+        </h1>
+        <p class="hero-subtitle">
+            Gestión inteligente de objetos reales con potentes modelos multimodales.
+        </p>
+        <div style="margin-top: 30px;">
+            <a href="{{ url_for('login') }}" class="btn btn-primary" style="padding: 12px 30px; border-radius: 980px;">Comenzar ahora</a>
+        </div>
+    </div>
+</section>
+{% endif %}
 
 <!-- Bento Grid (Solo estadísticas clave) -->
 <section class="stats-section">

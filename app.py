@@ -1,6 +1,7 @@
 import os
 import sys
 import time
+import json
 
 # Función de log robusta para Render
 def vanguard_log(msg):
@@ -396,6 +397,11 @@ def uploaded_file(filename):
     return "Archivo no encontrado", 404
 
 
+@app.context_processor
+def inject_utils():
+    from storage_manager import get_gcs_url
+    return dict(safe_gcs_url=get_gcs_url)
+
 @app.errorhandler(404)
 def handle_404(e):
     """Manejador centralizado de 404 con diagnóstico de logs."""
@@ -789,19 +795,24 @@ def gallery():
                         semantic_score = max(0, cos_sim * 100)
                 except: pass
 
-            # PONDERACIÓN HÍBRIDA
+            # PONDERACIÓN HÍBRIDA (Revision 69: "Puntería Quirúrgica")
             max_fuzzy = max(ratio_nombre, ratio_categoria, ratio_habitacion, ratio_mueble)
             
             # El score final es el mejor entre fuzzy fuerte o una mezcla (70% semántica + 30% fuzzy parcial)
-            if max_fuzzy >= 85:
+            if ratio_nombre >= 95:
+                # Prioridad Absoluta: Si el nombre coincide casi exacto, ignoramos semántica para no "abrir" el buscador
+                final_score = ratio_nombre
+            elif max_fuzzy >= 85:
                 final_score = max_fuzzy
-            elif semantic_score >= 60:
+            elif semantic_score >= 75: # Subimos umbral semántico robusto
                 # Si la semántica es alta, le damos prioridad pero sumamos un poco de fuzzy
                 final_score = (semantic_score * 0.8) + (max_fuzzy * 0.2)
             else:
                 final_score = max(max_fuzzy, semantic_score)
             
-            if final_score >= 60: # Bajamos umbral a 60 por ser semántico
+            # AJUSTE DE PUNTERÍA: Umbral mínimo 75% para filtrar ruido (Revision 69)
+            # Se usa 75 en lugar de 80 para no castigar coincidencias semánticas puras de alta calidad.
+            if final_score >= 75: 
                 candidatos.append((obj, final_score, semantic_score))
         
         # Ordenar por score (mayor primero)

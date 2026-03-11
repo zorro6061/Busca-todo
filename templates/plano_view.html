@@ -154,7 +154,7 @@
                     <div id="pins-layer" style="position: absolute; inset: 0; pointer-events: none; z-index: 100;"></div>
                     <!-- ESCUDO DESACTIVADO: pointer-events: none por defecto. Solo se activa en modo edición. -->
                     <div id="hotspots-layer"
-                        style="position: absolute; inset: 0; cursor: crosshair; pointer-events: none; {% if not (plano and plano.imagen_path) %}display: none;{% endif %}">
+                        style="position: absolute; inset: 0; cursor: crosshair; pointer-events: none; {{ 'display: none;' if not (plano and plano.imagen_path) else '' }}">
                     </div>
                 </div>
             </div>
@@ -543,8 +543,9 @@
         const unplacedList = document.getElementById('unplaced-list');
 
         function renderMap() {
-            // Render Pins & Dots
-            pinsLayer.innerHTML = '';
+            try {
+                // Render Pins & Dots
+                pinsLayer.innerHTML = '';
             let totalObjects = 0;
 
             MapStore.pins.forEach(p => {
@@ -616,6 +617,10 @@
     `).join('');
 
             applySearch();
+            } catch (err) {
+                console.error("[MAP-RENDER-ERR]", err);
+                window.showIsland("Error en renderizado de pines", 3000, "error");
+            }
         }
 
         // ── MAP INTERACTIONS (Optimistic) ──
@@ -706,6 +711,7 @@
             }).catch(err => {
                 MapStore.isSyncing = false;
                 console.error("Sync error:", err);
+                window.showIsland("Error de sincronización", 3000, "error");
             });
         }
 
