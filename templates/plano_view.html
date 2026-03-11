@@ -59,7 +59,7 @@
             <div style="display: flex; gap: 8px; align-items: center;">
                 {% if plano %}
                 <a href="{{ url_for('video_scanner', plano_id=plano.id) }}" class="btn btn-sm btn-secondary" style="border-radius: 980px; padding: 6px 16px;">📹 Scanner</a>
-                <a href="{{ url_for('editar_plano', plano_id=plano.id) }}" class="btn btn-sm btn-secondary" style="border-radius: 980px; padding: 6px 16px;">✏️ Zonas</a>
+                <a href="{{ url_for('editor_plano', plano_id=plano.id) }}" class="btn btn-sm btn-secondary" style="border-radius: 980px; padding: 6px 16px;">✏️ Zonas</a>
                 {% endif %}
 
                 <!-- Submenú de utilidades (Icono de Engranaje) -->
