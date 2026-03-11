@@ -63,3 +63,12 @@ def upload_image_to_gcs(file_stream, filename, max_size=1280, quality=85):
 def get_gcs_url(filename):
     """Retorna la URL pública del objeto en el bucket."""
     return f"https://storage.googleapis.com/{GCP_BUCKET_NAME}/{filename}"
+
+def download_image_from_gcs(filename):
+    """Descarga los bytes de una imagen desde GCS."""
+    client = get_storage_client()
+    bucket = client.bucket(GCP_BUCKET_NAME)
+    blob = bucket.blob(filename)
+    if not blob.exists():
+        return None
+    return blob.download_as_bytes()

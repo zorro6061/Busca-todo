@@ -333,7 +333,9 @@ def initialize_vanguard():
                         ('ALTER TABLE objetos ADD COLUMN tags_semanticos TEXT', "objetos_tags"),
                         ('ALTER TABLE ubicaciones ADD COLUMN items_json TEXT', "ubicaciones_json"),
                         ('ALTER TABLE objetos RENAME COLUMN categoria TO categoria_principal', "obj_rename_cat"),
-                        ('ALTER TABLE objetos ADD COLUMN categoria_principal VARCHAR(50)', "obj_add_cat_fallback")
+                        ('ALTER TABLE objetos ADD COLUMN categoria_principal VARCHAR(50)', "obj_add_cat_fallback"),
+                        ('ALTER TABLE ubicaciones ADD COLUMN embedding_json TEXT', "ubi_embedding"),
+                        ('ALTER TABLE objetos ADD COLUMN embedding_json TEXT', "obj_embedding")
                     ]
                     
                     for sql, name in migraciones:
@@ -615,7 +617,7 @@ def upload():
     """
     Endpoint de carga migrado a GCS (Memory Processing).
     """
-    from ai_engine import analizar_imagen_objetos
+    from ai_engine import analizar_imagen_objetos, generar_embedding
     import json
 
     if request.method == 'POST':
@@ -659,7 +661,11 @@ def upload():
             # 3. GCS: Subir a la nube persistente
             final_filename = upload_image_to_gcs(file, filename)
             
-            # 4. DB: Guardar registro (incluyendo jerarquía semántica)
+            # 4. Generar Embedding Multimodal (Visual + Contexto)
+            contexto_ubi = f"Ubicación: {nombre_ubicacion}. Habitación: {habitacion}. Mueble: {mueble_texto}."
+            emb_ubi = generar_embedding([contexto_ubi, img_bytes])
+            
+            # 5. DB: Guardar registro (incluyendo jerarquía semántica)
             nueva_ubicacion = Ubicacion(
                 nombre=nombre_ubicacion,
                 imagen_path=final_filename,
@@ -667,7 +673,8 @@ def upload():
                 items_json=json.dumps(resultado.get('items', [])),
                 habitacion=habitacion,
                 mueble_texto=mueble_texto,
-                punto_especifico=punto_especifico
+                punto_especifico=punto_especifico,
+                embedding_json=json.dumps(emb_ubi) if emb_ubi else None
             )
             db.session.add(nueva_ubicacion)
             db.session.flush()
@@ -675,6 +682,10 @@ def upload():
             nombres_para_tags = []
             for item in resultado.get('items', []):
                 nombre_obj = item.get('nombre', 'Objeto detectado')
+                # Generar embedding semántico para el objeto
+                contexto_obj = f"Objeto: {nombre_obj}. Categoría: {item.get('categoria_principal')}. Descripción: {item.get('descripcion')}. Tags: {item.get('tags_semanticos')}"
+                emb_obj = generar_embedding(contexto_obj)
+                
                 nuevo_objeto = Objeto(
                     nombre=nombre_obj,
                     categoria_principal=item.get('categoria_principal', 'General'),
@@ -685,7 +696,8 @@ def upload():
                     estado=item.get('estado', 'nuevo'),
                     confianza=item.get('confianza', 0.8),
                     ubicacion_id=nueva_ubicacion.id,
-                    tags_semanticos=item.get('tags_semanticos', '')
+                    tags_semanticos=item.get('tags_semanticos', ''),
+                    embedding_json=json.dumps(emb_obj) if emb_obj else None
                 )
                 db.session.add(nuevo_objeto)
                 nombres_para_tags.append(nombre_obj)
@@ -715,13 +727,19 @@ def gallery():
     ubicaciones = Ubicacion.query.order_by(Ubicacion.fecha_creacion.desc()).all()
     return render_template('gallery.html', ubicaciones=ubicaciones)
 
-@app.route('/search')
-def search():
-    import json
-    from rapidfuzz import fuzz, process
+    from ai_engine import interpretar_consulta, generar_embedding
+    import numpy as np
     
     query = request.args.get('q', '').lower().strip()
     resultados = []
+    
+    # 1. Obtener Vector de la Consulta
+    query_vector = None
+    if query:
+        # Usamos task_type="RETRIEVAL_QUERY" para la consulta
+        vec = generar_embedding(query, task_type="RETRIEVAL_QUERY")
+        if vec:
+            query_vector = np.array(vec)
     
     if query:
         # Obtener TODOS los objetos para fuzzy search
@@ -757,33 +775,40 @@ def search():
             ratio_punto = fuzz.partial_ratio(query, punto_lower) if punto_lower else 0
             ratio_ubicacion = fuzz.partial_ratio(query, ubicacion_nombre) if ubicacion_nombre else 0
             
-            # PONDERACIÓN
-            max_ratio = max(ratio_nombre, ratio_categoria)
-            max_partial = max(partial_nombre, partial_categoria)
-            max_token = max(token_nombre, token_categoria)
-            max_semantic = max(ratio_habitacion, ratio_mueble, ratio_punto, ratio_ubicacion)
+            # 5. Similitud Semántica (Vectorial)
+            semantic_score = 0
+            if query_vector is not None and obj.embedding_json:
+                try:
+                    obj_vector = np.array(json.loads(obj.embedding_json))
+                    # Similitud Coseno
+                    norm_q = np.linalg.norm(query_vector)
+                    norm_o = np.linalg.norm(obj_vector)
+                    if norm_q > 0 and norm_o > 0:
+                        cos_sim = np.dot(query_vector, obj_vector) / (norm_q * norm_o)
+                        # Escalar de -1..1 a 0..100
+                        semantic_score = max(0, cos_sim * 100)
+                except: pass
+
+            # PONDERACIÓN HÍBRIDA
+            max_fuzzy = max(ratio_nombre, ratio_categoria, ratio_habitacion, ratio_mueble)
             
-            # Calcular score ponderado
-            if max_ratio >= 75:
-                final_score = max_ratio
-            elif max_token >= 80:
-                final_score = max_token
-            elif max_semantic >= 85:
-                # Match semántico de ubicación (ej: "Vicente" → "Dormitorio Vicente")
-                final_score = max_semantic * 0.95
-            elif max_partial >= 85 and len(query) >= 4:
-                final_score = max_partial * 0.9
+            # El score final es el mejor entre fuzzy fuerte o una mezcla (70% semántica + 30% fuzzy parcial)
+            if max_fuzzy >= 85:
+                final_score = max_fuzzy
+            elif semantic_score >= 60:
+                # Si la semántica es alta, le damos prioridad pero sumamos un poco de fuzzy
+                final_score = (semantic_score * 0.8) + (max_fuzzy * 0.2)
             else:
-                final_score = max(max_ratio, max_token, max_semantic * 0.85)
+                final_score = max(max_fuzzy, semantic_score)
             
-            if final_score >= 70:
-                candidatos.append((obj, final_score))
+            if final_score >= 60: # Bajamos umbral a 60 por ser semántico
+                candidatos.append((obj, final_score, semantic_score))
         
         # Ordenar por score (mayor primero)
         candidatos.sort(key=lambda x: x[1], reverse=True)
         
         # Procesar resultados (máximo 30 para evitar saturación)
-        for obj, score in candidatos[:30]:
+        for obj, score, s_score in candidatos[:30]:
             # Buscar bbox en items_json original
             bbox = None
             try:
@@ -815,7 +840,8 @@ def search():
                 'imagen': obj.ubicacion.imagen_path,
                 'timestamp': obj.fecha_indexado.strftime('%Y-%m-%d %H:%M'),
                 'bbox': bbox,
-                'score': score
+                'score': round(score, 1),
+                'semantic_match': s_score > 70
             })
     
     return render_template('search_results.html', query=query, resultados=resultados)
@@ -2382,6 +2408,48 @@ def asignar_zona_objeto(obj_id):
         return jsonify({'status': 'success', 'message': 'Objeto asignado a zona'})
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
+
+
+# --- ADMINISTRACIÓN Y MANTENIMIENTO ---
+
+@app.route('/admin/backfill_embeddings')
+def admin_backfill():
+    """Ruta protegida por lógica simple para disparar el re-indexado vectorial"""
+    # SRE: Solo permitir si hay una llave configurada o por inspección de IP si es necesario
+    # Por simplicidad en este entorno, lo dejaremos accesible pero interno
+    from ai_engine import generar_embedding
+    from storage_manager import download_image_from_gcs
+    import json
+    
+    count_ubi = 0
+    count_obj = 0
+    
+    try:
+        # 1. Ubicaciones (Multimodal)
+        ubis = Ubicacion.query.filter(Ubicacion.embedding_json == None).limit(20).all() # Procesar en batches
+        for ubi in ubis:
+            img_bytes = download_image_from_gcs(ubi.imagen_path)
+            if img_bytes:
+                contexto = f"Ubicación: {ubi.nombre}. Habitación: {ubi.habitacion}. Mueble: {ubi.mueble_texto}."
+                emb = generar_embedding([contexto, img_bytes])
+                if emb:
+                    ubi.embedding_json = json.dumps(emb)
+                    count_ubi += 1
+        
+        # 2. Objetos (Semántico)
+        objs = Objeto.query.filter(Objeto.embedding_json == None).limit(50).all()
+        for obj in objs:
+            contexto = f"Objeto: {obj.nombre}. Categoría: {obj.categoria_principal}. Descripción: {obj.descripcion}. Tags: {obj.tags_semanticos}"
+            emb = generar_embedding(contexto)
+            if emb:
+                obj.embedding_json = json.dumps(emb)
+                count_obj += 1
+                
+        db.session.commit()
+        return f"Backfill Parcial Exitoso: {count_ubi} ubicaciones y {count_obj} objetos indexados. Recarga para continuar."
+    except Exception as e:
+        db.session.rollback()
+        return f"Error en Backfill: {str(e)}", 500
 
 if __name__ == '__main__':
     # Usar el puerto de la variable de entorno PORT para Render

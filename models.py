@@ -36,6 +36,7 @@ class Ubicacion(db.Model):
     habitacion     = db.Column(db.String(50),  nullable=True)  # Ej: Living, Cocina
     mueble_texto   = db.Column(db.String(100), nullable=True)  # Ej: Estante, Mesa de noche
     punto_especifico = db.Column(db.String(150), nullable=True)  # Ej: Cajón derecho, Parte alta
+    embedding_json = db.Column(db.Text, nullable=True) # Vector visual de la foto
 
     def __repr__(self):
         return f'<Ubicacion {self.nombre}>'
@@ -64,6 +65,7 @@ class Objeto(db.Model):
     
     # Campo para Inteligencia Semántica (Fase 19)
     tags_semanticos = db.Column(db.Text, nullable=True) # Sinónimos, usos y contextos (IA)
+    embedding_json = db.Column(db.Text, nullable=True) # Vector semántico/visual
 
     def __repr__(self):
         return f'<Objeto {self.nombre}>'

@@ -240,6 +240,34 @@ FORMATO DE RESPUESTA (JSON ESTRICTO - SIN TEXTO ADICIONAL):
             "texto_detectado": []
         }
 
+def generar_embedding(contents, task_type="RETRIEVAL_DOCUMENT"):
+    """
+    Genera un embedding multimodal usando gemini-embedding-2-preview.
+    'contents' puede ser un string o una lista de componentes (texto, bytes de imagen).
+    """
+    client = get_client()
+    if not client:
+        return None
+        
+    try:
+        # El modelo de embeddings espera una estructura específica en google-genai SDK
+        # Dependiendo de la versión de la SDK, se usa embed_content o similar
+        # Para gemini-embedding-2-preview, es multimodal nativo.
+        
+        response = client.models.embed_content(
+            model="gemini-embedding-2-preview",
+            contents=contents,
+            config={
+                'task_type': task_type,
+                'output_dimensionality': 768 # Estándar para este modelo
+            }
+        )
+        
+        return response.embeddings[0].values
+    except Exception as e:
+        logger.error(f"[AI-EMBEDDING-ERR] {e}")
+        return None
+
 def interpretar_consulta(query):
     """
     Usa Gemini para convertir una pregunta natural (¿Dónde están mis llaves?) 
