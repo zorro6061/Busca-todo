@@ -60,8 +60,9 @@ class Objeto(db.Model):
     pos_x = db.Column(db.Float, nullable=True) # Posición real en x del mapa
     pos_y = db.Column(db.Float, nullable=True) # Posición real en y del mapa
     
-    # Relación con Zona (Mapa Anotado)
-    zona_id = db.Column(db.Integer, db.ForeignKey('zonas.id'), nullable=True)
+    # Campos de Precisión IA v2
+    posicion_relativa = db.Column(db.String(50), nullable=True) # izquierda, derecha, etc.
+    contenedor = db.Column(db.String(100), nullable=True)     # cajón superior, estante medio
     
     # Campo para Inteligencia Semántica (Fase 19)
     tags_semanticos = db.Column(db.Text, nullable=True) # Sinónimos, usos y contextos (IA)

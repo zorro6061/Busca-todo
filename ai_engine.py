@@ -114,12 +114,13 @@ LÓGICA DE PROPIETARIO (JUANA Y VICENTE):
 - Si parece pertenecer a un niño o tiene motivos asociados a Vicente, etiqueta "Vicente".
 - IMPORTANTE: Solo asigna el propietario en 'tags_semanticos' si tienes al menos un 80% de confianza. Si no, usa el valor "General".
 
-INSTRUCCIONES DE ANÁLISIS ESPACIAL:
+INSTRUCCIONES DE ANÁLISIS ESPACIAL (PRECISIÓN V2):
 1. CONTEXTO DE UBICACIÓN: Analiza el fondo de la imagen para deducir:
    - habitacion_sugerida: La habitación más probable (Living, Cocina, Dormitorio, Baño, Garage, Lavadero, Estudio, Patio, Otro). Si no estás seguro al 70%+, usa null.
    - mueble_sugerido: El mueble en que descansan los objetos (Estante, Mesa, Cajón, Armario, Mesita de noche, Heladera, etc.). Si no estás seguro al 70%+, usa null.
-2. DESCRIPCIÓN: Genera una descripción que complemente la ubicación visual en lenguaje natural.
-3. ATRIBUTOS: Identifica color predominante, material y estado.
+2. DIFERENCIACIÓN ESPACIAL: Si hay múltiples contenedores similares (ej. varios cajones, varias puertas de armario), identifica su posición relativa (izquierda, derecha, superior, inferior).
+3. DESCRIPCIÓN: Genera una descripción que complemente la ubicación visual en lenguaje natural. EJ: "En el cajón superior derecho del escritorio".
+4. ATRIBUTOS: Identifica color predominante, material y estado.
 
 FORMATO DE RESPUESTA (JSON ESTRICTO - SIN TEXTO ADICIONAL):
 {{
@@ -129,7 +130,9 @@ FORMATO DE RESPUESTA (JSON ESTRICTO - SIN TEXTO ADICIONAL):
     {{
       "nombre": "nombre descriptivo",
       "categoria_principal": "Tecnología|Herramientas|Documentación|Cuidado Personal|Niños|Cocina|Otros",
-      "descripcion": "Descripción del objeto + ubicación relativa en lenguaje natural",
+      "descripcion": "Descripción del objeto + ubicación relativa EXACTA",
+      "posicion_relativa": "izquierda|derecha|superior|inferior|centro",
+      "contenedor": "nombre_del_contenedor_especifico (ej: cajón superior)",
       "bbox": [ymin, xmin, ymax, xmax],
       "confianza": 0.XX,
       "color_predominante": "color",

@@ -150,6 +150,8 @@ def migrate_semantic_columns():
                 "ALTER TABLE ubicaciones ADD COLUMN IF NOT EXISTS habitacion VARCHAR(50)",
                 "ALTER TABLE ubicaciones ADD COLUMN IF NOT EXISTS mueble_texto VARCHAR(100)",
                 "ALTER TABLE ubicaciones ADD COLUMN IF NOT EXISTS punto_especifico VARCHAR(150)",
+                "ALTER TABLE objetos ADD COLUMN IF NOT EXISTS posicion_relativa VARCHAR(50)",
+                "ALTER TABLE objetos ADD COLUMN IF NOT EXISTS contenedor VARCHAR(100)",
             ]
         else:  # SQLite (desarrollo local)
             # SQLite no soporta IF NOT EXISTS en ALTER TABLE, usamos try/except
@@ -157,6 +159,8 @@ def migrate_semantic_columns():
                 "ALTER TABLE ubicaciones ADD COLUMN habitacion VARCHAR(50)",
                 "ALTER TABLE ubicaciones ADD COLUMN mueble_texto VARCHAR(100)",
                 "ALTER TABLE ubicaciones ADD COLUMN punto_especifico VARCHAR(150)",
+                "ALTER TABLE objetos ADD COLUMN posicion_relativa VARCHAR(50)",
+                "ALTER TABLE objetos ADD COLUMN contenedor VARCHAR(100)",
             ]
         for sql in migrations:
             try:
@@ -164,7 +168,7 @@ def migrate_semantic_columns():
             except Exception:
                 pass  # La columna ya existe — ignorar
         db.session.commit()
-        vanguard_log("✅ Migración de columnas semánticas completada.")
+        vanguard_log("✅ Migración de columnas semánticas y espaciales completada.")
     except Exception as e:
         vanguard_log(f"⚠️ Migración semántica (no fatal): {e}")
         db.session.rollback()
@@ -1635,6 +1639,8 @@ def crear_ubicacion_en_mapa():
                 ubicacion_id=nueva_ubicacion.id,
                 pos_x=obj_pos_x,
                 pos_y=obj_pos_y,
+                posicion_relativa=item.get('posicion_relativa', ''),
+                contenedor=item.get('contenedor', ''),
                 tags_semanticos=item.get('tags_semanticos', '')
             )
             db.session.add(nuevo_objeto)
@@ -2336,6 +2342,8 @@ def crear_ubicaciones_desde_video():
                     confianza=item.get('confianza', 0.8),
                     estado=item.get('estado', 'N/A'),
                     prioridad=item.get('prioridad', 'media'),
+                    posicion_relativa=item.get('posicion_relativa', ''),
+                    contenedor=item.get('contenedor', ''),
                     ubicacion_id=nueva_ubi.id
                 )
                 db.session.add(nuevo_obj)
