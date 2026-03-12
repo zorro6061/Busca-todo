@@ -330,7 +330,7 @@ def initialize_vanguard():
                     
                     vanguard_log("DB: Verificando migraciones...")
                     migraciones = [
-                        ('ALTER TABLE muebles ADD COLUMN nombre VARCHAR(100) DEFAULT "Mueble Sin Nombre"', "muebles_nombre"),
+                        ('ALTER TABLE muebles ADD COLUMN nombre VARCHAR(100) DEFAULT \'Mueble Sin Nombre\'', "muebles_nombre"),
                         ('ALTER TABLE objetos ADD COLUMN tags_semanticos TEXT', "objetos_tags"),
                         ('ALTER TABLE ubicaciones ADD COLUMN items_json TEXT', "ubicaciones_json"),
                         ('ALTER TABLE objetos RENAME COLUMN categoria TO categoria_principal', "obj_rename_cat"),
@@ -1292,6 +1292,41 @@ def ver_plano(plano_id):
                              muebles_json='[]',
                              ubicaciones_sin_plano=[])
 
+
+@app.route('/api/health')
+def health_check():
+    """Diagnóstico profundo para SRE/DevOps"""
+    try:
+        from sqlalchemy import text
+        db.session.execute(text("SELECT 1"))
+        db_status = "Connected"
+        
+        # Conteo rápido de objetos para verificar sincronización
+        obj_count = Objeto.query.count()
+        plano_count = Plano.query.count()
+        muebles_count = Mueble.query.count()
+        
+        # Detectar entorno
+        env = "Cloud Run/Render" if os.environ.get('PORT') else "Local"
+        
+        return jsonify({
+            "status": "Healthy",
+            "version": "1.0.6-master-fix",
+            "database": db_status,
+            "environment": env,
+            "stats": {
+                "objetos": obj_count,
+                "planos": plano_count,
+                "muebles_table_accessible": True,
+                "muebles_count": muebles_count
+            }
+        })
+    except Exception as e:
+        return jsonify({
+            "status": "Unhealthy",
+            "error": str(e),
+            "version": "1.0.6-master-fix"
+        }), 500
 
 @app.route('/plano/editar-zonas/<int:plano_id>')
 def editor_plano(plano_id):
