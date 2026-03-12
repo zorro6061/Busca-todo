@@ -1404,7 +1404,7 @@ def health_check():
         return jsonify({
             "status": "Unhealthy",
             "error": str(e),
-            "version": "1.0.6-master-fix"
+            "version": "1.0.7-hotfix-sql"
         }), 500
 
 @app.route('/plano/editar-zonas/<int:plano_id>')
