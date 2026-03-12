@@ -18,7 +18,7 @@ import google.oauth2.id_token
 import google_auth_oauthlib.flow
 from google.auth.transport.requests import Request
 from sqlalchemy import text
-from models import db, Ubicacion, Objeto, Plano, Config
+from models import db, Ubicacion, Objeto, Plano, Config, Mueble, Zona
 from werkzeug.utils import secure_filename
 from dotenv import load_dotenv
 from storage_manager import upload_image_to_gcs, get_gcs_url
