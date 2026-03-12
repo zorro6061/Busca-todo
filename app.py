@@ -58,13 +58,9 @@ instance_connection_name = os.environ.get('INSTANCE_CONNECTION_NAME')
 
 import urllib.parse
 
-if instance_connection_name:
-    # MODO PRODUCCIÓN: Conexión nativa de GCP vía Socket Unix
-    vanguard_log(f"Conectando a Cloud SQL vía Socket: {instance_connection_name}")
-    safe_pass = urllib.parse.quote_plus(db_pass or '')
-    app.config['SQLALCHEMY_DATABASE_URI'] = f"postgresql+psycopg2://{db_user}:{safe_pass}@/{db_name}?host=/cloudsql/{instance_connection_name}"
-elif raw_db_url:
-    # MODO COMPATIBILIDAD: Usar DATABASE_URL (codificando contraseña)
+if raw_db_url:
+    # MODO PREFERIDO (Render/Sync): Usar DATABASE_URL (codificando contraseña)
+    vanguard_log("Priorizando DATABASE_URL para sincronización externa")
     try:
         if '://' in raw_db_url and '@' in raw_db_url:
             prefix, rest = raw_db_url.split('://', 1)
@@ -83,6 +79,11 @@ elif raw_db_url:
     except Exception as e:
         vanguard_log(f"Error parseando DATABASE_URL: {e}")
         app.config['SQLALCHEMY_DATABASE_URI'] = raw_db_url
+elif instance_connection_name:
+    # MODO GCP (Cloud SQL): Conexión vía Socket Unix
+    vanguard_log(f"Conectando a Cloud SQL vía Socket: {instance_connection_name}")
+    safe_pass = urllib.parse.quote_plus(db_pass or '')
+    app.config['SQLALCHEMY_DATABASE_URI'] = f"postgresql+psycopg2://{db_user}:{safe_pass}@/{db_name}?host=/cloudsql/{instance_connection_name}"
 else:
     # MODO DESARROLLO/LOCAL: SQLite
     app.config['SQLALCHEMY_DATABASE_URI'] = default_sqlite
