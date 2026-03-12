@@ -98,7 +98,9 @@
             <p id="det-tags"
                 style="color: var(--text-dim); font-size: 0.85rem; margin-bottom: var(--space-md); line-height: 1.6;">
             </p>
-            <div style="margin-bottom: var(--space-md);"><span id="det-obj-count" class="badge badge-success"></span>
+            <div style="margin-bottom: var(--space-md);">
+                <span id="det-obj-count" class="badge badge-success"></span>
+                <span class="badge debug-only" id="det-debug-id" style="background:rgba(255,255,255,0.05); color:var(--text-muted); font-family:monospace; font-size:0.6rem;"></span>
             </div>
             <div id="det-objetos" style="margin-bottom: var(--space-md);"></div>
             <div style="display: flex; gap: var(--space-sm);">
@@ -240,15 +242,18 @@
         "{{ ubi.id }}": [
             {% for obj in ubi.objetos %}
                 {
-        nombre: "{{ obj.nombre|default('Objeto', true)|escape }}",
-            categoria: "{{ (obj.categoria_principal or 'General')|escape }}",
-                descripcion: "{{ (obj.descripcion or 'No disponible')|escape }}",
+                {
+                    nombre: "{{ obj.nombre|default('Objeto', true)|escape }}",
+                    categoria: "{{ (obj.categoria_principal or 'General')|escape }}",
+                    descripcion: "{{ (obj.descripcion or 'No disponible')|escape }}",
                     color: "{{ (obj.color_predominante or 'No disponible')|escape }}",
-                        material: "{{ (obj.material or 'No disponible')|escape }}",
-                            estado: "{{ (obj.estado or 'No disponible')|escape }}",
-                                confianza: { { ((obj.confianza or 0.8) * 100)| int } }
-    },
-    {% endfor %}
+                    material: "{{ (obj.material or 'No disponible')|escape }}",
+                    estado: "{{ (obj.estado or 'No disponible')|escape }}",
+                    contenedor: "{{ (obj.contenedor or '')|escape }}",
+                    posicion_relativa: "{{ (obj.posicion_relativa or '')|escape }}",
+                    confianza: {{ ((obj.confianza or 0.8) * 100)|int }}
+                },
+{% endfor %}
             ],
     {% endfor %}
         };
@@ -304,6 +309,8 @@
         document.getElementById('det-nombre').textContent = nombre;
         document.getElementById('det-tags').textContent = tags || 'Sin análisis aún';
         document.getElementById('det-obj-count').textContent = '📦 ' + objCount + ' objetos';
+        const debugBadge = document.getElementById('det-debug-id');
+        if (debugBadge) debugBadge.textContent = 'ID: ' + id;
 
         const cont = document.getElementById('det-objetos');
 
@@ -329,15 +336,26 @@
                         var col = (o && o.color) ? o.color : 'No disponible';
                         var mat = (o && o.material) ? o.material : 'No disponible';
                         var est = (o && o.estado) ? o.estado : 'No disponible';
+                        var cont = (o && o.contenedor) ? o.contenedor : '';
+                        var pos = (o && o.posicion_relativa) ? o.posicion_relativa : '';
+                        
+                        var spatialInfo = (cont || pos) 
+                            ? '<div style="margin-top:4px; display:flex; gap:4px; flex-wrap:wrap;">' +
+                              (cont ? '<span class="badge" style="background:rgba(99,102,241,0.1); font-size:0.65rem; padding:2px 6px;">📦 ' + cont + '</span>' : '') +
+                              (pos ? '<span class="badge" style="background:rgba(139,92,246,0.1); font-size:0.65rem; padding:2px 6px;">📍 ' + pos + '</span>' : '') +
+                              '</div>'
+                            : '';
+
                         var desc = (o && o.descripcion && o.descripcion !== 'No disponible')
                             ? '<span style="display:block;color:var(--text-dim);font-size:0.78rem;margin-top:2px;">' + o.descripcion.substring(0, 80) + '</span>'
                             : '';
                         return '<div style="padding: 10px 14px; background: rgba(255,255,255,0.03); border-radius: var(--radius-sm); margin-bottom: 4px; font-size: 0.85rem;">'
                             + '<div style="display:flex; justify-content:space-between; align-items:center;">'
                             + '<span style="text-transform: capitalize;">📦 ' + nm + '</span>'
-                            + '<span class="badge badge-primary">' + pct + '%</span>'
+                            + '<span class="badge badge-primary debug-only">' + pct + '%</span>'
                             + '</div>'
                             + '<span style="color: var(--text-dim); font-size: 0.78rem;">' + cat + '</span>'
+                            + spatialInfo
                             + desc
                             + '</div>';
                     }).join('');

@@ -752,8 +752,26 @@ def upload():
                 nueva_ubicacion.tags = "Sin objetos detectados"
                 
             db.session.commit()
-            vanguard_log(f"[DB-SUCCESS] Ubicación '{nombre_ubicacion}' guardada con {len(nombres_para_tags)} objetos. Tags: {nueva_ubicacion.tags}")
-            flash(f'✓ "{nombre_ubicacion}" indexado en la nube con éxito.')
+            
+            # ── Rev 86: Phase 1 Safety Valve & Confidence ──
+            avg_conf = 0.8
+            if resultado.get('items'):
+                confs = [item.get('confianza', 0.8) for item in resultado.get('items')]
+                avg_conf = sum(confs) / len(confs)
+            
+            is_high_conf = avg_conf > 0.9
+            edit_link = f' <a href="/ubicacion/editar/{nueva_ubicacion.id}" style="color:var(--primary); font-weight:bold; margin-left:8px;">[Editar]</a>'
+            
+            if is_high_conf:
+                msg = f'✓ "{nombre_ubicacion}" auto-indexado con éxito.' + edit_link
+            else:
+                msg = f'✓ "{nombre_ubicacion}" indexado.' + edit_link
+            
+            flash(msg)
+            vanguard_log(f"[DB-SUCCESS] Ubicación '{nombre_ubicacion}' guardada (Confianza: {avg_conf:.2f}).")
+            
+            # Direct-to-Map: Si es alta confianza, podrímos redirigir al plano si existiera, 
+            # pero por ahora gallery es el destino estándar.
             return redirect(url_for('gallery'))
 
         except Exception as e:
@@ -769,6 +787,26 @@ def upload():
 def gallery():
     ubicaciones = Ubicacion.query.order_by(Ubicacion.fecha_creacion.desc()).all()
     return render_template('gallery.html', ubicaciones=ubicaciones)
+
+@app.route('/ubicacion/editar/<int:ubi_id>', methods=['GET', 'POST'])
+def editar_ubicacion(ubi_id):
+    """Permite al usuario corregir manualmente los datos detectados por la IA."""
+    ubi = Ubicacion.query.get_or_404(ubi_id)
+    if request.method == 'POST':
+        ubi.nombre = request.form.get('nombre', ubi.nombre)
+        ubi.habitacion = request.form.get('habitacion', ubi.habitacion)
+        ubi.mueble_texto = request.form.get('mueble_texto', ubi.mueble_texto)
+        
+        # Actualizar objetos
+        for obj in ubi.objetos:
+            obj.nombre = request.form.get(f'obj_{obj.id}_nombre', obj.nombre)
+            obj.categoria_principal = request.form.get(f'obj_{obj.id}_cat', obj.categoria_principal)
+            
+        db.session.commit()
+        flash(f'✓ Ubicación "{ubi.nombre}" actualizada.')
+        return redirect(url_for('gallery'))
+        
+    return render_template('ubicacion_edit.html', ubi=ubi)
 
     from ai_engine import interpretar_consulta, generar_embedding
     import numpy as np
@@ -889,7 +927,9 @@ def gallery():
                 'timestamp': obj.fecha_indexado.strftime('%Y-%m-%d %H:%M'),
                 'bbox': bbox,
                 'score': round(score, 1),
-                'semantic_match': s_score > 70
+                'semantic_match': s_score > 70,
+                'contenedor': obj.contenedor,
+                'posicion_relativa': obj.posicion_relativa
             })
     
     return render_template('search_results.html', query=query, resultados=resultados)
@@ -1049,7 +1089,9 @@ def check_analysis(ubi_id):
             {
                 'nombre': obj.nombre,
                 'categoria': obj.categoria_principal or 'General',
-                'confianza': int((obj.confianza or 0.8) * 100)
+                'confianza': int((obj.confianza or 0.8) * 100),
+                'contenedor': obj.contenedor,
+                'posicion_relativa': obj.posicion_relativa
             }
             for obj in objetos
         ]

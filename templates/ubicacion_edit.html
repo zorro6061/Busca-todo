@@ -1,0 +1,57 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div class="fade-up" style="max-width: 600px; margin: var(--space-xl) auto;">
+    <div class="page-header">
+        <div>
+            <h2>Revisión de IA</h2>
+            <p class="page-subtitle">Ajustá los detalles si la IA cometió algún error.</p>
+        </div>
+        <a href="{{ url_for('gallery') }}" class="btn btn-secondary">Cancelar</a>
+    </div>
+
+    <div class="card" style="padding: var(--space-xl);">
+        <form method="POST">
+            <div style="margin-bottom: var(--space-lg);">
+                <label>Nombre de la Ubicación</label>
+                <input type="text" name="nombre" value="{{ ubi.nombre }}" style="width: 100%; border-radius: var(--radius-md);">
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-md); margin-bottom: var(--space-xl);">
+                <div>
+                    <label>Habitación</label>
+                    <input type="text" name="habitacion" value="{{ ubi.habitacion or '' }}" placeholder="Ej: Cocina" style="width: 100%; border-radius: var(--radius-md);">
+                </div>
+                <div>
+                    <label>Mueble</label>
+                    <input type="text" name="mueble_texto" value="{{ ubi.mueble_texto or '' }}" placeholder="Ej: Estante" style="width: 100%; border-radius: var(--radius-md);">
+                </div>
+            </div>
+
+            <h3 style="margin-bottom: var(--space-md); font-size: 1rem; color: var(--primary);">📦 Objetos Detectados</h3>
+            
+            {% for obj in ubi.objetos %}
+            <div style="background: rgba(255,255,255,0.03); padding: var(--space-md); border-radius: var(--radius-md); margin-bottom: var(--space-sm); border: 1px solid rgba(255,255,255,0.05);">
+                <div style="display: flex; gap: var(--space-md); align-items: center;">
+                    <div style="flex: 2;">
+                        <label style="font-size: 0.7rem; text-transform: uppercase; color: var(--text-muted);">Nombre del objeto</label>
+                        <input type="text" name="obj_{{ obj.id }}_nombre" value="{{ obj.nombre }}" style="width: 100%; font-size: 0.9rem; border-radius: 6px;">
+                    </div>
+                    <div style="flex: 1;">
+                        <label style="font-size: 0.7rem; text-transform: uppercase; color: var(--text-muted);">Categoría</label>
+                        <input type="text" name="obj_{{ obj.id }}_cat" value="{{ obj.categoria_principal }}" style="width: 100%; font-size: 0.8rem; border-radius: 6px;">
+                    </div>
+                </div>
+                <div class="debug-only" style="margin-top: 8px; font-size: 0.7rem; color: var(--text-muted);">
+                    Confianza IA: {{ (obj.confianza * 100)|int }}% | ID: {{ obj.id }}
+                </div>
+            </div>
+            {% endfor %}
+
+            <button type="submit" class="btn btn-primary btn-lg" style="width: 100%; margin-top: var(--space-xl);">
+                Guardar Cambios y Finalizar →
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -57,6 +57,7 @@ class Objeto(db.Model):
     
     # Relación con Ubicación
     ubicacion_id = db.Column(db.Integer, db.ForeignKey('ubicaciones.id'), nullable=True, index=True)
+    zona_id = db.Column(db.Integer, db.ForeignKey('zonas.id'), nullable=True, index=True)
     pos_x = db.Column(db.Float, nullable=True) # Posición real en x del mapa
     pos_y = db.Column(db.Float, nullable=True) # Posición real en y del mapa
     

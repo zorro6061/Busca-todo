@@ -226,16 +226,10 @@
         {% endif %}
     </div>
 
-    <!-- Floating Action Button (Aperture Home Style) -->
-    {% if session.user_id %}
-    <a href="{{ url_for('upload') }}" class="fab-camera" aria-label="Indexar nuevo objeto">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
-            stroke-linejoin="round">
-            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
-            <circle cx="12" cy="13" r="4"></circle>
-        </svg>
-    </a>
     {% endif %}
+
+    <!-- Debug Toggle (Revision 86 Phase 1) -->
+    <div class="debug-toggle" onclick="toggleDebugMode()" title="Modo Debug">🐛</div>
 
     <style>
         .fab-camera {
@@ -277,6 +271,33 @@
                 transform: translateY(-5px) scale(1.1);
             }
         }
+        /* ── DEBUG MODE ── */
+        .debug-only { display: none !important; }
+        body.debug-active .debug-only { display: block !important; }
+        body.debug-active span.debug-only { display: inline !important; }
+        body.debug-active div.debug-only { display: flex !important; }
+        
+        .debug-toggle {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 40px;
+            height: 40px;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 2000;
+            font-size: 1.2rem;
+            transition: all 0.3s;
+            opacity: 0.5;
+        }
+        .debug-toggle:hover { opacity: 1; transform: scale(1.1); background: rgba(0,0,0,0.8); }
+        body.debug-active .debug-toggle { border-color: var(--warning); box-shadow: 0 0 10px var(--warning); opacity: 1; }
     </style>
 
     <!-- Toast Container -->
@@ -352,7 +373,7 @@
         const islandText = document.getElementById('island-text');
 
         window.showIsland = function (text, duration = 3000, type = 'loading') {
-            islandText.textContent = text;
+            islandText.innerHTML = text;
             island.classList.add('visible');
 
             const spinner = island.querySelector('.island-spinner');
@@ -412,6 +433,19 @@
             setTimeout(() => {
                 showIsland("Tip: Toca 'Compartir' y 'Añadir a pantalla de inicio' 📲", 5000, 'success');
             }, 3000);
+        }
+
+        // ── DEBUG MODE CONTROLLER ──
+        function toggleDebugMode() {
+            const active = document.body.classList.toggle('debug-active');
+            localStorage.setItem('appDebugMode', active ? 'true' : 'false');
+            window.showIsland(active ? 'Modo Debug: ON' : 'Modo Debug: OFF', 2000, active ? 'warning' : 'info');
+            // Dispatch event for other components
+            window.dispatchEvent(new CustomEvent('debugModeChanged', { detail: { active } }));
+        }
+        // Initialize from storage
+        if (localStorage.getItem('appDebugMode') === 'true') {
+            document.body.classList.add('debug-active');
         }
     </script>
 </body>

@@ -100,9 +100,24 @@
 </div>
 
 <script>
+    const btnUpload = document.getElementById('btn-mode-upload');
     const btnTemplate = document.getElementById('btn-mode-template');
+    const btnDraw = document.getElementById('btn-mode-draw');
+    const sectionUpload = document.getElementById('section-upload');
     const sectionTemplate = document.getElementById('section-template');
+    const sectionDraw = document.getElementById('section-draw');
+    const inputMetodo = document.getElementById('input-metodo');
     const inputTemplateType = document.getElementById('input-template-type');
+
+    // Auto-select template from URL if present
+    const urlParams = new URLSearchParams(window.location.search);
+    const preselectedTemplate = urlParams.get('template');
+    if (preselectedTemplate) {
+        window.addEventListener('DOMContentLoaded', () => {
+            btnTemplate.click();
+            selectTemplate(preselectedTemplate);
+        });
+    }
 
     function resetButtons() {
         btnUpload.className = 'btn btn-secondary';

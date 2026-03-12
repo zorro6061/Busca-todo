@@ -60,5 +60,24 @@ Próximas metas técnicas:
 2.  **Inventario Modular**: Permitir asignar objetos masivamente a muebles específicos dentro del Editor Modular mediante drag-and-drop de ítems.
 3.  **Optimización Estática**: Implementación de lazy loading para fotos maestras de alta resolución y compresión predictiva en el cliente (Worker).
 
+## 5. Equipo de Desarrollo
+- **Rafa**: Product Owner & Jefe de Operaciones (Punta Ballena HQ).
+- **Pepe (AI)**: Copiloto de Código, Arquitectura y SRE.
+- **Pato (AI)**: Especialista en Despliegue, Sincronización y Auditoría de Producto.
+
+## 6. Auditoría de Simplicidad (UX/UI) - Reporte para Pato 🦆
+
+**Estado Actual: 7/10 ("Nivel Laboratorio")**
+
+**Puntos Críticos:**
+1.  **Visibilidad Técnica**: Todavía se exponen términos como "Bbox" o porcentajes de confianza que ensucian la vista del usuario final.
+2.  **Calibración Manual**: Los 4 puntos de homografía son una barrera de entrada para usuarios no técnicos.
+3.  **Fricción de Carga**: El flujo Captura -> Procesamiento -> Ubicación requiere demasiada interacción manual.
+
+**Propuesta Rev. 86 (Modo Magia):**
+-   **Spatial Suggestion**: Automatizar la ubicación en el mapa basándose en el contexto visual (ej. si ve una cocina, sugerir el plano 'Cocina').
+-   **Zero-Config UI**: Esconder metadatos de depuración tras un "Developer Mode".
+-   **Auto-Tagging**: Eliminar pasos confirmación si la confianza es > 90%.
+
 ---
 *Documento generado para sincronización de contexto IA.*

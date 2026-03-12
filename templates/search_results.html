@@ -16,7 +16,7 @@
         <div style="position: relative; height: 200px; overflow: hidden;">
             <img src="{{ safe_gcs_url(r.imagen) }}"
                 style="width: 100%; height: 100%; object-fit: cover;">
-            <div class="bbox-highlight"
+            <div class="bbox-highlight debug-only"
                 style="--left: {{ r.bbox[0] }}; --top: {{ r.bbox[1] }}; --width: {{ r.bbox[2]-r.bbox[0] }}; --height: {{ r.bbox[3]-r.bbox[1] }};">
             </div>
             <div
@@ -26,12 +26,14 @@
         <div style="padding: var(--space-md) var(--space-lg) var(--space-lg);">
             <h3 style="text-transform: capitalize;">{{ r.objeto }}</h3>
             <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px;">
-                <span class="badge badge-primary">{{ (r.confianza*100)|int }}% match</span>
+                <span class="badge badge-primary debug-only">{{ (r.confianza*100)|int }}% match</span>
                 {% if r.categoria_principal %}<span class="badge badge-warning">{{ r.categoria_principal }}</span>{%
                 endif %}
                 {% if r.categoria_secundaria %}<span class="badge" style="background: rgba(255,255,255,0.1);">{{
                     r.categoria_secundaria }}</span>{% endif %}
                 {% if r.prioridad == 'alta' %}<span class="badge badge-danger">🔥 Prioridad Alta</span>{% endif %}
+                {% if r.contenedor %}<span class="badge" style="background: rgba(99,102,241,0.1); border: 1px solid rgba(99,102,241,0.3);">📦 {{ r.contenedor }}</span>{% endif %}
+                {% if r.posicion_relativa %}<span class="badge" style="background: rgba(139,92,246,0.1); border: 1px solid rgba(139,92,246,0.3);">📍 {{ r.posicion_relativa }}</span>{% endif %}
                 {% if r.estado %}<span class="badge" style="border: 1px solid var(--primary);">✨ {{ r.estado }}</span>{%
                 endif %}
             </div>
