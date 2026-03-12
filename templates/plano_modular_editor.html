@@ -1,0 +1,340 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div id="modular-editor-layout" style="display: flex; gap: var(--space-lg); height: calc(100vh - 120px); overflow: hidden;">
+    
+    <!-- Sidebar de Componentes -->
+    <aside class="card" style="width: 280px; flex-shrink: 0; padding: var(--space-lg); display: flex; flex-direction: column; background: rgba(10,10,10,0.8); backdrop-filter: blur(20px);">
+        <h3 style="margin-bottom: var(--space-md); font-size: 1.1rem; border-bottom: 1px solid var(--glass-border); padding-bottom: 12px;">🪑 Componentes</h3>
+        <p style="font-size: 0.75rem; color: var(--text-dim); margin-bottom: var(--space-lg);">Arrastrá los muebles al plano para empezar a organizar.</p>
+        
+        <div id="component-list" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 12px;">
+            <!-- Componente: Estantería -->
+            <div class="draggable-component" draggable="true" data-type="estanteria" data-w="10" data-h="5">
+                <div class="iso-preview shelf"></div>
+                <div class="comp-info">
+                    <p class="comp-name">Estantería</p>
+                    <p class="comp-desc">Vertical / Slim</p>
+                </div>
+            </div>
+            
+            <!-- Componente: Mesa / Banco -->
+            <div class="draggable-component" draggable="true" data-type="mesa" data-w="20" data-h="15">
+                <div class="iso-preview table"></div>
+                <div class="comp-info">
+                    <p class="comp-name">Mesa / Banco</p>
+                    <p class="comp-desc">Superficie de trabajo</p>
+                </div>
+            </div>
+
+            <!-- Componente: Rack Industrial -->
+            <div class="draggable-component" draggable="true" data-type="rack" data-w="40" data-h="10">
+                <div class="iso-preview rack"></div>
+                <div class="comp-info">
+                    <p class="comp-name">Rack Industrial</p>
+                    <p class="comp-desc">Ancho / Estiba</p>
+                </div>
+            </div>
+
+            <!-- Componente: Gabinete -->
+            <div class="draggable-component" draggable="true" data-type="gabinete" data-w="15" data-h="15">
+                <div class="iso-preview cabinet"></div>
+                <div class="comp-info">
+                    <p class="comp-name">Gabinete</p>
+                    <p class="comp-desc">Cerrado / Pared</p>
+                </div>
+            </div>
+        </div>
+
+        <div style="margin-top: var(--space-xl); border-top: 1px solid var(--glass-border); padding-top: var(--space-md);">
+            <button onclick="saveModularLayout()" class="btn btn-primary" style="width: 100%;">💾 Guardar Layout</button>
+            <a href="{{ url_for('ver_plano', plano_id=plano.id) }}" class="btn btn-secondary" style="width: 100%; margin-top: 8px;">Volver</a>
+        </div>
+    </aside>
+
+    <!-- Canvas de Diseño -->
+    <main style="flex: 1; position: relative; background: #050505; border-radius: var(--radius-2xl); overflow: hidden; border: 1.5px solid var(--glass-border);">
+        <!-- Island HUD -->
+        <div id="editor-hud" style="position: absolute; top: 20px; left: 50%; transform: translateX(-50%); z-index: 100; transition: all 0.5s;">
+            <div class="hud-panel" style="background: rgba(0,0,0,0.7); backdrop-filter: blur(10px); padding: 8px 16px; border-radius: 980px; border: 1px solid rgba(255,255,255,0.1); border-top-color: var(--primary);">
+                <span style="font-size: 0.75rem; font-weight: 700; color: var(--primary);">MODO DISEÑO ISO-3D</span>
+                <span style="margin: 0 10px; opacity: 0.3;">|</span>
+                <span id="snap-status" style="font-size: 0.7rem; color: var(--success);">🧲 SNAP ACTIVO</span>
+            </div>
+        </div>
+
+        <!-- El Plano / Fondo -->
+        <div id="canvas-container" style="width: 100%; height: 100%; overflow: auto; display: flex; align-items: center; justify-content: center; background: radial-gradient(circle at center, #111 0%, #000 100%);">
+            <div id="modular-canvas" style="position: relative; width: 1000px; height: 1000px; background-image: url('{{ safe_gcs_url(plano.imagen_path) }}'); background-size: cover; box-shadow: 0 50px 100px rgba(0,0,0,0.8);">
+                <!-- Los muebles se renderizan aquí -->
+                <div id="furniture-layer" style="position: absolute; inset: 0;"></div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<style>
+    :root {
+        --iso-shadow: rgba(0,0,0,0.4);
+    }
+
+    /* Estilos SideBar Componentes */
+    .draggable-component {
+        background: rgba(255,255,255,0.03);
+        border: 1px solid var(--glass-border);
+        border-radius: var(--radius-lg);
+        padding: 12px;
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        cursor: grab;
+        transition: all 0.2s ease;
+    }
+    .draggable-component:hover {
+        background: rgba(255,255,255,0.08);
+        border-color: var(--primary);
+        transform: translateX(4px);
+    }
+    .draggable-component:active { cursor: grabbing; }
+
+    .iso-preview {
+        width: 40px;
+        height: 40px;
+        background: var(--primary);
+        border-radius: 4px;
+        box-shadow: 5px 5px 0 var(--iso-shadow);
+    }
+    .iso-preview.shelf { height: 60px; margin-top: -10px; width: 30px; }
+    .iso-preview.table { background: #94a3b8; }
+    .iso-preview.rack { background: #475569; width: 60px; height: 30px; }
+    
+    .comp-name { margin: 0; font-weight: 600; font-size: 0.85rem; }
+    .comp-desc { margin: 0; font-size: 0.7rem; color: var(--text-dim); }
+
+    /* Muebles en el Canvas */
+    .furniture-item {
+        position: absolute;
+        cursor: move;
+        transform-style: preserve-3d;
+        transition: box-shadow 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 10px;
+        color: rgba(255,255,255,0.3);
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+
+    .furniture-item:hover {
+        z-index: 200;
+        box-shadow: 0 0 20px var(--primary-glow);
+    }
+
+    /* Efecto 3D / Isométrico Suave */
+    .furniture-item::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 4px;
+    }
+
+    /* Tipos de muebles */
+    .item-estanteria { 
+        background: linear-gradient(135deg, #334155, #1e293b);
+        box-shadow: 4px 4px 15px rgba(0,0,0,0.5), inset 1px 1px 0 rgba(255,255,255,0.1);
+    }
+    .item-mesa { 
+        background: linear-gradient(135deg, #64748b, #475569);
+        box-shadow: 3px 6px 12px rgba(0,0,0,0.4);
+    }
+    .item-rack { 
+        background: linear-gradient(135deg, #1e293b, #0f172a);
+        border: 2px solid #334155 !important;
+    }
+
+    /* Seleccionado */
+    .furniture-item.selected {
+        outline: 2px solid var(--primary);
+        box-shadow: 0 0 30px var(--primary-glow);
+    }
+
+    /* Controles de redimensión */
+    .resizer {
+        position: absolute;
+        width: 10px;
+        height: 10px;
+        background: white;
+        border: 2px solid var(--primary);
+        border-radius: 50%;
+        bottom: -5px;
+        right: -5px;
+        cursor: nwse-resize;
+        display: none;
+    }
+    .selected .resizer { display: block; }
+</style>
+
+<script>
+    const canvas = document.getElementById('modular-canvas');
+    const furnitureLayer = document.getElementById('furniture-layer');
+    const PIXEL_SCALE = 10; // 1% = 10px
+    let items = JSON.parse('{{ muebles_json|safe }}') || [];
+    let selectedId = null;
+
+    function renderItems() {
+        furnitureLayer.innerHTML = '';
+        items.forEach(item => {
+            const div = document.createElement('div');
+            div.className = `furniture-item item-${item.tipo} ${selectedId === item.id ? 'selected' : ''}`;
+            div.style.left = item.x + '%';
+            div.style.top = item.y + '%';
+            div.style.width = item.w + '%';
+            div.style.height = item.h + '%';
+            div.innerHTML = `<span>${item.nombre || item.tipo}</span><div class="resizer"></div>`;
+            
+            div.onmousedown = (e) => startDrag(e, item.id);
+            furnitureLayer.appendChild(div);
+        });
+    }
+
+    let isDragging = false;
+    let dragItem = null;
+    let startX, startY;
+    let offsetPos = { x: 0, y: 0 };
+
+    function startDrag(e, id) {
+        if (e.target.classList.contains('resizer')) {
+            startResize(e, id);
+            return;
+        }
+        e.stopPropagation();
+        selectedId = id;
+        isDragging = true;
+        dragItem = items.find(i => i.id === id);
+        
+        const rect = canvas.getBoundingClientRect();
+        const mouseX = ((e.clientX - rect.left) / rect.width) * 100;
+        const mouseY = ((e.clientY - rect.top) / rect.height) * 100;
+        
+        offsetPos.x = mouseX - dragItem.x;
+        offsetPos.y = mouseY - dragItem.y;
+        
+        renderItems();
+    }
+
+    function startResize(e, id) {
+        e.stopPropagation();
+        isDragging = false;
+        let item = items.find(i => i.id === id);
+        
+        const onMouseMove = (moveE) => {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = ((moveE.clientX - rect.left) / rect.width) * 100;
+            const mouseY = ((moveE.clientY - rect.top) / rect.height) * 100;
+            
+            let newW = mouseX - item.x;
+            let newH = mouseY - item.y;
+            
+            // Snap magnético al redimensionar (5%)
+            item.w = Math.max(2, Math.round(newW / 2) * 2);
+            item.h = Math.max(2, Math.round(newH / 2) * 2);
+            renderItems();
+        };
+        
+        const onMouseUp = () => {
+            window.removeEventListener('mousemove', onMouseMove);
+            window.removeEventListener('mouseup', onMouseUp);
+        };
+        
+        window.addEventListener('mousemove', onMouseMove);
+        window.addEventListener('mouseup', onMouseUp);
+    }
+
+    window.onmousemove = (e) => {
+        if (!isDragging || !dragItem) return;
+        
+        const rect = canvas.getBoundingClientRect();
+        let mouseX = ((e.clientX - rect.left) / rect.width) * 100;
+        let mouseY = ((e.clientY - rect.top) / rect.height) * 100;
+        
+        let targetX = mouseX - offsetPos.x;
+        let targetY = mouseY - offsetPos.y;
+        
+        // SNAP MAGNÉTICO (2.5% de incremento)
+        dragItem.x = Math.round(targetX / 2.5) * 2.5;
+        dragItem.y = Math.round(targetY / 2.5) * 2.5;
+        
+        // Constrain
+        dragItem.x = Math.max(0, Math.min(100 - dragItem.w, dragItem.x));
+        dragItem.y = Math.max(0, Math.min(100 - dragItem.h, dragItem.y));
+        
+        renderItems();
+    };
+
+    window.onmouseup = () => {
+        isDragging = false;
+        dragItem = null;
+    };
+
+    // Agregar nuevo componente (Drop from Sidebar)
+    canvas.ondragover = (e) => e.preventDefault();
+    canvas.ondrop = (e) => {
+        e.preventDefault();
+        const type = e.dataTransfer.getData('text/plain');
+        if (!type) return;
+        
+        const rect = canvas.getBoundingClientRect();
+        const x = ((e.clientX - rect.left) / rect.width) * 100;
+        const y = ((e.clientY - rect.top) / rect.height) * 100;
+        
+        const comp = document.querySelector(`[data-type="${type}"]`);
+        const w = parseFloat(comp.dataset.w);
+        const h = parseFloat(comp.dataset.h);
+        
+        const newItem = {
+            id: 'new_' + Date.now(),
+            tipo: type,
+            nombre: type.charAt(0).toUpperCase() + type.slice(1),
+            x: Math.round(x / 2.5) * 2.5,
+            y: Math.round(y / 2.5) * 2.5,
+            w: w,
+            h: h
+        };
+        
+        items.push(newItem);
+        selectedId = newItem.id;
+        renderItems();
+    };
+
+    document.querySelectorAll('.draggable-component').forEach(comp => {
+        comp.ondragstart = (e) => {
+            e.dataTransfer.setData('text/plain', comp.dataset.type);
+        };
+    });
+
+    // Guardado
+    async function saveModularLayout() {
+        window.showIsland("Guardando layout...", 0, 'loading');
+        try {
+            const res = await fetch(`/api/plano/{{ plano.id }}/save_modular`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ items: items })
+            });
+            const data = await res.json();
+            if (data.success) {
+                window.showIsland("Layout guardado con éxito ✓", 2000, 'success');
+                setTimeout(() => location.reload(), 1500);
+            }
+        } catch (e) {
+            window.showIsland("Error al guardar", 3000, 'error');
+        }
+    }
+
+    // Inicializar
+    renderItems();
+</script>
+{% endblock %}

@@ -1060,11 +1060,37 @@ def nuevo_plano():
         file = request.files.get('file')
         drawing_data = request.form.get('canvas_data') or request.form.get('drawing_data')
         
+        metodo = request.form.get('metodo')
+        template_type = request.form.get('template_type')
+        
         filename = None
-        if file and file.filename != '':
+        if metodo == 'upload' and file and file.filename != '':
             filename = secure_filename(file.filename)
             filename = upload_image_to_gcs(file, filename)
-        elif drawing_data:
+        elif metodo == 'template' and template_type:
+            # Crear un fondo minimalista según la plantilla
+            # Por ahora usamos una imagen blanca con grid sutil (generada via PIL o simplemente una constante)
+            # Para simplificar y que sea "limpio", subimos una imagen de 1000x1000 blanca.
+            try:
+                from PIL import Image, ImageDraw
+                img = Image.new('RGB', (1000, 1000), color='#f8f9fa')
+                draw = ImageDraw.Draw(img)
+                # Dibujar grid suave
+                for i in range(0, 1000, 50):
+                    draw.line([(i, 0), (i, 1000)], fill='#e9ecef', width=1)
+                    draw.line([(0, i), (1000, i)], fill='#e9ecef', width=1)
+                
+                import io
+                img_io = io.BytesIO()
+                img.save(img_io, 'PNG')
+                img_io.seek(0)
+                temp_filename = f"template_{template_type}_{uuid.uuid4().hex[:6]}.png"
+                filename = upload_image_to_gcs(img_io, temp_filename)
+            except Exception as e:
+                app.logger.error(f"Error generando template: {e}")
+                filename = "default_white.png" # Fallback
+
+        elif metodo == 'draw' and drawing_data:
             # Procesar imagen del canvas (base64) en memoria
             try:
                 import io
@@ -1082,6 +1108,23 @@ def nuevo_plano():
         if filename:
             nuevo = Plano(nombre=nombre, imagen_path=filename)
             db.session.add(nuevo)
+            db.session.flush() # Para tener el ID
+
+            # Pre-poblar muebles según el template
+            if metodo == 'template':
+                if template_type == 'galpon':
+                    # Dos estanterías industriales largas
+                    db.session.add(Mueble(tipo='estanteria', nombre='Rack A1', pos_x=10, pos_y=10, ancho=5, alto=80, plano_id=nuevo.id))
+                    db.session.add(Mueble(tipo='estanteria', nombre='Rack B2', pos_x=85, pos_y=10, ancho=5, alto=80, plano_id=nuevo.id))
+                elif template_type == 'casa':
+                    # Una mesa y un estante
+                    db.session.add(Mueble(tipo='mesa', nombre='Mesa Comedor', pos_x=40, pos_y=40, ancho=20, alto=10, plano_id=nuevo.id))
+                    db.session.add(Mueble(tipo='estanteria', nombre='Biblioteca', pos_x=10, pos_y=10, ancho=30, alto=5, plano_id=nuevo.id))
+                elif template_type == 'taller':
+                    # Banco de trabajo y estante de herramientas
+                    db.session.add(Mueble(tipo='mesa', nombre='Banco de Trabajo', pos_x=20, pos_y=70, ancho=60, alto=15, plano_id=nuevo.id))
+                    db.session.add(Mueble(tipo='estanteria', nombre='Panel de Herramientas', pos_x=20, pos_y=10, ancho=60, alto=5, plano_id=nuevo.id))
+
             db.session.commit()
             flash(f'✓ Plano "{nombre}" creado en la nube con éxito.')
             return redirect(url_for('list_planos'))
@@ -1114,6 +1157,53 @@ def eliminar_plano(plano_id):
     db.session.commit()
     flash(f'Plano "{nombre}" eliminado correctamente.')
     return redirect(url_for('list_planos'))
+
+@app.route('/plano/<int:plano_id>/modular_editor')
+def modular_editor(plano_id):
+    plano = Plano.query.get_or_404(plano_id)
+    # Convertir muebles a JSON para el frontend
+    muebles_list = []
+    for m in plano.muebles:
+        muebles_list.append({
+            'id': m.id,
+            'tipo': m.tipo,
+            'nombre': m.nombre,
+            'x': m.pos_x,
+            'y': m.pos_y,
+            'w': m.ancho,
+            'h': m.alto
+        })
+    import json
+    return render_template('plano_modular_editor.html', plano=plano, muebles_json=json.dumps(muebles_list))
+
+@app.route('/api/plano/<int:plano_id>/save_modular', methods=['POST'])
+def save_modular_layout(plano_id):
+    plano = Plano.query.get_or_404(plano_id)
+    data = request.json
+    items = data.get('items', [])
+
+    try:
+        # Limpiar muebles anteriores (o actualizar si quisiéramos ser más quirúrgicos)
+        # Por ahora, borramos y recreamos para asegurar consistencia con el editor
+        Mueble.query.filter_by(plano_id=plano_id).delete()
+        
+        for item in items:
+            nuevo_mueble = Mueble(
+                plano_id=plano_id,
+                nombre=item.get('nombre'),
+                tipo=item.get('tipo'),
+                pos_x=item.get('x'),
+                pos_y=item.get('y'),
+                ancho=item.get('w'),
+                alto=item.get('h')
+            )
+            db.session.add(nuevo_mueble)
+        
+        db.session.commit()
+        return jsonify({'success': True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
 
 @app.route('/plano/<int:plano_id>')
 def ver_plano(plano_id):
@@ -1166,11 +1256,20 @@ def ver_plano(plano_id):
                         })
                 except: continue
 
+        # Preparar MUEBLES (Modular Revision 69)
+        muebles_list = []
+        for m in (plano.muebles or []):
+            muebles_list.append({
+                'id': m.id, 'tipo': m.tipo, 'nombre': m.nombre,
+                'x': m.pos_x, 'y': m.pos_y, 'w': m.ancho, 'h': m.alto
+            })
+
         return render_template('plano_view.html', 
                              plano=plano, 
                              pins=pins_data,
                              unplaced=unplaced_data,
                              hotspots=hotspots_data,
+                             muebles_json=json.dumps(muebles_list),
                              ubicaciones_sin_plano=ubicaciones_sin_plano)
     except Exception as e:
         vanguard_log(f"ERROR CRÍTICO en ver_plano({plano_id}): {str(e)}")

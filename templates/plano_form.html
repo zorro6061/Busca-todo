@@ -16,18 +16,41 @@
             </div>
 
             <div style="margin-bottom: var(--space-lg);">
-                <label>Método de Visualización</label>
-                <div class="grid grid-2" style="gap: var(--space-sm);">
+                <div class="grid grid-3" style="gap: var(--space-sm);">
                     <button type="button" id="btn-mode-upload" class="btn btn-primary"
                         style="border-radius: var(--radius-md);">
-                        📸 Nueva Foto Maestra
+                        📸 Foto
+                    </button>
+                    <button type="button" id="btn-mode-template" class="btn btn-secondary"
+                        style="border-radius: var(--radius-md);">
+                        ✨ Plantilla
                     </button>
                     <button type="button" id="btn-mode-draw" class="btn btn-secondary"
                         style="border-radius: var(--radius-md); opacity: 0.5;">
-                        ✏️ Croquis (Legacy)
+                        ✏️ Croquis
                     </button>
                 </div>
                 <input type="hidden" name="metodo" id="input-metodo" value="upload">
+                <input type="hidden" name="template_type" id="input-template-type" value="">
+            </div>
+
+            <!-- Template selection section -->
+            <div id="section-template" style="display: none; margin-bottom: var(--space-lg);" class="reveal">
+                <label>Elegí una estructura base</label>
+                <div class="grid grid-3" style="gap: var(--space-md); margin-top: 12px;">
+                    <div class="template-card" onclick="selectTemplate('galpon')" id="tpl-galpon">
+                        <span class="tpl-icon">🏭</span>
+                        <p>Galpón</p>
+                    </div>
+                    <div class="template-card" onclick="selectTemplate('casa')" id="tpl-casa">
+                        <span class="tpl-icon">🏠</span>
+                        <p>Casa</p>
+                    </div>
+                    <div class="template-card" onclick="selectTemplate('taller')" id="tpl-taller">
+                        <span class="tpl-icon">🛠️</span>
+                        <p>Taller</p>
+                    </div>
+                </div>
             </div>
 
             <!-- Upload Section -->
@@ -77,27 +100,52 @@
 </div>
 
 <script>
-    const btnUpload = document.getElementById('btn-mode-upload');
-    const btnDraw = document.getElementById('btn-mode-draw');
-    const sectionUpload = document.getElementById('section-upload');
-    const sectionDraw = document.getElementById('section-draw');
-    const inputMetodo = document.getElementById('input-metodo');
+    const btnTemplate = document.getElementById('btn-mode-template');
+    const sectionTemplate = document.getElementById('section-template');
+    const inputTemplateType = document.getElementById('input-template-type');
+
+    function resetButtons() {
+        btnUpload.className = 'btn btn-secondary';
+        btnTemplate.className = 'btn btn-secondary';
+        btnDraw.className = 'btn btn-secondary';
+        btnUpload.style.opacity = '1';
+        btnTemplate.style.opacity = '1';
+        btnDraw.style.opacity = '1';
+    }
 
     btnUpload.onclick = () => {
+        resetButtons();
         inputMetodo.value = 'upload';
         btnUpload.className = 'btn btn-primary';
-        btnDraw.className = 'btn btn-secondary';
         sectionUpload.style.display = 'block';
         sectionDraw.style.display = 'none';
+        sectionTemplate.style.display = 'none';
+    };
+
+    btnTemplate.onclick = () => {
+        resetButtons();
+        inputMetodo.value = 'template';
+        btnTemplate.className = 'btn btn-primary';
+        sectionUpload.style.display = 'none';
+        sectionDraw.style.display = 'none';
+        sectionTemplate.style.display = 'block';
     };
 
     btnDraw.onclick = () => {
+        resetButtons();
         inputMetodo.value = 'draw';
-        btnUpload.className = 'btn btn-secondary';
         btnDraw.className = 'btn btn-primary';
         sectionUpload.style.display = 'none';
         sectionDraw.style.display = 'block';
+        sectionTemplate.style.display = 'none';
         resizeCanvas();
+    };
+
+    window.selectTemplate = (type) => {
+        inputTemplateType.value = type;
+        document.querySelectorAll('.template-card').forEach(c => c.classList.remove('active'));
+        document.getElementById(`tpl-${type}`).classList.add('active');
+        window.showIsland(`Plantilla ${type.toUpperCase()} seleccionada`, 1500, 'success');
     };
 
     // Canvas Logic
@@ -187,6 +235,49 @@
 <style>
     .tool-btn.active {
         box-shadow: 0 0 10px var(--primary-glow);
+    }
+
+    .template-card {
+        background: rgba(255, 255, 255, 0.03);
+        border: 1.5px solid var(--glass-border);
+        border-radius: var(--radius-xl);
+        padding: var(--space-lg);
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .template-card:hover {
+        background: rgba(255, 255, 255, 0.06);
+        border-color: rgba(255, 255, 255, 0.2);
+        transform: translateY(-4px);
+    }
+
+    .template-card.active {
+        background: rgba(99, 102, 241, 0.1);
+        border-color: var(--primary);
+        box-shadow: 0 10px 30px rgba(99, 102, 241, 0.2);
+    }
+
+    .tpl-icon {
+        font-size: 2rem;
+        margin-bottom: 4px;
+        display: block;
+    }
+
+    .template-card p {
+        margin: 0;
+        font-weight: 600;
+        font-size: 0.9rem;
+        color: var(--text-dim);
+    }
+
+    .template-card.active p {
+        color: white;
     }
 </style>
 {% endblock %}

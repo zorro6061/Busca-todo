@@ -77,6 +77,7 @@
                         flex-direction: column; gap: 4px;
                     ">
                         {% if plano %}
+                        <a href="{{ url_for('modular_editor', plano_id=plano.id) }}" class="btn btn-sm btn-secondary" style="width:100%; text-align:left; border:none; background:transparent;">📦 Editor Modular (Beta)</a>
                         <a href="{{ url_for('moldes_selection', plano_id=plano.id) }}" class="btn btn-sm btn-secondary" style="width:100%; text-align:left; border:none; background:transparent;">📐 Sistema de Moldes</a>
                         <a href="{{ url_for('ver_plano_3d', plano_id=plano.id) }}" class="btn btn-sm btn-secondary" style="width:100%; text-align:left; border:none; background:transparent;">🧊 Ver en 3D</a>
                         {% endif %}
@@ -149,6 +150,9 @@
                             style="position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none;">
                     </div>
                     {% endif %}
+
+                    <!-- Modular Furniture Layer (Revision 69) -->
+                    <div id="muebles-layer" style="position: absolute; inset: 0; pointer-events: none; z-index: 40;"></div>
 
                     <!-- Hotspots & Pins Layer -->
                     <div id="pins-layer" style="position: absolute; inset: 0; pointer-events: none; z-index: 100;"></div>
@@ -846,9 +850,34 @@
         document.getElementById('btn-nueva-ubicacion').onclick = () =>
             document.getElementById('modal-nueva').style.display = 'flex';
 
+        // ── RENDER MUEBLES (Revision 69) ──
+        const mueblesData = JSON.parse('{{ muebles_json|safe }}') || [];
+        function renderMuebles() {
+            const layer = document.getElementById('muebles-layer');
+            layer.innerHTML = '';
+            mueblesData.forEach(m => {
+                const div = document.createElement('div');
+                div.className = `furniture-item-view item-${m.tipo}`;
+                div.style.left = m.x + '%';
+                div.style.top = m.y + '%';
+                div.style.width = m.w + '%';
+                div.style.height = m.h + '%';
+                div.style.pointerEvents = 'auto';
+                div.innerHTML = `<div class="f-label">${m.nombre}</div>`;
+                
+                div.onclick = (e) => {
+                    e.stopPropagation();
+                    const habitacion = "{{ plano.nombre if plano else '' }}";
+                    window.location.href = `/gallery?habitacion=${encodeURIComponent(habitacion)}&mueble=${encodeURIComponent(m.nombre)}`;
+                };
+                layer.appendChild(div);
+            });
+        }
+
         // Renderizado inicial
         window.addEventListener('load', () => {
             renderHotspots();
+            renderMuebles();
             // Mantener compatibilidad con los pines existentes (opcional)
             if (typeof renderMap === 'function') renderMap();
         });
@@ -952,6 +981,35 @@
             border-radius: 50%;
             box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
             animation: led-pulse 2s infinite;
+        }
+
+        /* ── MUEBLES (Revision 69) ── */
+        .furniture-item-view {
+            position: absolute;
+            background: rgba(99, 102, 241, 0.1);
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .furniture-item-view:hover {
+            background: rgba(99, 102, 241, 0.2);
+            border-color: var(--primary);
+            box-shadow: 0 0 15px var(--primary-glow);
+        }
+        .item-estanteria { border-left: 4px solid var(--primary); }
+        .item-mesa { border-bottom: 4px solid #94a3b8; }
+        
+        .f-label {
+            font-size: 0.6rem;
+            color: white;
+            opacity: 0.6;
+            font-weight: 700;
+            text-transform: uppercase;
+            pointer-events: none;
         }
 
         @keyframes led-pulse {
