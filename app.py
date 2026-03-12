@@ -1312,7 +1312,7 @@ def health_check():
         
         return jsonify({
             "status": "Healthy",
-            "version": "1.0.6-master-fix",
+            "version": "1.0.6-ui-rev69",
             "database": db_status,
             "environment": env,
             "stats": {
