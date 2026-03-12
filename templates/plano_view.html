@@ -147,7 +147,7 @@
                             Nueva Foto Maestra
                         </label>
                         <!-- Input nativo vinculado al label: NO synthetic click, abre galería de Rafael directo -->
-                        <input type="file" id="file-input-maestro" accept="image/*"
+                        <input type="file" id="file-input-maestro" accept="image/*" capture="environment"
                             style="position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none;">
                     </div>
                     {% endif %}
@@ -253,7 +253,7 @@
                 </div>
                 <div style="margin-bottom: var(--space-lg);">
                     <label>Foto de referencia</label>
-                    <input type="file" name="file" accept="image/*" required style="font-size: 0.8rem;">
+                    <input type="file" name="file" accept="image/*" capture="environment" required style="font-size: 0.8rem;">
                 </div>
                 <div style="display: flex; gap: 10px;">
                     <button type="button" onclick="document.getElementById('modal-nueva').style.display='none'"

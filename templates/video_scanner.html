@@ -78,7 +78,7 @@
                 <h3 style="margin-bottom: 8px;">Cargar Video del Recorrido</h3>
                 <p style="color: var(--text-dim); margin-bottom: var(--space-lg); font-size: 0.85rem;">Grabá el espacio lentamente. Máximo 200 MB.</p>
                 <button type="button" class="btn btn-secondary">Seleccionar Archivo (Foto o Video)</button>
-                <input type="file" id="video-input" name="video" accept="image/*,video/*" style="display: none;"
+                <input type="file" id="video-input" name="video" accept="image/*,video/*" capture="environment" style="display: none;"
                     onchange="checkAndSubmitVideo()">
             </div>
             <p id="video-warn" style="color: var(--warning, #f59e0b); font-size: 0.8rem; margin-top: 8px; display: none; text-align: center;">
