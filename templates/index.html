@@ -1,6 +1,73 @@
 {% extends 'layout.html' %}
 
 {% block content %}
+
+<!-- ══ ONBOARDING MODAL (Revision 69) ══ -->
+{% if show_onboarding %}
+<div id="onboarding-overlay" class="onboarding-overlay" onclick="dismissOnboarding()">
+    <div class="onboarding-modal" onclick="event.stopPropagation()">
+        <div class="onboarding-icon-box">🔍</div>
+        <h2>¡Bienvenido a tu buscador físico!</h2>
+        <p>Encontrá cualquier objeto de tu casa, taller o galpón en segundos. Olvidate de revolver cajas.</p>
+        
+        <div class="onboarding-steps">
+            <div class="onboarding-step">
+                <div class="step-icon">🗺️</div>
+                <div class="step-text">
+                    <h4>Creá tu Mapa</h4>
+                    <p>Empezá eligiendo una plantilla base (Casa, Galpón o Taller).</p>
+                </div>
+            </div>
+            <div class="onboarding-step">
+                <div class="step-icon">🛋️</div>
+                <div class="step-text">
+                    <h4>Ubicá tus Muebles</h4>
+                    <p>Arrastrá estanterías, roperos o cajas al plano modular.</p>
+                </div>
+            </div>
+            <div class="onboarding-step">
+                <div class="step-icon">📸</div>
+                <div class="step-text">
+                    <h4>Sacá la Foto</h4>
+                    <p>Tocá un mueble, sacale foto al interior y la IA hará el resto.</p>
+                </div>
+            </div>
+        </div>
+
+        <button class="btn btn-primary onboarding-cta" onclick="finishOnboarding(true)">
+            Crear mi primer mapa
+        </button>
+    </div>
+</div>
+
+<script>
+    function dismissOnboarding() {
+        const overlay = document.getElementById('onboarding-overlay');
+        if (overlay) overlay.style.display = 'none';
+        markAsSeen();
+    }
+
+    function finishOnboarding(redirect) {
+        const overlay = document.getElementById('onboarding-overlay');
+        if (overlay) overlay.style.display = 'none';
+        markAsSeen();
+        if (redirect) {
+            window.location.href = "{{ url_for('nuevo_plano') }}";
+        }
+    }
+
+    function markAsSeen() {
+        fetch('/api/user/onboarding_done', { method: 'POST' })
+            .then(r => r.json())
+            .then(data => console.log('Onboarding state saved:', data));
+    }
+
+    // Cerrar con Escape
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') dismissOnboarding();
+    });
+</script>
+{% endif %}
 <!-- ══ SMART SEARCH HERO (Starlink Aesthetic) ══ -->
 {% if session.user_id %}
 <section class="hero-search-section">

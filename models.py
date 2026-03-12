@@ -103,6 +103,14 @@ class Mueble(db.Model):
     material = db.Column(db.String(50), default='madera') # madera, metal, plastico
     plano_id = db.Column(db.Integer, db.ForeignKey('planos.id'), nullable=False)
 
+class User(db.Model):
+    __tablename__ = 'users'
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    name = db.Column(db.String(100), nullable=True)
+    has_seen_onboarding = db.Column(db.Boolean, default=False)
+    fecha_registro = db.Column(db.DateTime, default=datetime.utcnow)
+
 class Config(db.Model):
     __tablename__ = 'config'
     id = db.Column(db.Integer, primary_key=True)

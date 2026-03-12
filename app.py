@@ -18,7 +18,7 @@ import google.oauth2.id_token
 import google_auth_oauthlib.flow
 from google.auth.transport.requests import Request
 from sqlalchemy import text
-from models import db, Ubicacion, Objeto, Plano, Config, Mueble, Zona
+from models import db, Ubicacion, Objeto, Plano, Config, Mueble, Zona, User
 from werkzeug.utils import secure_filename
 from dotenv import load_dotenv
 from storage_manager import upload_image_to_gcs, get_gcs_url
@@ -113,7 +113,7 @@ def fix_db_sequences():
     
     vanguard_log("Iniciando auditoría de secuencias PostgreSQL...")
     try:
-        tables = ['ubicaciones', 'objetos', 'planos', 'muebles', 'zonas', 'config']
+        tables = ['ubicaciones', 'objetos', 'planos', 'muebles', 'zonas', 'config', 'users']
         for table in tables:
             # Obtiene el nombre real de la secuencia y la resetea al MAX(id) + 1
             sql = f"SELECT setval(pg_get_serial_sequence('{table}', 'id'), (SELECT COALESCE(MAX(id), 0) + 1 FROM {table}), false)"
@@ -169,11 +169,21 @@ def migrate_semantic_columns():
         vanguard_log(f"⚠️ Migración semántica (no fatal): {e}")
         db.session.rollback()
 
+def ensure_user_table():
+    """Crea la tabla de usuarios si no existe y maneja migraciones menores."""
+    try:
+        # Esto crea todas las tablas definidas en models.py que no existan
+        db.create_all()
+        vanguard_log("✅ Tabla 'users' verificada/creada.")
+    except Exception as e:
+        vanguard_log(f"⚠️ Error verificando tabla users: {e}")
+
 # DIAGNÓSTICO DE ARRANQUE (Visible en Gunicorn)
 with app.app_context():
     initialize_folders()
     fix_db_sequences()
     migrate_semantic_columns()
+    ensure_user_table()
 
 vanguard_log("--- STAGE 1: SYSTEM READY ---")
 
@@ -503,11 +513,24 @@ def callback():
             flash(f"Error: El acceso está restringido. Tu cuenta ({email}) no está en la lista autorizada.")
             return redirect(url_for('login'))
 
+        # SINCRONIZACIÓN CON DB: Asegurar que el usuario existe
+        user = User.query.filter_by(email=email).first()
+        if not user:
+            user = User(email=email, name=id_info.get('name'))
+            db.session.add(user)
+            db.session.commit()
+            vanguard_log(f"USUARIO NUEVO CREADO: {email}")
+        else:
+            # Actualizar nombre si cambió
+            user.name = id_info.get('name')
+            db.session.commit()
+
         session['user_id'] = email
         session['user_name'] = id_info.get('name')
         session['user_picture'] = id_info.get('picture')
+        session['has_seen_onboarding'] = user.has_seen_onboarding
         
-        vanguard_log(f"ACCESO CONCEDIDO: {email} logueado con éxito.")
+        vanguard_log(f"ACCESO CONCEDIDO: {email} logueado con éxito. Onboarding: {user.has_seen_onboarding}")
         flash(f"Bienvenido, {session['user_name']}.")
         return redirect(url_for('index'))
         
@@ -557,12 +580,21 @@ def index():
     
     ultima_ubi = Ubicacion.query.order_by(Ubicacion.id.desc()).first()
     
+    # Verificar onboarding para el usuario actual
+    user_email = session.get('user_id')
+    show_onboarding = False
+    if user_email:
+        user = User.query.filter_by(email=user_email).first()
+        if user and not user.has_seen_onboarding:
+            show_onboarding = True
+
     return render_template('index.html', 
                          plano_count=Plano.query.count(),
                          obj_count=objetos_count, 
                          cat_count=categorias_count,
                          avg_conf=avg_conf,
-                         ultima_ubi=ultima_ubi)
+                         ultima_ubi=ultima_ubi,
+                         show_onboarding=show_onboarding)
 
 @app.after_request
 def add_cache_control(response):
@@ -2598,6 +2630,23 @@ def admin_backfill():
     except Exception as e:
         db.session.rollback()
         return f"Error en Backfill: {str(e)}", 500
+
+@app.route('/api/user/onboarding_done', methods=['POST'])
+def onboarding_done():
+    user_email = session.get('user_id')
+    if not user_email:
+        return jsonify({"status": "error", "message": "No session"}), 401
+    
+    try:
+        user = User.query.filter_by(email=user_email).first()
+        if user:
+            user.has_seen_onboarding = True
+            db.session.commit()
+            session['has_seen_onboarding'] = True
+            return jsonify({"status": "success"})
+        return jsonify({"status": "error", "message": "User not found"}), 404
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 if __name__ == '__main__':
     # Usar el puerto de la variable de entorno PORT para Render
