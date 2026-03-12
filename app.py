@@ -1277,17 +1277,19 @@ def ver_plano(plano_id):
         vanguard_log(traceback.format_exc())
         
         # Intentar recuperar el objeto plano por fuera si falló antes
+        plano_fb = None
         try:
             plano_fb = Plano.query.get(plano_id)
         except:
-            plano_fb = None
+            pass
             
-        flash("Modo de Recuperación Activado: Algunos datos podrían no mostrarse.")
+        flash(f"Modo de Recuperación: {str(e)[:100]}")
         return render_template('plano_view.html', 
                              plano=plano_fb, 
                              pins=[],
                              unplaced=[],
                              hotspots=[],
+                             muebles_json='[]',
                              ubicaciones_sin_plano=[])
 
 
