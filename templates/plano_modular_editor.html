@@ -193,7 +193,14 @@
             div.style.top = item.y + '%';
             div.style.width = item.w + '%';
             div.style.height = item.h + '%';
-            div.innerHTML = `<span>${item.nombre || item.tipo}</span><div class="resizer"></div>`;
+            
+            // ISO 3D Body
+            div.innerHTML = `
+                <div class="furniture-body">
+                    ${item.nombre || item.tipo}
+                </div>
+                <div class="resizer"></div>
+            `;
             
             div.onmousedown = (e) => startDrag(e, item.id);
             furnitureLayer.appendChild(div);

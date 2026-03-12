@@ -59,6 +59,7 @@
             <div style="display: flex; gap: 8px; align-items: center;">
                 {% if plano %}
                 <a href="{{ url_for('video_scanner', plano_id=plano.id) }}" class="btn btn-sm btn-secondary" style="border-radius: 980px; padding: 6px 16px;">📹 Scanner</a>
+                <a href="{{ url_for('modular_editor', plano_id=plano.id) }}" class="btn btn-sm btn-primary" style="border-radius: 980px; padding: 6px 16px;">🏗️ Editor Modular</a>
                 <a href="{{ url_for('editor_plano', plano_id=plano.id) }}" class="btn btn-sm btn-secondary" style="border-radius: 980px; padding: 6px 16px;">✏️ Zonas</a>
                 {% endif %}
 
@@ -857,13 +858,13 @@
             layer.innerHTML = '';
             mueblesData.forEach(m => {
                 const div = document.createElement('div');
-                div.className = `furniture-item-view item-${m.tipo}`;
+                div.className = `furniture-item item-${m.tipo}`;
                 div.style.left = m.x + '%';
                 div.style.top = m.y + '%';
                 div.style.width = m.w + '%';
                 div.style.height = m.h + '%';
                 div.style.pointerEvents = 'auto';
-                div.innerHTML = `<div class="f-label">${m.nombre}</div>`;
+                div.innerHTML = `<div class="furniture-body">${m.nombre}</div>`;
                 
                 div.onclick = (e) => {
                     e.stopPropagation();

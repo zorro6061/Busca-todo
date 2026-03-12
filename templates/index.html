@@ -131,6 +131,34 @@
 </section>
 {% endif %}
 
+<!-- ══ ACTION CENTER (One-click jump to Revision 69) ══ -->
+<section class="reveal" style="padding: 20px;">
+    <div class="action-center-grid">
+        <!-- Tarjeta 1: Editor Modular -->
+        <div class="card action-card" onclick="window.location='{{ url_for('list_planos') }}'">
+            <span class="badge-new">RECOMENDADO</span>
+            <span class="action-icon">🏗️</span>
+            <h3>Arquitectura Modular</h3>
+            <p>Armá tu espacio en 30 segundos con bloques inteligentes.</p>
+        </div>
+
+        <!-- Tarjeta 2: Plantillas Inteligentes -->
+        <div class="card action-card" onclick="window.location='{{ url_for('nuevo_plano') }}'">
+            <span class="badge-new">BETA</span>
+            <span class="action-icon">✨</span>
+            <h3>Librería de Moldes</h3>
+            <p>Usá estructuras base de Galpón, Casa o Taller con un clic.</p>
+        </div>
+
+        <!-- Tarjeta 3: Scanner Multimodal -->
+        <div class="card action-card" onclick="window.location='{{ url_for('list_planos') }}'">
+            <span class="action-icon">📹</span>
+            <h3>Video Scanner IA</h3>
+            <p>Indexá cientos de objetos recorriendo tu espacio con el celu.</p>
+        </div>
+    </div>
+</section>
+
 <!-- Bento Grid (Solo estadísticas clave) -->
 <section class="stats-section">
     <div class="bento-grid-minimal">

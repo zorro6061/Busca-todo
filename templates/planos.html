@@ -9,6 +9,37 @@
     <a href="{{ url_for('nuevo_plano') }}" class="btn btn-primary">+ Nuevo Plano</a>
 </div>
 
+<!-- ══ QUICK STARTERS (Revision 69) ══ -->
+<div class="reveal" style="margin-bottom: var(--space-xl);">
+    <h4 style="margin-bottom: 12px; opacity: 0.7;">🚀 Abrir Plantilla Maestra</h4>
+    <div class="grid grid-3" style="gap: 12px;">
+        <div class="card card-interactive" style="padding: 16px; display: flex; align-items: center; gap: 12px; background: rgba(99,102,241,0.05); border-color: rgba(99,102,241,0.2);"
+             onclick="window.location='{{ url_for('nuevo_plano') }}?template=galpon'">
+            <span style="font-size: 1.5rem;">🏭</span>
+            <div>
+                <h4 style="margin:0; font-size: 0.85rem; color: #fff;">Nuevo Galpón</h4>
+                <p style="font-size: 0.7rem; color: var(--text-dim);">Estructura Industrial</p>
+            </div>
+        </div>
+        <div class="card card-interactive" style="padding: 16px; display: flex; align-items: center; gap: 12px; background: rgba(139,92,246,0.05); border-color: rgba(139,92,246,0.2);"
+             onclick="window.location='{{ url_for('nuevo_plano') }}?template=casa'">
+            <span style="font-size: 1.5rem;">🏠</span>
+            <div>
+                <h4 style="margin:0; font-size: 0.85rem; color: #fff;">Nueva Casa</h4>
+                <p style="font-size: 0.7rem; color: var(--text-dim);">Estructura Hogar</p>
+            </div>
+        </div>
+        <div class="card card-interactive" style="padding: 16px; display: flex; align-items: center; gap: 12px; background: rgba(16,185,129,0.05); border-color: rgba(16,185,129,0.2);"
+             onclick="window.location='{{ url_for('nuevo_plano') }}?template=taller'">
+            <span style="font-size: 1.5rem;">🛠️</span>
+            <div>
+                <h4 style="margin:0; font-size: 0.85rem; color: #fff;">Nuevo Taller</h4>
+                <p style="font-size: 0.7rem; color: var(--text-dim);">Estructura Táctica</p>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="grid grid-3">
     {% for plano in planos %}
     <div class="card card-interactive reveal {% if loop.index <= 3 %}reveal-delay-{{ loop.index }}{% endif %}"
