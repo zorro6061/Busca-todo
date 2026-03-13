@@ -1,3 +1,16 @@
+import base64
+from werkzeug.exceptions import RequestEntityTooLarge
+import urllib.parse
+from storage_manager import upload_image_to_gcs, get_gcs_url
+from dotenv import load_dotenv
+from werkzeug.utils import secure_filename
+from models import db, Ubicacion, Objeto, Plano, Config, Mueble, Zona, User
+from sqlalchemy import text
+from google.auth.transport.requests import Request
+import google_auth_oauthlib.flow
+import google.oauth2.id_token
+import google.oauth2.credentials
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, send_from_directory, session
 import os
 import sys
 import time
@@ -17,36 +30,29 @@ if SENTRY_DSN and "placeholder" not in SENTRY_DSN:
         dsn=SENTRY_DSN,
         integrations=[FlaskIntegration()],
         environment=SENTRY_ENV,
-        traces_sample_rate=1.0, # Captura el 100% de las transacciones para debug
+        traces_sample_rate=1.0,  # Captura el 100% de las transacciones para debug
         profiles_sample_rate=1.0,
     )
 
 # Función de log robusta para Render y Google Cloud
+
+
 def vanguard_log(msg, level="INFO"):
     """Estandariza logs para visibilidad en Cloud Console (Rev 101)."""
     timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
     # Formato compatible con structured logging básico
     formatted_msg = f"[{level}][VANGUARD][{timestamp}] {msg}"
     print(formatted_msg, file=sys.stderr, flush=True)
-    
+
     # Si es un error crítico, enviarlo manualmente a Sentry si el SDK está activo
     if level == "ERROR" and SENTRY_DSN and "placeholder" not in SENTRY_DSN:
         sentry_sdk.capture_message(msg, level="error")
+
 
 vanguard_log("--- STAGE 0: MODULE LOAD START ---")
 vanguard_log(f"PID: {os.getpid()} | CWD: {os.getcwd()}")
 vanguard_log(f"Python Version: {sys.version}")
 
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, send_from_directory, session
-import google.oauth2.credentials
-import google.oauth2.id_token
-import google_auth_oauthlib.flow
-from google.auth.transport.requests import Request
-from sqlalchemy import text
-from models import db, Ubicacion, Objeto, Plano, Config, Mueble, Zona, User
-from werkzeug.utils import secure_filename
-from dotenv import load_dotenv
-from storage_manager import upload_image_to_gcs, get_gcs_url
 
 vanguard_log("Cargando variables de entorno...")
 load_dotenv()
@@ -60,9 +66,10 @@ GOOGLE_CLIENT_SECRET = os.environ.get('GOOGLE_OAUTH_CLIENT_SECRET')
 if not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET:
     vanguard_log("CRÍTICO: Faltan GOOGLE_OAUTH_CLIENT_ID o CLIENT_SECRET en el entorno.")
 
-SCOPES = ['https://www.googleapis.com/auth/userinfo.email', 'openid', 'https://www.googleapis.com/auth/userinfo.profile']
+SCOPES = ['https://www.googleapis.com/auth/userinfo.email',
+          'openid', 'https://www.googleapis.com/auth/userinfo.profile']
 AUTHORIZED_DOMAIN = 'aperturezen.com'
-WHITELISTED_EMAILS = ['zorro6061@gmail.com', 'pepe.dev.zen@gmail.com'] # Agregando tu cuenta y mi placeholder
+WHITELISTED_EMAILS = ['zorro6061@gmail.com', 'pepe.dev.zen@gmail.com']  # Agregando tu cuenta y mi placeholder
 
 # Inicialización de GCS (Ahora completamente remota en storage_manager)
 
@@ -81,7 +88,6 @@ db_pass = os.environ.get('DB_PASS')
 db_name = os.environ.get('DB_NAME')
 instance_connection_name = os.environ.get('INSTANCE_CONNECTION_NAME')
 
-import urllib.parse
 
 if raw_db_url:
     # MODO PREFERIDO (Render/Sync): Usar DATABASE_URL (codificando contraseña)
@@ -118,9 +124,9 @@ app.config['MAX_CONTENT_LENGTH'] = 200 * 1024 * 1024  # 200MB — permite videos
 app.config.setdefault("UPLOAD_FOLDER", os.environ.get('UPLOAD_FOLDER', os.path.join(basedir, 'uploads')))
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev_key_ctrl_f_123456789')
 
-db.init_app(app) # Registro obligatorio en el top-level
+db.init_app(app)  # Registro obligatorio en el top-level
 
-from werkzeug.exceptions import RequestEntityTooLarge
+
 @app.errorhandler(RequestEntityTooLarge)
 def handle_file_too_large(e):
     app.logger.error(f"[VANGUARD-UPLOAD] Archivo excedió el límite de 200MB: {request.content_length} bytes")
@@ -131,11 +137,13 @@ def handle_file_too_large(e):
     }), 413
 
 # --- UTILS & STARTUP ---
+
+
 def fix_db_sequences():
     """Sincroniza las secuencias de PostgreSQL dinámicamente."""
     if not instance_connection_name and not raw_db_url:
-        return 
-    
+        return
+
     vanguard_log("Iniciando auditoría de secuencias PostgreSQL...")
     try:
         tables = ['ubicaciones', 'objetos', 'planos', 'muebles', 'zonas', 'config', 'users']
@@ -150,18 +158,20 @@ def fix_db_sequences():
         vanguard_log(f"Advertencia en sanación de secuencias: {e}")
         db.session.rollback()
 
+
 def initialize_folders():
     """Crea las carpetas necesarias si no existen."""
     basedir = os.path.abspath(os.path.dirname(__file__))
     upload_path = app.config.get('UPLOAD_FOLDER')
     instance_path = os.path.join(basedir, 'instance')
-    
+
     for folder in [upload_path, instance_path]:
         if folder:
             try:
                 os.makedirs(folder, exist_ok=True)
             except Exception as e:
                 app.logger.error(f"[VANGUARD-STARTUP] Error carpetas: {e}")
+
 
 def migrate_semantic_columns():
     """
@@ -200,6 +210,7 @@ def migrate_semantic_columns():
         vanguard_log(f"⚠️ Migración semántica (no fatal): {e}")
         db.session.rollback()
 
+
 def ensure_user_table():
     """Crea la tabla de usuarios si no existe y maneja migraciones menores."""
     try:
@@ -208,6 +219,7 @@ def ensure_user_table():
         vanguard_log("✅ Tabla 'users' verificada/creada.")
     except Exception as e:
         vanguard_log(f"⚠️ Error verificando tabla users: {e}")
+
 
 # DIAGNÓSTICO DE ARRANQUE (Visible en Gunicorn)
 with app.app_context():
@@ -218,6 +230,7 @@ with app.app_context():
 
 vanguard_log("--- STAGE 1: SYSTEM READY ---")
 
+
 @app.route('/debug-models')
 def debug_models():
     """Endpoint temporal para diagnosticar modelos disponibles."""
@@ -225,10 +238,10 @@ def debug_models():
     client = get_client()
     if not client:
         return jsonify({
-            "error": "Cliente Gemini no inicializado (¿API_KEY faltante?)", 
+            "error": "Cliente Gemini no inicializado (¿API_KEY faltante?)",
             "key_prefix": f"{GEMINI_API_KEY[:6]}***" if GEMINI_API_KEY else "None"
         })
-    
+
     try:
         models = client.models.list()
         model_list = []
@@ -252,6 +265,7 @@ def debug_models():
             "key_prefix": f"{GEMINI_API_KEY[:6]}***" if GEMINI_API_KEY else "None"
         }), 500
 
+
 @app.route('/debug-gemini')
 def debug_gemini():
     """Diagnóstico definitivo para 404 NOT_FOUND y lista de modelos vacía."""
@@ -272,7 +286,7 @@ def debug_gemini():
         try:
             import importlib.metadata
             env_info["sdk_version"] = importlib.metadata.version("google-genai")
-        except:
+        except BaseException:
             env_info["sdk_version"] = "unknown"
 
         client = get_client()
@@ -282,7 +296,7 @@ def debug_gemini():
                 "message": "Cliente no inicializado",
                 "env": env_info
             }), 500
-            
+
         # 3. Prueba de Listado
         try:
             models_iter = client.models.list()
@@ -340,14 +354,17 @@ def debug_gemini():
 
 # Los métodos anteriores upload_to_gcs y save_and_compress_image han sido migrados a storage_manager.py
 
+
 # --- INICIO DEL MOTOR VANGUARD (Safe Boot) ---
 _initialized = False
 _db_ready = False
 
+
 @app.before_request
 def initialize_vanguard():
     # RUTAS DE SALUD: Bypass total (no DB, no auth)
-    if request.path in ['/alive', '/health', '/api/health', '/api/debug-dashboard'] or request.path.startswith('/static/'):
+    if request.path in ['/alive', '/health', '/api/health',
+                        '/api/debug-dashboard'] or request.path.startswith('/static/'):
         return
 
     # --- INICIALIZACIÓN DE BD: Corre para TODAS las rutas (incluyendo home pública) ---
@@ -356,8 +373,9 @@ def initialize_vanguard():
         _initialized = True
         vanguard_log("Iniciando secuencia de boot (Async Robust)...")
         initialize_folders()
-        
+
         import threading
+
         def robust_db_init():
             global _db_ready
             with app.app_context():
@@ -366,10 +384,10 @@ def initialize_vanguard():
                     # Intentar una consulta simple para ver si la BD está ahí
                     from sqlalchemy import text
                     db.session.execute(text("SELECT 1"))
-                    
+
                     vanguard_log("DB: Ejecutando db.create_all()...")
                     db.create_all()
-                    
+
                     vanguard_log("DB: Verificando migraciones...")
                     migraciones = [
                         ('ALTER TABLE muebles ADD COLUMN nombre VARCHAR(100) DEFAULT \'Mueble Sin Nombre\'', "muebles_nombre"),
@@ -380,7 +398,7 @@ def initialize_vanguard():
                         ('ALTER TABLE ubicaciones ADD COLUMN embedding_json TEXT', "ubi_embedding"),
                         ('ALTER TABLE objetos ADD COLUMN embedding_json TEXT', "obj_embedding")
                     ]
-                    
+
                     for sql, name in migraciones:
                         try:
                             db.session.execute(text(sql))
@@ -388,12 +406,12 @@ def initialize_vanguard():
                             vanguard_log(f"DB: Migración {name} aplicada.")
                         except Exception:
                             db.session.rollback()
-                    
+
                     vanguard_log("DB: Secuencia de arranque finalizada con éxito.")
                     _db_ready = True
                 except Exception as e:
                     vanguard_log(f"DB: ERROR CRÍTICO en arranque: {e}")
-        
+
         threading.Thread(target=robust_db_init, daemon=True).start()
         vanguard_log("Vanguard Engine: Hilo de BD lanzado.")
 
@@ -408,34 +426,33 @@ def initialize_vanguard():
         return redirect(url_for('login'))
 
 
-
-
-import base64
-import uuid
-
 # Rutas para PWA (Servir desde raíz para máximo alcance)
+
+
 @app.route('/manifest.json')
 def serve_manifest():
     return send_from_directory('static', 'manifest.json')
+
 
 @app.route('/sw.js')
 def serve_sw():
     return send_from_directory('static', 'sw.js')
 
+
 @app.route('/uploads/<filename>')
 def uploaded_file(filename):
     upload_folder = app.config.get('UPLOAD_FOLDER')
     local_path = os.path.join(upload_folder, filename)
-    
+
     # 1. Intentar servir local (rápido)
     if os.path.exists(local_path):
         return send_from_directory(upload_folder, filename)
-        
+
     # 2. Fallback robusto a GCS (siempre que tengamos bucket configurado)
     if GCP_BUCKET_NAME:
         gcs_url = f"https://storage.googleapis.com/{GCP_BUCKET_NAME}/{filename}"
         return redirect(gcs_url)
-            
+
     return "Archivo no encontrado", 404
 
 
@@ -444,6 +461,7 @@ def inject_utils():
     from storage_manager import get_gcs_url
     return dict(safe_gcs_url=get_gcs_url)
 
+
 @app.errorhandler(404)
 def handle_404(e):
     """Manejador centralizado de 404 con diagnóstico de logs."""
@@ -451,11 +469,14 @@ def handle_404(e):
     return render_template('404.html'), 404
 
 # --- AUTH ROUTES ---
+
+
 @app.route('/login')
 def login():
     if 'user_id' in session:
         return redirect(url_for('index'))
     return render_template('login.html')
+
 
 @app.route('/login-test')
 def login_test():
@@ -475,6 +496,7 @@ def login_test():
     vanguard_log("LOGIN-TEST FAIL: Unauthorized access attempt")
     return "Unauthorized", 401
 
+
 @app.route('/login-google')
 def login_google():
     """Inicia el flujo de OAuth con Google."""
@@ -489,11 +511,11 @@ def login_google():
         },
         scopes=SCOPES
     )
-    
+
     # La URI de redirección debe coincidir exactamente con la configurada en la consola
     # Forzamos HTTPS para Cloud Run
     flow.redirect_uri = url_for('callback', _external=True, _scheme='https')
-    
+
     authorization_url, state = flow.authorization_url(
         access_type='offline',
         include_granted_scopes='true'
@@ -502,8 +524,9 @@ def login_google():
     # CRÍTICO: Guardar el verificador de código (PKCE) para recuperarlo en el callback
     if hasattr(flow, 'code_verifier'):
         session['code_verifier'] = flow.code_verifier
-        
+
     return redirect(authorization_url)
+
 
 @app.route('/callback')
 def callback():
@@ -512,7 +535,7 @@ def callback():
         state = session.get('state')
         if not state:
             vanguard_log("CALLBACK ERROR: No se encontró 'state' en la sesión. ¿Cookies bloqueadas?")
-        
+
         flow = google_auth_oauthlib.flow.Flow.from_client_config(
             {
                 "web": {
@@ -528,14 +551,15 @@ def callback():
         # CRÍTICO: Restaurar el verificador de código (PKCE)
         if 'code_verifier' in session:
             flow.code_verifier = session.get('code_verifier')
-            
+
         # Forzar HTTPS aquí también para consistencia
         flow.redirect_uri = url_for('callback', _external=True, _scheme='https')
 
         authorization_response = request.url
         # fix para http/https en proxy
-        if authorization_response.startswith('http://') and 'https://' in url_for('index', _external=True, _scheme='https'):
-             authorization_response = authorization_response.replace('http://', 'https://', 1)
+        if authorization_response.startswith(
+                'http://') and 'https://' in url_for('index', _external=True, _scheme='https'):
+            authorization_response = authorization_response.replace('http://', 'https://', 1)
 
         vanguard_log(f"CALLBACK: Fetching token for {authorization_response}")
         flow.fetch_token(authorization_response=authorization_response)
@@ -548,7 +572,7 @@ def callback():
 
         email = id_info.get('email')
         vanguard_log(f"CALLBACK: Validando usuario {email}")
-        
+
         # VALIDACIÓN: Solo permitir el dominio oficial o la lista blanca explícita
         is_authorized = False
         if email:
@@ -578,11 +602,11 @@ def callback():
         session['user_name'] = id_info.get('name')
         session['user_picture'] = id_info.get('picture')
         session['has_seen_onboarding'] = user.has_seen_onboarding
-        
+
         vanguard_log(f"ACCESO CONCEDIDO: {email} logueado con éxito. Onboarding: {user.has_seen_onboarding}")
         flash(f"Bienvenido, {session['user_name']}.")
         return redirect(url_for('index'))
-        
+
     except Exception as e:
         import traceback
         error_msg = f"ERROR EN CALLBACK OAUTH: {str(e)}\n{traceback.format_exc()}"
@@ -590,11 +614,13 @@ def callback():
         # No usamos flash aquí para evitar loop si el error es de sesión
         return f"Error de Autenticación: {str(e)}", 500
 
+
 @app.route('/logout')
 def logout():
     session.clear()
     flash("Has cerrado sesión.")
     return redirect(url_for('login'))
+
 
 @app.route('/')
 def index():
@@ -603,24 +629,24 @@ def index():
         from sqlalchemy import func
         ubicaciones_count = Ubicacion.query.count()
         objetos_count = Objeto.query.count()
-        
+
         # Categorías únicas y confianza promedio (Eficiente)
         categorias_count = 0
         avg_conf = 0
-        
+
         try:
             # Contar categorías únicas directamente en SQL
             categorias_count = db.session.query(func.count(func.distinct(Objeto.categoria_principal))).scalar() or 0
-            
+
             # Calcular promedio directamente en SQL
             if objetos_count > 0:
                 avg_conf = db.session.query(func.avg(Objeto.confianza)).scalar() or 0
                 avg_conf = int(avg_conf * 100)
         except Exception as e:
             app.logger.warning(f"Error en dashboard stats: {e}")
-        
+
         ultima_ubi = Ubicacion.query.order_by(Ubicacion.id.desc()).first()
-        
+
         # Verificar onboarding para el usuario actual
         user_email = session.get('user_id')
         show_onboarding = False
@@ -629,17 +655,17 @@ def index():
                 user = User.query.filter_by(email=user_email).first()
                 if user and not user.has_seen_onboarding:
                     show_onboarding = True
-            except:
+            except BaseException:
                 pass
 
         try:
-            return render_template('index.html', 
-                                plano_count=Plano.query.count(),
-                                obj_count=objetos_count, 
-                                cat_count=categorias_count,
-                                avg_conf=avg_conf,
-                                ultima_ubi=ultima_ubi,
-                                show_onboarding=show_onboarding)
+            return render_template('index.html',
+                                   plano_count=Plano.query.count(),
+                                   obj_count=objetos_count,
+                                   cat_count=categorias_count,
+                                   avg_conf=avg_conf,
+                                   ultima_ubi=ultima_ubi,
+                                   show_onboarding=show_onboarding)
         except Exception as render_err:
             import traceback
             return f"<pre>TEMPLATE RENDER FAILED:\n{traceback.format_exc()}</pre>", 500
@@ -648,15 +674,16 @@ def index():
         vanguard_log(f"FALLBACK INDEX ACTIVE. Error: {e}")
         vanguard_log(traceback.format_exc())
         try:
-            return render_template('index.html', 
-                                plano_count=0,
-                                obj_count=0, 
-                                cat_count=0,
-                                avg_conf=0,
-                                ultima_ubi=None,
-                                show_onboarding=False)
+            return render_template('index.html',
+                                   plano_count=0,
+                                   obj_count=0,
+                                   cat_count=0,
+                                   avg_conf=0,
+                                   ultima_ubi=None,
+                                   show_onboarding=False)
         except Exception as fallback_err:
             return f"<pre>TOTAL COLLAPSE (Index + Fallback Failed):\n{traceback.format_exc()}</pre>", 500
+
 
 @app.after_request
 def add_cache_control(response):
@@ -668,12 +695,14 @@ def add_cache_control(response):
 
 # Error handler 500 consolidado abajo
 
+
 @app.errorhandler(500)
 def internal_server_error(e):
     import traceback
     app.logger.error(f"Error 500: {str(e)}\n{traceback.format_exc()}")
     db.session.rollback()
     return render_template('500.html'), 500
+
 
 @app.route('/api/debug-dashboard')
 def debug_dashboard():
@@ -682,11 +711,12 @@ def debug_dashboard():
     try:
         from sqlalchemy import func
         stats = {
-            "planos": Plano.query.count(),
-            "objetos": Objeto.query.count(),
-            "categorias": db.session.query(func.count(func.distinct(Objeto.categoria_principal))).scalar() or 0,
-            "ultima_id": (Ubicacion.query.order_by(Ubicacion.id.desc()).first()).id if Ubicacion.query.count() > 0 else None
-        }
+            "planos": Plano.query.count(), "objetos": Objeto.query.count(), "categorias": db.session.query(
+                func.count(
+                    func.distinct(
+                        Objeto.categoria_principal))).scalar() or 0, "ultima_id": (
+                Ubicacion.query.order_by(
+                    Ubicacion.id.desc()).first()).id if Ubicacion.query.count() > 0 else None}
         return jsonify({
             "status": "Logic Process OK",
             "stats": stats,
@@ -695,23 +725,27 @@ def debug_dashboard():
     except Exception as e:
         return f"<pre>DIAGNOSTIC FAILED:\n{traceback.format_exc()}</pre>", 500
 
+
 @app.context_processor
 def inject_config():
     gcs_base = f"https://storage.googleapis.com/{GCP_BUCKET_NAME}" if GCP_BUCKET_NAME else ""
-    
+
     def safe_gcs_url(path):
-        if not path: return ""
-        if path.startswith("http://") or path.startswith("https://"): return path
-        if gcs_base: return f"{gcs_base}/{path}"
+        if not path:
+            return ""
+        if path.startswith("http://") or path.startswith("https://"):
+            return path
+        if gcs_base:
+            return f"{gcs_base}/{path}"
         try:
             return url_for('uploaded_file', filename=path)
-        except:
+        except BaseException:
             return path
 
     try:
         if not _db_ready:
             return dict(app_config={'subscription_type': 'free'}, gcs_base_url=gcs_base, safe_gcs_url=safe_gcs_url)
-            
+
         config = Config.query.first()
         if not config:
             # No escribir en context processor para evitar bloqueos
@@ -720,9 +754,11 @@ def inject_config():
     except Exception as e:
         return dict(app_config={'subscription_type': 'free'}, gcs_base_url=gcs_base, safe_gcs_url=safe_gcs_url)
 
+
 @app.route('/pricing')
 def pricing():
     return render_template('pricing.html')
+
 
 @app.route('/upgrade')
 def upgrade():
@@ -733,6 +769,7 @@ def upgrade():
         db.session.commit()
         flash(f'¡Bienvenido al plan {plan.upper()}! Todas las funciones premium han sido activadas.')
     return redirect(url_for('index'))
+
 
 @app.route('/upload', methods=['GET', 'POST'])
 def upload():
@@ -746,47 +783,47 @@ def upload():
         if 'file' not in request.files:
             flash('No hay archivo')
             return redirect(request.url)
-        
+
         file = request.files['file']
         # ── Leer campos de Jerarquía Semántica del formulario ──
         nombre_ubicacion = request.form.get('nombre_ubicacion', '').strip()
-        habitacion       = request.form.get('habitacion', '').strip() or None
-        mueble_texto     = request.form.get('mueble_texto', '').strip() or None
+        habitacion = request.form.get('habitacion', '').strip() or None
+        mueble_texto = request.form.get('mueble_texto', '').strip() or None
         punto_especifico = request.form.get('punto_especifico', '').strip() or None
-        
+
         if file.filename == '':
             flash('No se seleccionó ningún archivo')
             return redirect(request.url)
 
         try:
             filename = secure_filename(file.filename)
-            
+
             # 1. Leer bytes para la IA
             img_bytes = file.read()
-            file.seek(0) # Reset stream for GCS
-            
+            file.seek(0)  # Reset stream for GCS
+
             # 2. IA: Procesar desde memoria
             app.logger.info(f"[VANGUARD-GCS] Analizando con IA (en memoria): {filename}")
             resultado = analizar_imagen_objetos(img_bytes, tipo_espacio="general")
-            
+
             # SRE: Si el usuario no especificó habitación/mueble, usar sugerencia de IA
             if not habitacion:
                 habitacion = resultado.get('habitacion_sugerida') or None
             if not mueble_texto:
                 mueble_texto = resultado.get('mueble_sugerido') or None
-            
+
             # Auto-generar nombre descriptivo si el usuario lo dejó vacío
             if not nombre_ubicacion:
                 partes = [p for p in [habitacion, mueble_texto] if p]
                 nombre_ubicacion = " — ".join(partes) if partes else 'Sin nombre'
-            
+
             # 3. GCS: Subir a la nube persistente
             final_filename = upload_image_to_gcs(file, filename)
-            
+
             # 4. Generar Embedding Multimodal (Visual + Contexto)
             contexto_ubi = f"Ubicación: {nombre_ubicacion}. Habitación: {habitacion}. Mueble: {mueble_texto}."
             emb_ubi = generar_embedding([contexto_ubi, img_bytes])
-            
+
             # 5. DB: Guardar registro (incluyendo jerarquía semántica)
             nueva_ubicacion = Ubicacion(
                 nombre=nombre_ubicacion,
@@ -800,14 +837,17 @@ def upload():
             )
             db.session.add(nueva_ubicacion)
             db.session.flush()
-            
+
             nombres_para_tags = []
             for item in resultado.get('items', []):
                 nombre_obj = item.get('nombre', 'Objeto detectado')
                 # Generar embedding semántico para el objeto
-                contexto_obj = f"Objeto: {nombre_obj}. Categoría: {item.get('categoria_principal')}. Descripción: {item.get('descripcion')}. Tags: {item.get('tags_semanticos')}"
+                contexto_obj = f"Objeto: {nombre_obj}. Categoría: {
+                    item.get('categoria_principal')}. Descripción: {
+                    item.get('descripcion')}. Tags: {
+                    item.get('tags_semanticos')}"
                 emb_obj = generar_embedding(contexto_obj)
-                
+
                 nuevo_objeto = Objeto(
                     nombre=nombre_obj,
                     categoria_principal=item.get('categoria_principal', 'General'),
@@ -817,55 +857,60 @@ def upload():
                     material=item.get('material', ''),
                     estado=item.get('estado', 'nuevo'),
                     confianza=item.get('confianza', 0.8),
+                    posicion_relativa=item.get('posicion_relativa'),
+                    contenedor=item.get('contenedor'),
                     ubicacion_id=nueva_ubicacion.id,
                     tags_semanticos=item.get('tags_semanticos', ''),
                     embedding_json=json.dumps(emb_obj) if emb_obj else None
                 )
                 db.session.add(nuevo_objeto)
                 nombres_para_tags.append(nombre_obj)
-            
+
             # SRE Sync: Asegurar que la ubicación tenga los tags para que la galería no diga "Sin análisis"
             if nombres_para_tags:
                 nueva_ubicacion.tags = ", ".join(nombres_para_tags)
             elif not nueva_ubicacion.tags:
                 nueva_ubicacion.tags = "Sin objetos detectados"
-                
+
             db.session.commit()
-            
-            # ── Rev 86: Phase 1 Safety Valve & Confidence ──
+
+            # ── Rev 104: Modo Magia (Auto-Tagging Bypass) ──
             avg_conf = 0.8
             if resultado.get('items'):
                 confs = [item.get('confianza', 0.8) for item in resultado.get('items')]
                 avg_conf = sum(confs) / len(confs)
-            
+
             is_high_conf = avg_conf > 0.9
-            edit_link = f' <a href="/ubicacion/editar/{nueva_ubicacion.id}" style="color:var(--primary); font-weight:bold; margin-left:8px;">[Editar]</a>'
-            
+
             if is_high_conf:
-                msg = f'✓ "{nombre_ubicacion}" auto-indexado con éxito.' + edit_link
-            else:
-                msg = f'✓ "{nombre_ubicacion}" indexado.' + edit_link
-            
-            flash(msg)
-            vanguard_log(f"[DB-SUCCESS] Ubicación '{nombre_ubicacion}' guardada (Confianza: {avg_conf:.2f}).")
-            
-            # Direct-to-Map: Si es alta confianza, podrímos redirigir al plano si existiera, 
-            # pero por ahora gallery es el destino estándar.
+                # MODO MAGIA: Bypass total para el usuario si la i7 y la IA volaron
+                flash(f'✨ "{nombre_ubicacion}" auto-indexado al instante (Confianza: {int(avg_conf * 100)}%)')
+                vanguard_log(f"[MAGIA-ACTIVE] Bypass de confirmación para {nombre_ubicacion}")
+                return redirect(url_for('gallery'))
+
+            # Si la confianza es media, damos el link de edición rápido
+            edit_link = f' <a href="/ubicacion/editar/{
+                nueva_ubicacion.id}" style="color:var(--primary); font-weight:bold; margin-left:8px;">[Editar]</a>'
+            flash(f'✓ "{nombre_ubicacion}" indexado correctamente.' + edit_link)
+            vanguard_log(f"[DB-SUCCESS] Ubicación '{nombre_ubicacion}' guardada (Fricción Manual).")
+
             return redirect(url_for('gallery'))
 
         except Exception as e:
             app.logger.error(f"Error en upload: {e}")
             db.session.rollback()
             return jsonify({"status": "error", "message": str(e)}), 500
-            
+
     return render_template('upload.html')
-            
+
     return render_template('upload.html')
+
 
 @app.route('/gallery')
 def gallery():
     ubicaciones = Ubicacion.query.order_by(Ubicacion.fecha_creacion.desc()).all()
     return render_template('gallery.html', ubicaciones=ubicaciones)
+
 
 @app.route('/ubicacion/editar/<int:ubi_id>', methods=['GET', 'POST'])
 def editar_ubicacion(ubi_id):
@@ -875,24 +920,24 @@ def editar_ubicacion(ubi_id):
         ubi.nombre = request.form.get('nombre', ubi.nombre)
         ubi.habitacion = request.form.get('habitacion', ubi.habitacion)
         ubi.mueble_texto = request.form.get('mueble_texto', ubi.mueble_texto)
-        
+
         # Actualizar objetos
         for obj in ubi.objetos:
             obj.nombre = request.form.get(f'obj_{obj.id}_nombre', obj.nombre)
             obj.categoria_principal = request.form.get(f'obj_{obj.id}_cat', obj.categoria_principal)
-            
+
         db.session.commit()
         flash(f'✓ Ubicación "{ubi.nombre}" actualizada.')
         return redirect(url_for('gallery'))
-        
+
     return render_template('ubicacion_edit.html', ubi=ubi)
 
     from ai_engine import interpretar_consulta, generar_embedding
     import numpy as np
-    
+
     query = request.args.get('q', '').lower().strip()
     resultados = []
-    
+
     # 1. Obtener Vector de la Consulta
     query_vector = None
     if query:
@@ -900,14 +945,14 @@ def editar_ubicacion(ubi_id):
         vec = generar_embedding(query, task_type="RETRIEVAL_QUERY")
         if vec:
             query_vector = np.array(vec)
-    
+
     if query:
         # Obtener TODOS los objetos para fuzzy search
         todos_objetos = Objeto.query.all()
-        
+
         # Búsqueda mejorada con ponderación de algoritmos + Ubicación Semántica
         candidatos = []
-        
+
         for obj in todos_objetos:
             nombre_lower = obj.nombre.lower()
             categoria_lower = (obj.categoria_principal or "").lower()
@@ -916,25 +961,25 @@ def editar_ubicacion(ubi_id):
             mueble_lower = (getattr(obj.ubicacion, 'mueble_texto', '') or "").lower()
             punto_lower = (getattr(obj.ubicacion, 'punto_especifico', '') or "").lower()
             ubicacion_nombre = (obj.ubicacion.nombre or "").lower()
-            
+
             # 1. Similitud exacta (Ratio) - PESO MAYOR
             ratio_nombre = fuzz.ratio(query, nombre_lower)
             ratio_categoria = fuzz.ratio(query, categoria_lower)
-            
+
             # 2. Búsqueda parcial (Partial Ratio) - para queries cortas
             partial_nombre = fuzz.partial_ratio(query, nombre_lower)
             partial_categoria = fuzz.partial_ratio(query, categoria_lower)
-            
+
             # 3. Token Sort Ratio - para orden de palabras
             token_nombre = fuzz.token_sort_ratio(query, nombre_lower)
             token_categoria = fuzz.token_sort_ratio(query, categoria_lower)
-            
+
             # 4. Búsqueda semántica por habitación/mueble/punto
             ratio_habitacion = fuzz.partial_ratio(query, habitacion_lower) if habitacion_lower else 0
             ratio_mueble = fuzz.partial_ratio(query, mueble_lower) if mueble_lower else 0
             ratio_punto = fuzz.partial_ratio(query, punto_lower) if punto_lower else 0
             ratio_ubicacion = fuzz.partial_ratio(query, ubicacion_nombre) if ubicacion_nombre else 0
-            
+
             # 5. Similitud Semántica (Vectorial)
             semantic_score = 0
             if query_vector is not None and obj.embedding_json:
@@ -947,31 +992,32 @@ def editar_ubicacion(ubi_id):
                         cos_sim = np.dot(query_vector, obj_vector) / (norm_q * norm_o)
                         # Escalar de -1..1 a 0..100
                         semantic_score = max(0, cos_sim * 100)
-                except: pass
+                except BaseException:
+                    pass
 
             # PONDERACIÓN HÍBRIDA (Revision 69: "Puntería Quirúrgica")
             max_fuzzy = max(ratio_nombre, ratio_categoria, ratio_habitacion, ratio_mueble)
-            
+
             # El score final es el mejor entre fuzzy fuerte o una mezcla (70% semántica + 30% fuzzy parcial)
             if ratio_nombre >= 95:
                 # Prioridad Absoluta: Si el nombre coincide casi exacto, ignoramos semántica para no "abrir" el buscador
                 final_score = ratio_nombre
             elif max_fuzzy >= 85:
                 final_score = max_fuzzy
-            elif semantic_score >= 75: # Subimos umbral semántico robusto
+            elif semantic_score >= 75:  # Subimos umbral semántico robusto
                 # Si la semántica es alta, le damos prioridad pero sumamos un poco de fuzzy
                 final_score = (semantic_score * 0.8) + (max_fuzzy * 0.2)
             else:
                 final_score = max(max_fuzzy, semantic_score)
-            
+
             # AJUSTE DE PUNTERÍA: Umbral mínimo 75% para filtrar ruido (Revision 69)
             # Se usa 75 en lugar de 80 para no castigar coincidencias semánticas puras de alta calidad.
-            if final_score >= 75: 
+            if final_score >= 75:
                 candidatos.append((obj, final_score, semantic_score))
-        
+
         # Ordenar por score (mayor primero)
         candidatos.sort(key=lambda x: x[1], reverse=True)
-        
+
         # Procesar resultados (máximo 30 para evitar saturación)
         for obj, score, s_score in candidatos[:30]:
             # Buscar bbox en items_json original
@@ -985,7 +1031,7 @@ def editar_ubicacion(ubi_id):
                             break
             except Exception as e:
                 app.logger.error(f"Error parseando items_json: {e}")
-            
+
             resultados.append({
                 'id': obj.id,
                 'objeto': obj.nombre,
@@ -1010,19 +1056,20 @@ def editar_ubicacion(ubi_id):
                 'contenedor': obj.contenedor,
                 'posicion_relativa': obj.posicion_relativa
             })
-    
+
     return render_template('search_results.html', query=query, resultados=resultados)
+
 
 @app.route('/api/sugerencias')
 def sugerencias():
     """API para auto-complete con fuzzy matching mejorado + ubicación semántica"""
     from rapidfuzz import process, fuzz
-    
+
     query = request.args.get('q', '').lower().strip()
-    
+
     if not query or len(query) < 2:
         return jsonify([])
-    
+
     # Obtener nombres únicos de objetos, categorías Y ubicaciones semánticas
     nombres_set = set()
     objetos = Objeto.query.all()
@@ -1030,7 +1077,7 @@ def sugerencias():
         nombres_set.add(obj.nombre.capitalize())
         if obj.categoria_principal:
             nombres_set.add(obj.categoria_principal.capitalize())
-    
+
     # Fase 2: Agregar habitaciones y muebles al pool de sugerencias
     ubicaciones = Ubicacion.query.all()
     for ubi in ubicaciones:
@@ -1040,9 +1087,9 @@ def sugerencias():
             nombres_set.add(ubi.mueble_texto.capitalize())
         if ubi.nombre:
             nombres_set.add(ubi.nombre)
-    
+
     opciones = list(nombres_set)
-    
+
     resultados = process.extract(
         query,
         opciones,
@@ -1050,7 +1097,7 @@ def sugerencias():
         limit=10,
         score_cutoff=55
     )
-    
+
     sugerencias_list = [
         {
             'texto': match[0],
@@ -1058,7 +1105,7 @@ def sugerencias():
         }
         for match in resultados
     ]
-    
+
     return jsonify(sugerencias_list)
 
 
@@ -1069,16 +1116,16 @@ def smart_search_api():
     Retorna el mejor match con imagen, bbox y datos de ubicación."""
     import json
     from rapidfuzz import fuzz
-    
+
     query = request.args.get('q', '').lower().strip()
-    
+
     if not query:
         return jsonify({'success': False, 'error': 'Query vacía'})
-    
+
     todos_objetos = Objeto.query.all()
     mejor = None
     mejor_score = 0
-    
+
     for obj in todos_objetos:
         nombre_lower = obj.nombre.lower()
         cat_lower = (obj.categoria_principal or "").lower()
@@ -1087,7 +1134,7 @@ def smart_search_api():
         punto_lower = (getattr(obj.ubicacion, 'punto_especifico', '') or "").lower()
         ubi_nombre = (obj.ubicacion.nombre or "").lower()
         tags_lower = (obj.ubicacion.tags or "").lower()
-        
+
         scores = [
             fuzz.ratio(query, nombre_lower),
             fuzz.partial_ratio(query, nombre_lower),
@@ -1099,15 +1146,15 @@ def smart_search_api():
             fuzz.partial_ratio(query, ubi_nombre) if ubi_nombre else 0,
             fuzz.partial_ratio(query, tags_lower) if tags_lower else 0,
         ]
-        
+
         max_score = max(scores)
         if max_score > mejor_score:
             mejor_score = max_score
             mejor = obj
-    
+
     if not mejor or mejor_score < 60:
         return jsonify({'success': False, 'error': f'No encontramos nada para "{query}"'})
-    
+
     # Buscar bbox
     bbox = None
     try:
@@ -1119,7 +1166,7 @@ def smart_search_api():
                     break
     except Exception:
         pass
-    
+
     # Construir ubicación descriptiva
     loc_parts = []
     if getattr(mejor.ubicacion, 'habitacion', None):
@@ -1129,7 +1176,7 @@ def smart_search_api():
     if getattr(mejor.ubicacion, 'punto_especifico', None):
         loc_parts.append(mejor.ubicacion.punto_especifico)
     ubicacion_desc = ' → '.join(loc_parts) if loc_parts else mejor.ubicacion.nombre
-    
+
     return jsonify({
         'success': True,
         'match': {
@@ -1151,14 +1198,16 @@ def smart_search_api():
     })
 
 # ── API: Polling de estado del análisis (auto-refresh sin recargar página) ──
+
+
 @app.route('/api/check-analysis/<int:ubi_id>')
 def check_analysis(ubi_id):
     """Retorna el estado del análisis de una ubicación para auto-polling."""
     ubi = Ubicacion.query.get_or_404(ubi_id)
     objetos = Objeto.query.filter_by(ubicacion_id=ubi_id).all()
-    
+
     tiene_analisis = bool(ubi.tags and ubi.tags not in ['', 'Procesando análisis...', 'Sin análisis aún'])
-    
+
     return jsonify({
         'id': ubi.id,
         'ready': tiene_analisis,
@@ -1177,29 +1226,31 @@ def check_analysis(ubi_id):
     })
 
 # ── API: Guardar Hotspot (Punto de Interés) sobre Foto de Referencia ──
+
+
 @app.route('/api/save-hotspot/<int:plano_id>', methods=['POST'])
 def save_hotspot(plano_id):
     """Guarda o actualiza un hotspot (zona) vinculado a un mueble/sector."""
     plano = Plano.query.get_or_404(plano_id)
     data = request.get_json()
-    
+
     nombre = data.get('nombre', 'Nuevo Punto')
-    x = data.get('x') # 0-100
-    y = data.get('y') # 0-100
-    
+    x = data.get('x')  # 0-100
+    y = data.get('y')  # 0-100
+
     if x is None or y is None:
         return jsonify({'success': False, 'error': 'Coordenadas faltantes'}), 400
-        
+
     try:
         # Buscamos si ya existe una zona con ese nombre para este plano o creamos una nueva
         zona = Zona.query.filter_by(plano_id=plano_id, nombre=nombre).first()
         if not zona:
             zona = Zona(nombre=nombre, plano_id=plano_id)
             db.session.add(zona)
-            
+
         zona.coords_json = json.dumps({'x': x, 'y': y, 'type': 'hotspot'})
         db.session.commit()
-        
+
         return jsonify({'success': True, 'id': zona.id})
     except Exception as e:
         app.logger.error(f"[HOTSPOT-ERR] {e}")
@@ -1211,17 +1262,19 @@ def list_planos():
     planos = Plano.query.all()
     return render_template('planos.html', planos=planos)
 
+
 @app.route('/plano/nuevo', methods=['GET', 'POST'])
 def nuevo_plano():
     if request.method == 'POST':
         nombre = request.form.get('nombre')
         file = request.files.get('file')
         drawing_data = request.form.get('canvas_data') or request.form.get('drawing_data')
-        
+
         metodo = request.form.get('metodo')
-        if metodo == 'plantilla': metodo = 'template'
+        if metodo == 'plantilla':
+            metodo = 'template'
         template_type = request.form.get('template_type')
-        
+
         filename = None
         if metodo == 'upload' and file and file.filename != '':
             filename = secure_filename(file.filename)
@@ -1232,47 +1285,49 @@ def nuevo_plano():
                 import json
                 from PIL import Image, ImageDraw, ImageFont, ImageFilter
                 import os
-                
+
                 # Cargar presets
                 presets_path = os.path.join(app.static_folder, 'data', 'presets.json')
                 with open(presets_path, 'r', encoding='utf-8') as f:
                     presets = json.load(f)
-                
+
                 # Obtener variante (por ahora la primera si no se especifica)
                 variant_id = request.form.get('variant_id')
                 category_presets = presets.get(template_type, [])
-                preset = next((p for p in category_presets if p['id'] == variant_id), category_presets[0]) if category_presets else None
-                
+                preset = next(
+                    (p for p in category_presets if p['id'] == variant_id),
+                    category_presets[0]) if category_presets else None
+
                 # Fondo oscuro profundo
                 img = Image.new('RGBA', (1000, 1000), color='#0a0a0a')
                 draw = ImageDraw.Draw(img)
-                
+
                 # 1. Grid técnico sutil (Rev 102: Contraste industrial)
                 for i in range(0, 1000, 50):
                     draw.line([(i, 0), (i, 1000)], fill='#222', width=1)
                     draw.line([(0, i), (1000, i)], fill='#222', width=1)
-                
+
                 if preset:
                     silver_line = '#e2e8f0'
                     metallic_fill = '#4a5568'
-                    
+
                     # 2. Dibujar Zonas (Zonificación por Color 5% Opacity)
-                    overlay = Image.new('RGBA', (1000, 1000), (0,0,0,0))
+                    overlay = Image.new('RGBA', (1000, 1000), (0, 0, 0, 0))
                     overlay_draw = ImageDraw.Draw(overlay)
                     for zone in preset.get('zones', []):
                         r = zone['rect']
-                        overlay_draw.rectangle(r, fill=(255, 255, 255, 13)) # ~5% alpha
+                        overlay_draw.rectangle(r, fill=(255, 255, 255, 13))  # ~5% alpha
                         overlay_draw.rectangle(r, outline=(255, 255, 255, 30), width=1)
                     img = Image.alpha_composite(img, overlay)
-                    draw = ImageDraw.Draw(img) # Refresh draw object
-                    
+                    draw = ImageDraw.Draw(img)  # Refresh draw object
+
                     # 3. Dibujar Muros (Sólidos con Sombra)
                     for wall in preset.get('walls', []):
                         if 'rect' in wall:
                             r = wall['rect']
                             th = wall.get('thickness', 8)  # Rev 102: Base 8px
                             # Sombra sutil
-                            draw.rectangle([r[0]+2, r[1]+2, r[2]+2, r[3]+2], outline=(0,0,0,100), width=th)
+                            draw.rectangle([r[0] + 2, r[1] + 2, r[2] + 2, r[3] + 2], outline=(0, 0, 0, 100), width=th)
                             # Muro metálico
                             draw.rectangle(r, outline=silver_line, width=th)
                         elif 'line' in wall:
@@ -1288,8 +1343,9 @@ def nuevo_plano():
                         text_w = len(label) * 10
                         center_x = (r[0] + r[2]) // 2
                         center_y = (r[1] + r[3]) // 2
-                        draw.rectangle([center_x - text_w//2 - 5, center_y - 12, center_x + text_w//2 + 5, center_y + 12], fill='#1a202c', outline=silver_line, width=1)
-                        draw.text((center_x - text_w//2, center_y - 10), label, fill=silver_line)
+                        draw.rectangle([center_x - text_w // 2 - 5, center_y - 12, center_x + text_w //
+                                       2 + 5, center_y + 12], fill='#1a202c', outline=silver_line, width=1)
+                        draw.text((center_x - text_w // 2, center_y - 10), label, fill=silver_line)
 
                 # Convertir a RGB para guardar como PNG/JPG
                 final_img = img.convert('RGB')
@@ -1299,13 +1355,13 @@ def nuevo_plano():
                 img_io.seek(0)
                 temp_filename = f"blueprint_{template_type}_{uuid.uuid4().hex[:6]}.png"
                 filename = upload_image_to_gcs(img_io, temp_filename)
-                
+
                 # Pre-poblamiento dinámico desde el preset
                 if preset and 'furniture' in preset:
-                    latest_preset = preset # For use inside DB session
+                    latest_preset = preset  # For use inside DB session
             except Exception as e:
                 app.logger.error(f"Error generando blueprint rev98: {e}")
-                filename = "default_silver_blueprint.png" # Fallback
+                filename = "default_silver_blueprint.png"  # Fallback
                 latest_preset = None
 
         elif metodo == 'draw' and drawing_data:
@@ -1322,11 +1378,11 @@ def nuevo_plano():
                 app.logger.error(f"Error al guardar el dibujo: {e}")
                 flash(f"Error al guardar el dibujo: {e}")
                 return redirect(request.url)
-        
+
         if filename:
             nuevo = Plano(nombre=nombre, imagen_path=filename)
             db.session.add(nuevo)
-            db.session.flush() # Para tener el ID
+            db.session.flush()  # Para tener el ID
 
             # Pre-pobla muebles dinámicamente según el preset (Rev 98)
             if metodo == 'template' and latest_preset:
@@ -1340,26 +1396,27 @@ def nuevo_plano():
                         alto=f_data['h'],
                         plano_id=nuevo.id
                     ))
-            
+
             db.session.commit()
             flash(f'✓ Plano "{nombre}" creado en la nube con éxito.')
             if metodo == 'template':
                 return redirect(url_for('modular_editor', plano_id=nuevo.id))
             return redirect(url_for('list_planos'))
-            
+
     return render_template('plano_form.html')
+
 
 @app.route('/plano/eliminar/<int:plano_id>', methods=['POST'])
 def eliminar_plano(plano_id):
     plano = Plano.query.get_or_404(plano_id)
     nombre = plano.nombre
-    
+
     # Desvincular ubicaciones
     for ubi in plano.ubicaciones:
         ubi.plano_id = None
         ubi.pos_x = None
         ubi.pos_y = None
-    
+
     # Intentar borrar de GCS
     if plano.imagen_path:
         try:
@@ -1370,11 +1427,12 @@ def eliminar_plano(plano_id):
             blob.delete()
         except Exception as e:
             app.logger.warning(f"No se pudo borrar {plano.imagen_path} de GCS: {e}")
-            
+
     db.session.delete(plano)
     db.session.commit()
     flash(f'Plano "{nombre}" eliminado correctamente.')
     return redirect(url_for('list_planos'))
+
 
 @app.route('/plano/<int:plano_id>/modular_editor')
 def modular_editor(plano_id):
@@ -1394,6 +1452,7 @@ def modular_editor(plano_id):
     import json
     return render_template('plano_modular_editor.html', plano=plano, muebles_json=json.dumps(muebles_list))
 
+
 @app.route('/api/plano/<int:plano_id>/save_modular', methods=['POST'])
 def save_modular_layout(plano_id):
     plano = Plano.query.get_or_404(plano_id)
@@ -1404,7 +1463,7 @@ def save_modular_layout(plano_id):
         # Limpiar muebles anteriores (o actualizar si quisiéramos ser más quirúrgicos)
         # Por ahora, borramos y recreamos para asegurar consistencia con el editor
         Mueble.query.filter_by(plano_id=plano_id).delete()
-        
+
         for item in items:
             nuevo_mueble = Mueble(
                 plano_id=plano_id,
@@ -1416,25 +1475,26 @@ def save_modular_layout(plano_id):
                 alto=item.get('h')
             )
             db.session.add(nuevo_mueble)
-        
+
         db.session.commit()
         return jsonify({'success': True})
     except Exception as e:
         db.session.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
 
+
 @app.route('/plano/<int:plano_id>')
 def ver_plano(plano_id):
     try:
         plano = Plano.query.get_or_404(plano_id)
         ubicaciones_sin_plano = Ubicacion.query.filter_by(plano_id=None).all()
-        
+
         # Ubicaciones del plano sin posición (ej: del Video Scanner)
         ubicaciones_sin_posicion = Ubicacion.query.filter(
             Ubicacion.plano_id == plano_id,
-            (Ubicacion.pos_x == None) | (Ubicacion.pos_y == None)
+            (Ubicacion.pos_x is None) | (Ubicacion.pos_y is None)
         ).all()
-        
+
         # Preparar PINS (Ubicaciones con posición)
         pins_data = []
         for ubi in (plano.ubicaciones or []):
@@ -1452,7 +1512,7 @@ def ver_plano(plano_id):
                     'tags': ubi.tags, 'objetos_count': len(ubi.objetos),
                     'objetos': obj_list, 'imagen_path': ubi.imagen_path
                 })
-        
+
         # Preparar UNPLACED
         unplaced_data = []
         for ubi in ubicaciones_sin_posicion:
@@ -1472,7 +1532,8 @@ def ver_plano(plano_id):
                             'id': zona.id, 'nombre': zona.nombre,
                             'x': coords.get('x'), 'y': coords.get('y')
                         })
-                except: continue
+                except BaseException:
+                    continue
 
         # Preparar MUEBLES (Modular Revision 69)
         muebles_list = []
@@ -1482,51 +1543,54 @@ def ver_plano(plano_id):
                 'x': m.pos_x, 'y': m.pos_y, 'w': m.ancho, 'h': m.alto
             })
 
-        return render_template('plano_view.html', 
-                             plano=plano, 
-                             pins=pins_data,
-                             unplaced=unplaced_data,
-                             hotspots=hotspots_data,
-                             muebles_json=json.dumps(muebles_list),
-                             ubicaciones_sin_plano=ubicaciones_sin_plano)
+        return render_template('plano_view.html',
+                               plano=plano,
+                               pins=pins_data,
+                               unplaced=unplaced_data,
+                               hotspots=hotspots_data,
+                               muebles_json=json.dumps(muebles_list),
+                               ubicaciones_sin_plano=ubicaciones_sin_plano)
     except Exception as e:
         vanguard_log(f"ERROR CRÍTICO en ver_plano({plano_id}): {str(e)}", "ERROR")
         import traceback
         vanguard_log(traceback.format_exc())
-        
+
         # Intentar recuperar el objeto plano por fuera si falló antes
         plano_fb = None
         try:
             plano_fb = Plano.query.get(plano_id)
-        except:
+        except BaseException:
             pass
-            
+
         flash(f"Modo de Recuperación: {str(e)[:100]}")
-        return render_template('plano_view.html', 
-                             plano=plano_fb, 
-                             pins=[],
-                             unplaced=[],
-                             hotspots=[],
-                             muebles_json='[]',
-                             ubicaciones_sin_plano=[])
+        return render_template('plano_view.html',
+                               plano=plano_fb,
+                               pins=[],
+                               unplaced=[],
+                               hotspots=[],
+                               muebles_json='[]',
+                               ubicaciones_sin_plano=[])
 
 
 @app.route('/api/health')
 def health_check():
     """Diagnóstico profundo para SRE/DevOps (Rev 101)"""
     from monitoring_manager import MonitoringManager
-    
+
     try:
         from sqlalchemy import text
         db.session.execute(text("SELECT 1"))
         db_status = "Connected"
-        
+
         # Conteo rápido de objetos
         obj_count = Objeto.query.count()
-        
-        # Enviar Heartbeat a Better Stack
-        MonitoringManager.send_heartbeat("UptimeCheck")
-        
+
+        # Enviar Heartbeat a Better Stack (Opcional)
+        try:
+            MonitoringManager.send_heartbeat("UptimeCheck")
+        except BaseException:
+            vanguard_log("Heartbeat failed (Skipped locally)", level="WARNING")
+
         return jsonify({
             "status": "Healthy",
             "version": "1.1.0-shield-rev101",
@@ -1540,6 +1604,7 @@ def health_check():
         vanguard_log(f"Health Check FALLÓ: {e}", "ERROR")
         return jsonify({"status": "Unhealthy", "error": str(e)}), 500
 
+
 @app.route('/plano/editar-zonas/<int:plano_id>')
 def editor_plano(plano_id):
     """Editor de zonas inteligente (Tesla style)"""
@@ -1552,7 +1617,7 @@ def editor_plano(plano_id):
                 if zona.coords_json:
                     coords = json.loads(zona.coords_json)
                     # El editor espera {x, y, w, h, nombre, color}
-                    if coords.get('type') != 'hotspot': # Solo zonas rectangulares
+                    if coords.get('type') != 'hotspot':  # Solo zonas rectangulares
                         original_zonas.append({
                             'id': zona.id,
                             'nombre': zona.nombre,
@@ -1562,9 +1627,11 @@ def editor_plano(plano_id):
                             'h': coords.get('h'),
                             'color': coords.get('color', '#6366f1')
                         })
-            except: continue
-            
+            except BaseException:
+                continue
+
     return render_template('editor_plano.html', plano=plano, original_zonas=original_zonas)
+
 
 @app.route('/api/plano/<int:plano_id>/save_zonas', methods=['POST'])
 def save_zonas(plano_id):
@@ -1573,7 +1640,7 @@ def save_zonas(plano_id):
         data = request.json
         zonas_data = data.get('zonas', [])
         plano = Plano.query.get_or_404(plano_id)
-        
+
         # SRE: Nuke de zonas anteriores que no sean hotspots (para evitar duplicados al redibujar)
         # Opcional: Podríamos ser más selectivos, pero el editor suele re-enviar todo el set
         for zona in list(plano.zonas):
@@ -1581,8 +1648,9 @@ def save_zonas(plano_id):
                 c = json.loads(zona.coords_json)
                 if c.get('type') != 'hotspot':
                     db.session.delete(zona)
-            except: pass
-            
+            except BaseException:
+                pass
+
         for z in zonas_data:
             nueva = Zona(
                 nombre=z['nombre'],
@@ -1594,12 +1662,13 @@ def save_zonas(plano_id):
                 })
             )
             db.session.add(nueva)
-            
+
         db.session.commit()
         return jsonify({'success': True})
     except Exception as e:
         db.session.rollback()
         return jsonify({'success': False, 'error': str(e)}), 500
+
 
 @app.route('/plano/<int:plano_id>/moldes')
 def moldes_selection(plano_id):
@@ -1607,11 +1676,13 @@ def moldes_selection(plano_id):
     plano = Plano.query.get_or_404(plano_id)
     return render_template('moldes.html', plano=plano)
 
+
 @app.route('/plano/<int:plano_id>/3d')
 def ver_plano_3d(plano_id):
     """Vista 3D experimental del plano"""
     plano = Plano.query.get_or_404(plano_id)
     return render_template('plano_3d.html', plano=plano)
+
 
 @app.route('/api/plano/<int:plano_id>/save_pins', methods=['POST'])
 def save_pin_positions(plano_id):
@@ -1631,6 +1702,7 @@ def save_pin_positions(plano_id):
         db.session.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
 
+
 @app.route('/api/analizar_foto', methods=['POST'])
 def analizar_foto():
     """
@@ -1643,16 +1715,16 @@ def analizar_foto():
         file = request.files.get('image') or request.files.get('file')
         if not file:
             return jsonify({'status': 'error', 'message': 'No se recibió imagen'}), 400
-        
+
         # 1. IA: Procesar desde memoria
         img_bytes = file.read()
         resultado = analizar_imagen_objetos(img_bytes, tipo_espacio="general")
-        
+
         # 2. GCS: Persistencia rápida (opcional, pero útil)
         file.seek(0)
         filename = f"bolt_{uuid.uuid4().hex[:8]}.jpg"
         upload_image_to_gcs(file, filename)
-        
+
         return jsonify({
             'status': 'success',
             'items': resultado.get('items', []),
@@ -1662,48 +1734,51 @@ def analizar_foto():
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
+
 @app.route('/api/calibrar_plano', methods=['POST'])
 def calibrar_plano():
     """Calcula y guarda la matriz de homografía para un plano"""
     try:
         data = request.json
         plano_id = data.get('plano_id')
-        src_pts = data.get('src_pts') # 4 puntos en imagen [[x,y], ...]
-        dst_pts = data.get('dst_pts') # 4 puntos en mapa [[x,y], ...]
-        
+        src_pts = data.get('src_pts')  # 4 puntos en imagen [[x,y], ...]
+        dst_pts = data.get('dst_pts')  # 4 puntos en mapa [[x,y], ...]
+
         if not plano_id or not src_pts or not dst_pts:
             return jsonify({'status': 'error', 'message': 'Datos incompletos'}), 400
-            
+
         plano = Plano.query.get(plano_id)
         if not plano:
             return jsonify({'status': 'error', 'message': 'Plano no encontrado'}), 404
-            
+
         from spatial_engine import SpatialEngine, serialize_h
         import json
-        
+
         # Calcular Homografía
         H = SpatialEngine.solve_homography(src_pts, dst_pts)
-        
+
         # Guardar en el plano
         plano.homografia_json = json.dumps(serialize_h(H))
         db.session.commit()
-        
+
         return jsonify({'status': 'success', 'message': 'Calibración guardada'})
     except Exception as e:
         db.session.rollback()
         return jsonify({'status': 'error', 'message': str(e)}), 500
+
 
 @app.route('/api/admin/fix-db')
 def force_fix_db():
     fix_db_sequences()
     return jsonify({"status": "success", "message": "Secuencias reparadas"})
 
+
 @app.route('/debug/reset-db')
 def reset_db_hard():
     """Ruta DBA: Nuke total de tablas y reseteo de secuencias a 1."""
     if not instance_connection_name and not raw_db_url:
         return jsonify({"status": "error", "message": "Operación no permitida en modo local"}), 403
-    
+
     vanguard_log("[DBA] Iniciando RESET HARD de base de datos...", "WARNING")
     try:
         # SRE Repair: Limpieza profunda y reinicio de identidad
@@ -1715,6 +1790,7 @@ def reset_db_hard():
         vanguard_log(f"[DBA] Error en Reset: {e}", "ERROR")
         db.session.rollback()
         return jsonify({"status": "error", "message": str(e)}), 500
+
 
 @app.route('/api/crear_ubicacion_en_mapa', methods=['POST'])
 def crear_ubicacion_en_mapa():
@@ -1728,10 +1804,10 @@ def crear_ubicacion_en_mapa():
         temp_filename = request.form.get('temp_filename')
         objetos_json = request.form.get('objetos_finales')
         file = request.files.get('file')
-        
+
         img_bytes = None
         filename = None
-        
+
         if file:
             img_bytes = file.read()
             file.seek(0)
@@ -1739,15 +1815,15 @@ def crear_ubicacion_en_mapa():
             filename = upload_image_to_gcs(file, orig_name)
         elif temp_filename:
             filename = temp_filename
-            
+
         if not filename:
-             return jsonify({'status': 'error', 'message': 'No se recibió imagen'}), 400
-        
+            return jsonify({'status': 'error', 'message': 'No se recibió imagen'}), 400
+
         # Crear ubicación con posición
         nueva_ubicacion = Ubicacion(
             nombre=nombre,
             imagen_path=filename,
-            tags="", 
+            tags="",
             plano_id=int(plano_id) if plano_id else None,
             pos_x=int(pos_x) if pos_x else None,
             pos_y=int(pos_y) if pos_y else None,
@@ -1756,10 +1832,10 @@ def crear_ubicacion_en_mapa():
         )
         db.session.add(nueva_ubicacion)
         db.session.flush()
-        
+
         import json
         from ai_engine import analizar_imagen_objetos
-        
+
         objetos_finales = []
         if objetos_json:
             objetos_finales = json.loads(objetos_json)
@@ -1782,10 +1858,11 @@ def crear_ubicacion_en_mapa():
         nombres_para_tags = []
         for item in objetos_finales:
             categoria_completa = item.get('categoria_principal', item.get('categoria', 'General'))
-            
+
             # LOG DE SEGURIDAD SRE: Validar qué datos entran a la DB
-            app.logger.info(f"[DB-MAPPING] Guardando: {item.get('nombre')} | Cat: {categoria_completa} | Desc: {item.get('descripcion')[:30]}...")
-            
+            app.logger.info(
+                f"[DB-MAPPING] Guardando: {item.get('nombre')} | Cat: {categoria_completa} | Desc: {item.get('descripcion')[:30]}...")
+
             # PROYECCIÓN ESPACIAL
             obj_pos_x, obj_pos_y = None, None
             bbox = item.get('bbox')
@@ -1815,16 +1892,16 @@ def crear_ubicacion_en_mapa():
             )
             db.session.add(nuevo_objeto)
             nombres_para_tags.append(item.get('nombre', 'Objeto'))
-            
+
         # SRE Sync: Asegurar que la ubicación tenga los tags para que la galería no diga "Sin análisis"
         if nombres_para_tags:
             nueva_ubicacion.tags = ", ".join(nombres_para_tags)
         else:
             nueva_ubicacion.tags = "Sin objetos detectados"
-            
+
         db.session.commit()
         vanguard_log(f"[DB-SUCCESS] Ubicación '{nombre}' guardada con {len(objetos_finales)} objetos.")
-        
+
         return jsonify({
             'status': 'success',
             'ubicacion_id': nueva_ubicacion.id,
@@ -1836,24 +1913,25 @@ def crear_ubicacion_en_mapa():
         db.session.rollback()
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
+
 @app.route('/plano/<int:plano_id>/upload_simple', methods=['POST'])
 def upload_plano_simple(plano_id):
     """Sube una foto directamente a un plano migrado a GCS."""
     plano = Plano.query.get_or_404(plano_id)
     nombre = request.form.get('nombre', 'Nuevo Espacio')
     file = request.files.get('file')
-    
+
     if file and file.filename != '':
         try:
             # 1. IA: Procesar desde memoria
             img_bytes = file.read()
             from ai_engine import analizar_imagen_objetos
             resultado = analizar_imagen_objetos(img_bytes)
-            
+
             # 2. GCS: Subir
             file.seek(0)
             filename = upload_image_to_gcs(file, secure_filename(file.filename))
-            
+
             nueva_ubi = Ubicacion(
                 nombre=nombre,
                 imagen_path=filename,
@@ -1863,7 +1941,7 @@ def upload_plano_simple(plano_id):
             )
             db.session.add(nueva_ubi)
             db.session.flush()
-            
+
             for item in resultado.get('items', []):
                 nuevo_obj = Objeto(
                     nombre=item.get('nombre', 'Objeto'),
@@ -1877,101 +1955,107 @@ def upload_plano_simple(plano_id):
                     tags_semanticos=item.get('tags_semanticos', '')
                 )
                 db.session.add(nuevo_obj)
-            
+
             db.session.commit()
             flash(f'✓ "{nombre}" indexado en la nube.')
         except Exception as e:
             app.logger.error(f"Error en upload_simple: {e}")
             db.session.rollback()
             flash(f"Error al subir: {e}")
-            
+
     return redirect(url_for('ver_plano', plano_id=plano_id))
+
 
 @app.route('/plano/editar/<int:plano_id>', methods=['GET', 'POST'])
 def editar_plano(plano_id):
     """Editar un plano existente con GCS"""
     plano = Plano.query.get_or_404(plano_id)
-    
+
     if request.method == 'POST':
         nombre = request.form.get('nombre', plano.nombre)
         file = request.files.get('file')
         drawing_data = request.form.get('drawing_data')
-        
+
         # 1. Procesar Archivo (Prioridad: Nueva Foto)
         if file and file.filename != '':
             try:
                 from werkzeug.utils import secure_filename
                 from storage_manager import upload_image_to_gcs
-                
+
                 # Borrar antigua
                 if plano.imagen_path:
                     try:
                         from storage_manager import get_storage_client, GCP_BUCKET_NAME
                         bucket = get_storage_client().bucket(GCP_BUCKET_NAME)
                         bucket.blob(plano.imagen_path).delete()
-                    except: pass
-                
+                    except BaseException:
+                        pass
+
                 filename = secure_filename(file.filename)
                 new_path = upload_image_to_gcs(file, filename)
                 plano.imagen_path = new_path
                 app.logger.info(f"[EDIT-PLANO] Nueva foto maestra subida: {new_path}")
             except Exception as e:
                 flash(f"Error al subir foto: {e}")
-                
+
         # 2. Procesar Dibujo
         elif drawing_data:
             try:
-                import io, base64
+                import io
+                import base64
                 header, encoded = drawing_data.split(",", 1)
                 data = base64.b64decode(encoded)
                 temp_filename = f"plano_edit_{uuid.uuid4().hex[:8]}.png"
-                
+
                 if plano.imagen_path:
                     try:
                         from storage_manager import get_storage_client, GCP_BUCKET_NAME
                         get_storage_client().bucket(GCP_BUCKET_NAME).blob(plano.imagen_path).delete()
-                    except: pass
-                
+                    except BaseException:
+                        pass
+
                 new_path = upload_image_to_gcs(io.BytesIO(data), temp_filename)
                 plano.imagen_path = new_path
             except Exception as e:
                 flash(f"Error al guardar dibujo: {e}")
-        
+
         plano.nombre = nombre
         db.session.commit()
         flash(f'✓ Plano "{nombre}" actualizado correctamente.')
         return redirect(url_for('ver_plano', plano_id=plano.id))
-    
+
     return render_template('plano_edit.html', plano=plano)
+
 
 @app.route('/api/plano/<int:plano_id>/upload_maestra', methods=['POST'])
 def upload_maestra_direct(plano_id):
     """Carga directa de foto maestra desde la vista táctil (Cirugía de Eventos)"""
     plano = Plano.query.get_or_404(plano_id)
     file = request.files.get('file')
-    
+
     if not file or file.filename == '':
         return jsonify({'success': False, 'message': 'No se seleccionó ningún archivo'}), 400
-        
+
     try:
         from werkzeug.utils import secure_filename
         from storage_manager import upload_image_to_gcs, get_storage_client, GCP_BUCKET_NAME
-        
+
         # 1. Limpieza de imagen anterior
         if plano.imagen_path:
             try:
                 bucket = get_storage_client().bucket(GCP_BUCKET_NAME)
                 bucket.blob(plano.imagen_path).delete()
-            except: pass
-            
+            except BaseException:
+                pass
+
         # 2. Subida a GCS
         filename = secure_filename(file.filename)
         new_path = upload_image_to_gcs(file, filename)
-        
+
         # 3. Actualización DB
         plano.imagen_path = new_path
         db.session.commit()
-        
+
         app.logger.info(f"[CIRUGIA-API] Foto maestra actualizada para plano {plano_id}: {new_path}")
         return jsonify({'success': True, 'path': new_path})
     except Exception as e:
@@ -1979,6 +2063,8 @@ def upload_maestra_direct(plano_id):
         return jsonify({'success': False, 'message': str(e)}), 500
 
 # ── API: Auto-save del dibujo de plano (fetch desde canvas) ──
+
+
 @app.route('/api/save-drawing/<int:plano_id>', methods=['POST'])
 def save_drawing_api(plano_id):
     """Guarda el dibujo del canvas automáticamente sin recargar la página."""
@@ -1986,10 +2072,10 @@ def save_drawing_api(plano_id):
     plano = Plano.query.get_or_404(plano_id)
     data = request.get_json()
     drawing_data = data.get('drawing_data', '')
-    
+
     if not drawing_data or ',' not in drawing_data:
         return jsonify({'success': False, 'error': 'No drawing data'}), 400
-    
+
     try:
         header, encoded = drawing_data.split(",", 1)
         decoded = base64.b64decode(encoded)
@@ -2004,22 +2090,23 @@ def save_drawing_api(plano_id):
         db.session.rollback()
         return jsonify({'success': False, 'error': str(e)}), 500
 
+
 @app.route('/ai-optimizer')
 def ai_optimizer():
     # El cliente se importa vía get_client() más abajo para ser resilientes
     # from ai_engine import client # BUG: No existe 'client' en ai_engine, solo get_client() o _client
-    
+
     objetos = Objeto.query.all()
     if not objetos:
         return render_template('ai_optimizer.html', tips=[])
-    
+
     # Crear un resumen para la IA
     resumen = []
     for obj in objetos:
         resumen.append(f"- {obj.nombre} (Categoría: {obj.categoria_principal or 'General'}) en {obj.ubicacion.nombre}")
-    
+
     resumen_texto = "\n".join(resumen)
-    
+
     # Llamada a Gemini para consejos pro usando la nueva SDK
     tips = []
     from ai_engine import get_client
@@ -2027,12 +2114,12 @@ def ai_optimizer():
     if client:
         try:
             prompt = f"""
-            Eres un experto en ingeniería de espacios y organización doméstica estilo "Premium/Tesla". 
+            Eres un experto en ingeniería de espacios y organización doméstica estilo "Premium/Tesla".
             Basado en este inventario detectado por mi sistema de visión, dame 3 consejos de "Ingeniería de Élite" para organizar mi casa y ahorrar tiempo.
-            
+
             Inventario:
             {resumen_texto}
-            
+
             Responde ÚNICAMENTE en formato JSON con esta estructura:
             [
               {{"titulo": "Título del consejo", "contenido": "Explicación detallada"}},
@@ -2049,47 +2136,50 @@ def ai_optimizer():
                 clean_json = clean_json.split('```json')[1].split('```')[0].strip()
             elif '```' in clean_json:
                 clean_json = clean_json.split('```')[1].split('```')[0].strip()
-            
+
             import json
             tips = json.loads(clean_json)
         except Exception as e:
             app.logger.error(f"Error en AI Optimizer: {e}")
-            tips = [{"titulo": "Cerebro en mantenimiento", "contenido": "La IA está procesando otros datos. Volvé a intentar en unos segundos."}]
-            
+            tips = [{"titulo": "Cerebro en mantenimiento",
+                     "contenido": "La IA está procesando otros datos. Volvé a intentar en unos segundos."}]
+
     return render_template('ai_optimizer.html', tips=tips)
 
 # --- API Búsqueda en Mapa (Ctrl+F Físico) ---
+
+
 @app.route('/api/buscar_en_mapa')
 def buscar_en_mapa():
     """Busca ubicaciones y objetos dentro de un plano específico"""
     from rapidfuzz import fuzz
-    
+
     query = request.args.get('q', '').lower().strip()
     plano_id = request.args.get('plano_id', type=int)
-    
+
     if not query or len(query) < 2 or not plano_id:
         return jsonify([])
-    
+
     # Obtener ubicaciones del plano
     ubicaciones = Ubicacion.query.filter_by(plano_id=plano_id).all()
-    
+
     resultados = []
-    
+
     for ubi in ubicaciones:
         if ubi.pos_x is None or ubi.pos_y is None:
             continue
-        
+
         # Busca-todo Home - v1.0.7 Semantic Intelligence Vanguard
         score_ubi = max(
             fuzz.ratio(query, ubi.nombre.lower()),
             fuzz.partial_ratio(query, ubi.nombre.lower()),
             fuzz.token_sort_ratio(query, ubi.nombre.lower())
         )
-        
+
         # Buscar en objetos de esta ubicación
         objetos_match = []
         max_obj_score = 0
-        
+
         # Análisis Semántico (Intent Expansion) con la nueva SDK
         expanded_queries = [query]
         if GEMINI_API_KEY:
@@ -2113,7 +2203,7 @@ def buscar_en_mapa():
                     fuzz.partial_ratio(q_expanded, obj.nombre.lower()),
                     fuzz.token_sort_ratio(q_expanded, obj.nombre.lower())
                 )
-                
+
                 # Buscar en tags semánticos (VANGUARD)
                 if obj.tags_semanticos:
                     score_semantico = fuzz.partial_ratio(q_expanded, obj.tags_semanticos.lower())
@@ -2122,23 +2212,23 @@ def buscar_en_mapa():
                 if obj.categoria_principal:
                     score_cat = fuzz.partial_ratio(q_expanded, obj.categoria_principal.lower())
                     score_obj = max(score_obj, score_cat)
-                
+
                 if score_obj > 70:
                     objetos_match.append({
                         "id": obj.id,
                         "nombre": obj.nombre,
                         "score": score_obj,
-                        "es_semantico": q_expanded != query # Marcar si fue hallado por IA
+                        "es_semantico": q_expanded != query  # Marcar si fue hallado por IA
                     })
                     max_obj_score = max(max_obj_score, score_obj)
-        
+
         # Score final: el mejor entre ubicación y sus objetos
         final_score = max(score_ubi, max_obj_score)
-        
+
         if final_score >= 55:
             # Ordenar objetos por score
             objetos_match.sort(key=lambda x: x['score'], reverse=True)
-            
+
             resultados.append({
                 'ubi_id': ubi.id,
                 'nombre': ubi.nombre,
@@ -2148,13 +2238,14 @@ def buscar_en_mapa():
                 'tipo_match': 'ubicacion' if score_ubi >= max_obj_score else 'objeto',
                 'objetos_match': objetos_match[:3]  # Top 3 objetos
             })
-    
+
     # Ordenar por score y limitar
     resultados.sort(key=lambda x: x['score'], reverse=True)
     return jsonify(resultados[:10])
 
-
 # --- VIDEO SCANNER ---
+
+
 @app.route('/video_scanner/<int:plano_id>', methods=['GET', 'POST'])
 def video_scanner(plano_id):
     plano = Plano.query.get_or_404(plano_id)
@@ -2174,7 +2265,6 @@ def video_scanner(plano_id):
                 frames = [{'path': fr['path'], 'objects': fr.get('objects', [])} for fr in raw]
                 step = 3
 
-    
     if request.method == 'POST':
         file = request.files.get('video')
         if file:
@@ -2221,7 +2311,9 @@ def video_scanner(plano_id):
 def scanner_upload_frames(plano_id):
     """Plan B: Recibe fotos capturadas cada 2s desde el celular (base64 JSON).
     NO requiere video — evita el problema de payload y timeout."""
-    import json, base64, io
+    import json
+    import base64
+    import io
     from ai_engine import analizar_imagen_objetos
     from flask import session
 
@@ -2254,7 +2346,7 @@ def scanner_upload_frames(plano_id):
                     'path': frame_filename,
                     'objects': res.get('items', [])
                 })
-                app.logger.info(f"[SCANNER-PLAN-B] Frame {i+1}: {len(res.get('items', []))} objetos detectados")
+                app.logger.info(f"[SCANNER-PLAN-B] Frame {i + 1}: {len(res.get('items', []))} objetos detectados")
 
             except Exception as e:
                 app.logger.error(f"[SCANNER-PLAN-B] Error en frame {i}: {e}")
@@ -2285,11 +2377,11 @@ def save_video_scans(plano_id):
     import json
     data = request.json
     indices = data.get('indices', [])
-    
+
     # Recuperar frames del archivo temporal
     temp_file = session.get('temp_frames_file')
     frames = []
-    
+
     if temp_file:
         temp_path = os.path.join(app.config.get('UPLOAD_FOLDER'), temp_file)
         if os.path.exists(temp_path):
@@ -2297,7 +2389,7 @@ def save_video_scans(plano_id):
                 frames = json.load(f)
             # Limpiar archivo después de uso
             # os.remove(temp_path) # Comentado para debug por ahora
-            
+
     try:
         for idx in indices:
             if idx < len(frames):
@@ -2310,7 +2402,7 @@ def save_video_scans(plano_id):
                 )
                 db.session.add(nueva_ubi)
                 db.session.flush()
-                
+
                 for obj in frame['objects']:
                     metadata = obj.get('metadata', {})
                     nuevo_obj = Objeto(
@@ -2325,22 +2417,23 @@ def save_video_scans(plano_id):
                         ubicacion_id=nueva_ubi.id
                     )
                     db.session.add(nuevo_obj)
-        
+
         db.session.commit()
         db.session.commit()
-        
+
         # Limpiar sesión y archivo
         if temp_file:
             try:
                 os.remove(os.path.join(app.config.get('UPLOAD_FOLDER'), temp_file))
-            except:
+            except BaseException:
                 pass
         session.pop('temp_frames_file', None)
-        
+
         return jsonify({'success': True})
     except Exception as e:
         db.session.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
+
 
 @app.route('/api/video/procesar', methods=['POST'])
 def procesar_video():
@@ -2350,23 +2443,23 @@ def procesar_video():
         file = request.files.get('video')
         plano_id = request.form.get('plano_id')
         intervalo = int(request.form.get('intervalo', 3))
-        
+
         if not file:
             return jsonify({'status': 'error', 'message': 'No se recibió video'}), 400
-        
+
         # Guardar video temporalmente
         video_filename = f"video_{uuid.uuid4().hex[:8]}_{secure_filename(file.filename)}"
         video_path = os.path.join(app.config.get('UPLOAD_FOLDER'), video_filename)
         file.save(video_path)
-        
+
         # Extraer fotogramas
         from video_processor import extraer_fotogramas
         frames = extraer_fotogramas(video_path, app.config.get('UPLOAD_FOLDER'), intervalo_segundos=intervalo)
-        
+
         if not frames:
             os.remove(video_path)
             return jsonify({'status': 'error', 'message': 'No se pudieron extraer frames del video'}), 400
-        
+
         # Preparar proyección espacial (Homografía)
         h_matrix = None
         if plano_id:
@@ -2381,18 +2474,18 @@ def procesar_video():
         # Analizar cada frame con IA y aplicar estabilización (Tracking)
         from ai_engine import analizar_imagen_objetos
         from stabilization_engine import SimpleTracker
-        
+
         # Inicializar tracker con parámetros optimizados para mobile (alpha=0.6 para suavizado)
         tracker = SimpleTracker(max_age=3, min_hits=1, alpha=0.6)
         escenas = []
-        
+
         for i, frame_filename in enumerate(frames):
             frame_path = os.path.join(app.config.get('UPLOAD_FOLDER'), frame_filename)
-            
+
             try:
                 resultado = analizar_imagen_objetos(frame_path, tipo_espacio="general")
                 items_raw = resultado.get('items', [])
-                
+
                 # Estabilizar detecciones (Transformar raw detections a tracks suavizados)
                 # Formatear para el tracker
                 detecciones_formateadas = []
@@ -2404,17 +2497,17 @@ def procesar_video():
                             'confianza': item.get('confianza', 0.8),
                             'metadata': item.get('metadata', {})
                         })
-                
+
                 # El tracker actualiza su estado interno y devuelve tracks activos
                 tracks_estabilizados = tracker.update(detecciones_formateadas)
-                
+
                 # Re-formatear tracks estabilizados para la respuesta final
                 items_finales = []
                 for track in tracks_estabilizados:
                     # PROYECCIÓN ESPACIAL PARA CADA TRACK
                     track_pos_x = None
                     track_pos_y = None
-                    
+
                     if h_matrix is not None and 'bbox' in track:
                         from spatial_engine import SpatialEngine
                         anchor = SpatialEngine.get_object_anchor(track['bbox'])
@@ -2454,21 +2547,22 @@ def procesar_video():
                     'seleccionada': False,
                     'error': str(e)
                 })
-        
+
         # Limpiar video original (frames ya guardados)
         try:
             os.remove(video_path)
-        except:
+        except BaseException:
             pass
-        
+
         return jsonify({
             'status': 'success',
             'total_frames': len(frames),
             'escenas': escenas
         })
-        
+
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
+
 
 @app.route('/api/video/crear_ubicaciones', methods=['POST'])
 def crear_ubicaciones_desde_video():
@@ -2478,20 +2572,20 @@ def crear_ubicaciones_desde_video():
         data = request.json
         plano_id = data.get('plano_id')
         escenas = data.get('escenas', [])
-        
+
         if not plano_id or not escenas:
             return jsonify({'status': 'error', 'message': 'Datos insuficientes'}), 400
-        
+
         ubicaciones_creadas = []
-        
+
         for escena in escenas:
             nombre = escena.get('nombre', 'Escena sin nombre')
             filename = escena.get('filename')
             objetos_list = escena.get('objetos', [])
-            
+
             if not filename:
                 continue
-            
+
             # Crear ubicación (sin posición, el usuario la arrastrará en el mapa)
             nueva_ubi = Ubicacion(
                 nombre=nombre,
@@ -2502,7 +2596,7 @@ def crear_ubicaciones_desde_video():
             )
             db.session.add(nueva_ubi)
             db.session.flush()
-            
+
             # Crear objetos asociados
             nombres_tags = []
             for item in objetos_list:
@@ -2519,27 +2613,29 @@ def crear_ubicaciones_desde_video():
                 )
                 db.session.add(nuevo_obj)
                 nombres_tags.append(item.get('nombre', 'Objeto'))
-            
+
             nueva_ubi.tags = ", ".join(nombres_tags)
             ubicaciones_creadas.append({
                 'id': nueva_ubi.id,
                 'nombre': nombre,
                 'objetos': len(objetos_list)
             })
-        
+
         db.session.commit()
-        
+
         return jsonify({
             'status': 'success',
             'ubicaciones_creadas': len(ubicaciones_creadas),
             'detalle': ubicaciones_creadas
         })
-        
+
     except Exception as e:
         db.session.rollback()
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 # --- API Muebles 3D ---
+
+
 @app.route('/api/plano/<int:plano_id>/muebles')
 def get_muebles(plano_id):
     from models import Mueble
@@ -2560,6 +2656,7 @@ def get_muebles(plano_id):
         'material': m.material
     } for m in muebles])
 
+
 @app.route('/api/mueble/crear', methods=['POST'])
 def crear_mueble():
     from models import Mueble
@@ -2569,7 +2666,7 @@ def crear_mueble():
             plano_id=data['plano_id'],
             nombre=data.get('nombre', f"{data['tipo'].capitalize()} {Mueble.query.count() + 1}"),
             tipo=data['tipo'],
-            pos_x=0, pos_y=0, pos_z=0, # Centro por defecto
+            pos_x=0, pos_y=0, pos_z=0,  # Centro por defecto
             ancho=data.get('ancho', 10),
             alto=data.get('alto', 10),
             profundidad=data.get('profundidad', 10),
@@ -2580,8 +2677,8 @@ def crear_mueble():
         db.session.add(nuevo)
         db.session.commit()
         return jsonify({
-            'status': 'success', 
-            'id': nuevo.id, 
+            'status': 'success',
+            'id': nuevo.id,
             'nombre': nuevo.nombre,
             'mensaje': 'Mueble creado',
             'estantes': nuevo.estantes,
@@ -2589,6 +2686,7 @@ def crear_mueble():
         })
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
+
 
 @app.route('/api/mueble/actualizar', methods=['POST'])
 def actualizar_mueble():
@@ -2598,25 +2696,37 @@ def actualizar_mueble():
         m = Mueble.query.get(data['id'])
         if not m:
             return jsonify({'status': 'error', 'message': 'Mueble no encontrado'}), 404
-            
-        if 'pos_x' in data: m.pos_x = data['pos_x']
-        if 'pos_y' in data: m.pos_y = data['pos_y']
-        if 'pos_z' in data: m.pos_z = data['pos_z']
-        if 'rotacion_y' in data: m.rotacion_y = data['rotacion_y']
-        
+
+        if 'pos_x' in data:
+            m.pos_x = data['pos_x']
+        if 'pos_y' in data:
+            m.pos_y = data['pos_y']
+        if 'pos_z' in data:
+            m.pos_z = data['pos_z']
+        if 'rotacion_y' in data:
+            m.rotacion_y = data['rotacion_y']
+
         # Propiedades Extendidas
-        if 'ancho' in data: m.ancho = data['ancho']
-        if 'alto' in data: m.alto = data['alto']
-        if 'profundidad' in data: m.profundidad = data['profundidad']
-        if 'color' in data: m.color = data['color']
-        if 'estantes' in data: m.estantes = data['estantes']
-        if 'material' in data: m.material = data['material']
-        if 'nombre' in data: m.nombre = data['nombre']
-        
+        if 'ancho' in data:
+            m.ancho = data['ancho']
+        if 'alto' in data:
+            m.alto = data['alto']
+        if 'profundidad' in data:
+            m.profundidad = data['profundidad']
+        if 'color' in data:
+            m.color = data['color']
+        if 'estantes' in data:
+            m.estantes = data['estantes']
+        if 'material' in data:
+            m.material = data['material']
+        if 'nombre' in data:
+            m.nombre = data['nombre']
+
         db.session.commit()
         return jsonify({'status': 'success'})
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
+
 
 @app.route('/api/mueble/<int:mueble_id>', methods=['DELETE'])
 def borrar_mueble(mueble_id):
@@ -2629,6 +2739,7 @@ def borrar_mueble(mueble_id):
         return jsonify({'status': 'success'})
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
+
 
 @app.route('/ar-view')
 def ar_view():
@@ -2643,11 +2754,11 @@ def actualizar_posicion_ubicacion():
         ubi = Ubicacion.query.get(data['id'])
         if not ubi:
             return jsonify({'status': 'error', 'message': 'Ubicación no encontrada'}), 404
-        
+
         ubi.pos_x = data.get('pos_x', ubi.pos_x)
         ubi.pos_y = data.get('pos_y', ubi.pos_y)
         ubi.pos_z = data.get('pos_z', ubi.pos_z)
-        
+
         db.session.commit()
         return jsonify({'status': 'success'})
     except Exception as e:
@@ -2762,7 +2873,7 @@ def asignar_zona_objeto(obj_id):
     try:
         obj = Objeto.query.get_or_404(obj_id)
         zona_id = request.json.get('zona_id')
-        
+
         if zona_id:
             zona = Zona.query.get_or_404(zona_id)
             obj.zona_id = zona.id
@@ -2774,8 +2885,8 @@ def asignar_zona_objeto(obj_id):
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
-
 # --- ADMINISTRACIÓN Y MANTENIMIENTO ---
+
 
 @app.route('/admin/backfill_embeddings')
 def admin_backfill():
