@@ -1271,17 +1271,17 @@ def nuevo_plano():
             # Pre-poblar muebles según el template
             if metodo == 'template':
                 if template_type == 'galpon':
-                    # Dos estanterías industriales largas
-                    db.session.add(Mueble(tipo='estanteria', nombre='Rack A1', pos_x=10, pos_y=10, ancho=5, alto=80, plano_id=nuevo.id))
-                    db.session.add(Mueble(tipo='estanteria', nombre='Rack B2', pos_x=85, pos_y=10, ancho=5, alto=80, plano_id=nuevo.id))
+                    # Dos estanterías industriales largas alineadas a muros
+                    db.session.add(Mueble(tipo='estanteria', nombre='Rack A1', pos_x=12, pos_y=35, ancho=5, alto=50, plano_id=nuevo.id))
+                    db.session.add(Mueble(tipo='estanteria', nombre='Rack B2', pos_x=83, pos_y=35, ancho=5, alto=50, plano_id=nuevo.id))
                 elif template_type == 'casa':
                     # Una mesa y un estante
-                    db.session.add(Mueble(tipo='mesa', nombre='Mesa Comedor', pos_x=40, pos_y=40, ancho=20, alto=10, plano_id=nuevo.id))
-                    db.session.add(Mueble(tipo='estanteria', nombre='Biblioteca', pos_x=10, pos_y=10, ancho=30, alto=5, plano_id=nuevo.id))
+                    db.session.add(Mueble(tipo='mesa', nombre='Mesa Living', pos_x=65, pos_y=40, ancho=20, alto=10, plano_id=nuevo.id))
+                    db.session.add(Mueble(tipo='estanteria', nombre='Estante Dormitorio', pos_x=15, pos_y=20, ancho=30, alto=5, plano_id=nuevo.id))
                 elif template_type == 'taller':
                     # Banco de trabajo y estante de herramientas
-                    db.session.add(Mueble(tipo='mesa', nombre='Banco de Trabajo', pos_x=20, pos_y=70, ancho=60, alto=15, plano_id=nuevo.id))
-                    db.session.add(Mueble(tipo='estanteria', nombre='Panel de Herramientas', pos_x=20, pos_y=10, ancho=60, alto=5, plano_id=nuevo.id))
+                    db.session.add(Mueble(tipo='mesa', nombre='Banco de Trabajo', pos_x=50, pos_y=82, ancho=60, alto=10, plano_id=nuevo.id))
+                    db.session.add(Mueble(tipo='estanteria', nombre='Panel de Herramientas', pos_x=50, pos_y=10, ancho=60, alto=5, plano_id=nuevo.id))
 
             db.session.commit()
             flash(f'✓ Plano "{nombre}" creado en la nube con éxito.')
