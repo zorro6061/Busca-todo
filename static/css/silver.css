@@ -55,20 +55,31 @@
     box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5) !important;
 }
 
-/* ── CONTRAST CORRECTION (Revision 97.1) ── */
-/* Primary buttons (White background) must have dark text */
-.btn-primary {
-    background: var(--primary) !important;
+/* ── CONTRAST CORRECTION (Revision 97.2) ── */
+/* Primary surfaces (White background) must have dark text/icons */
+.btn-primary,
+.search-submit-btn,
+.badge-new,
+.badge-primary,
+.step-num,
+.step-pill.active {
+    background: var(--primary) !important; /* #ffffff */
     color: #000000 !important;
     font-weight: 700 !important;
 }
 
-.btn-primary .material-symbols-rounded {
+.btn-primary .material-symbols-rounded,
+.search-submit-btn .material-symbols-rounded,
+.badge-new .material-symbols-rounded,
+.badge-primary .material-symbols-rounded {
     color: #000000 !important;
     filter: none !important;
 }
 
-/* Secondary (Glass) buttons should keep silver/white text */
-.btn-secondary {
+/* Secondary (Glass) buttons and standard text should keep silver/white text */
+.btn-secondary,
+.page-subtitle,
+.hero-subtitle {
     color: #ffffff !important;
+    opacity: 0.9 !important;
 }
