@@ -322,7 +322,7 @@ _db_ready = False
 @app.before_request
 def initialize_vanguard():
     # RUTAS DE SALUD: Bypass total (no DB, no auth)
-    if request.path in ['/alive', '/health'] or request.path.startswith('/static/'):
+    if request.path in ['/alive', '/health', '/api/health'] or request.path.startswith('/static/'):
         return
 
     # --- INICIALIZACIÓN DE BD: Corre para TODAS las rutas (incluyendo home pública) ---
@@ -1392,7 +1392,7 @@ def health_check():
         
         return jsonify({
             "status": "Healthy",
-            "version": "1.0.6-ui-rev69",
+            "version": "1.0.9-hotfix-sql-final",
             "database": db_status,
             "environment": env,
             "stats": {
