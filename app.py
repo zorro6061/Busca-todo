@@ -598,24 +598,31 @@ def index():
             except:
                 pass
 
-        return render_template('index.html', 
-                            plano_count=Plano.query.count(),
-                            obj_count=objetos_count, 
-                            cat_count=categorias_count,
-                            avg_conf=avg_conf,
-                            ultima_ubi=ultima_ubi,
-                            show_onboarding=show_onboarding)
+        try:
+            return render_template('index.html', 
+                                plano_count=Plano.query.count(),
+                                obj_count=objetos_count, 
+                                cat_count=categorias_count,
+                                avg_conf=avg_conf,
+                                ultima_ubi=ultima_ubi,
+                                show_onboarding=show_onboarding)
+        except Exception as render_err:
+            import traceback
+            return f"<pre>TEMPLATE RENDER FAILED:\n{traceback.format_exc()}</pre>", 500
     except Exception as e:
         import traceback
         vanguard_log(f"FALLBACK INDEX ACTIVE. Error: {e}")
         vanguard_log(traceback.format_exc())
-        return render_template('index.html', 
-                             plano_count=0,
-                             obj_count=0, 
-                             cat_count=0,
-                             avg_conf=0,
-                             ultima_ubi=None,
-                             show_onboarding=False)
+        try:
+            return render_template('index.html', 
+                                plano_count=0,
+                                obj_count=0, 
+                                cat_count=0,
+                                avg_conf=0,
+                                ultima_ubi=None,
+                                show_onboarding=False)
+        except Exception as fallback_err:
+            return f"<pre>TOTAL COLLAPSE (Index + Fallback Failed):\n{traceback.format_exc()}</pre>", 500
 
 @app.after_request
 def add_cache_control(response):
