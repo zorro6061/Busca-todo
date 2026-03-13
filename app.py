@@ -565,42 +565,55 @@ def index():
                              avg_conf=0,
                              ultima_ubi=None)
 
-    from sqlalchemy import func
-    ubicaciones_count = Ubicacion.query.count()
-    objetos_count = Objeto.query.count()
-    
-    # Categorías únicas y confianza promedio (Eficiente)
-    categorias_count = 0
-    avg_conf = 0
-    
     try:
-        # Contar categorías únicas directamente en SQL
-        categorias_count = db.session.query(func.count(func.distinct(Objeto.categoria_principal))).scalar() or 0
+        from sqlalchemy import func
+        ubicaciones_count = Ubicacion.query.count()
+        objetos_count = Objeto.query.count()
         
-        # Calcular promedio directamente en SQL
-        if objetos_count > 0:
-            avg_conf = db.session.query(func.avg(Objeto.confianza)).scalar() or 0
-            avg_conf = int(avg_conf * 100)
-    except Exception as e:
-        app.logger.warning(f"Error en dashboard stats: {e}")
-    
-    ultima_ubi = Ubicacion.query.order_by(Ubicacion.id.desc()).first()
-    
-    # Verificar onboarding para el usuario actual
-    user_email = session.get('user_id')
-    show_onboarding = False
-    if user_email:
-        user = User.query.filter_by(email=user_email).first()
-        if user and not user.has_seen_onboarding:
-            show_onboarding = True
+        # Categorías únicas y confianza promedio (Eficiente)
+        categorias_count = 0
+        avg_conf = 0
+        
+        try:
+            # Contar categorías únicas directamente en SQL
+            categorias_count = db.session.query(func.count(func.distinct(Objeto.categoria_principal))).scalar() or 0
+            
+            # Calcular promedio directamente en SQL
+            if objetos_count > 0:
+                avg_conf = db.session.query(func.avg(Objeto.confianza)).scalar() or 0
+                avg_conf = int(avg_conf * 100)
+        except Exception as e:
+            app.logger.warning(f"Error en dashboard stats: {e}")
+        
+        ultima_ubi = Ubicacion.query.order_by(Ubicacion.id.desc()).first()
+        
+        # Verificar onboarding para el usuario actual
+        user_email = session.get('user_id')
+        show_onboarding = False
+        if user_email:
+            try:
+                user = User.query.filter_by(email=user_email).first()
+                if user and not user.has_seen_onboarding:
+                    show_onboarding = True
+            except:
+                pass
 
-    return render_template('index.html', 
-                         plano_count=Plano.query.count(),
-                         obj_count=objetos_count, 
-                         cat_count=categorias_count,
-                         avg_conf=avg_conf,
-                         ultima_ubi=ultima_ubi,
-                         show_onboarding=show_onboarding)
+        return render_template('index.html', 
+                            plano_count=Plano.query.count(),
+                            obj_count=objetos_count, 
+                            cat_count=categorias_count,
+                            avg_conf=avg_conf,
+                            ultima_ubi=ultima_ubi,
+                            show_onboarding=show_onboarding)
+    except Exception as e:
+        vanguard_log(f"FALLBACK INDEX ACTIVE: {e}")
+        return render_template('index.html', 
+                             plano_count=0,
+                             obj_count=0, 
+                             cat_count=0,
+                             avg_conf=0,
+                             ultima_ubi=None,
+                             show_onboarding=False)
 
 @app.after_request
 def add_cache_control(response):
@@ -633,14 +646,15 @@ def inject_config():
             return path
 
     try:
+        if not _db_ready:
+            return dict(app_config={'subscription_type': 'free'}, gcs_base_url=gcs_base, safe_gcs_url=safe_gcs_url)
+            
         config = Config.query.first()
         if not config:
-            config = Config(subscription_type='free')
-            db.session.add(config)
-            db.session.commit()
+            # No escribir en context processor para evitar bloqueos
+            return dict(app_config={'subscription_type': 'free'}, gcs_base_url=gcs_base, safe_gcs_url=safe_gcs_url)
         return dict(app_config=config, gcs_base_url=gcs_base, safe_gcs_url=safe_gcs_url)
     except Exception as e:
-        vanguard_log(f"ERROR IN INJECT_CONFIG: {e}")
         return dict(app_config={'subscription_type': 'free'}, gcs_base_url=gcs_base, safe_gcs_url=safe_gcs_url)
 
 @app.route('/pricing')
