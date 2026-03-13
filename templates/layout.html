@@ -5,6 +5,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=5.0">
     <title>Ctrl+F Físico | Buscador de Objetos Reales</title>
+    <!-- Sentry SDK (Rev 101) -->
+    <script src="https://browser.sentry-cdn.com/7.x.x/bundle.min.js" crossorigin="anonymous"></script>
+    <script>
+        if (window.Sentry) {
+            Sentry.init({
+                dsn: "{{ sentry_dsn or 'https://placeholder@o0.ingest.sentry.io/0' }}",
+                environment: "{{ sentry_env or 'development' }}",
+                tracesSampleRate: 1.0,
+            });
+        }
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"

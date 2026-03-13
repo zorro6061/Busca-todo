@@ -135,6 +135,10 @@
 
     let allPresets = {};
 
+    // Obtener parámetros de la URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const preselectedTemplate = urlParams.get('template');
+
     // Cargar Presets al inicio
     fetch('/static/data/presets.json')
         .then(r => r.json())
@@ -142,9 +146,45 @@
             allPresets = data;
             // Si hay un template preseleccionado vía URL, inicializarlo
             if (preselectedTemplate) {
+                btnTemplate.click(); // Cambiar a pestaña plantilla
                 selectCategory(preselectedTemplate);
             }
         });
+
+    const resetButtons = () => {
+        [btnUpload, btnTemplate, btnDraw].forEach(b => {
+            b.classList.remove('btn-primary');
+            b.classList.add('btn-secondary');
+        });
+    };
+
+    btnUpload.onclick = () => {
+        resetButtons();
+        btnUpload.classList.add('btn-primary'); btnUpload.classList.remove('btn-secondary');
+        sectionUpload.style.display = 'block';
+        sectionTemplate.style.display = 'none';
+        sectionDraw.style.display = 'none';
+        inputMetodo.value = 'foto';
+    };
+
+    btnTemplate.onclick = () => {
+        resetButtons();
+        btnTemplate.classList.add('btn-primary'); btnTemplate.classList.remove('btn-secondary');
+        sectionUpload.style.display = 'none';
+        sectionTemplate.style.display = 'block';
+        sectionDraw.style.display = 'none';
+        inputMetodo.value = 'plantilla';
+    };
+
+    btnDraw.onclick = () => {
+        resetButtons();
+        btnDraw.classList.add('btn-primary'); btnDraw.classList.remove('btn-secondary');
+        sectionUpload.style.display = 'none';
+        sectionTemplate.style.display = 'none';
+        sectionDraw.style.display = 'block';
+        inputMetodo.value = 'dibujo';
+        if(typeof resizeCanvas === 'function') resizeCanvas();
+    };
 
     window.selectCategory = (type) => {
         inputTemplateType.value = type;

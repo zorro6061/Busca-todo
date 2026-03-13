@@ -1,0 +1,14 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+echo "🛡️ Rev 101: Escudo de Blindaje Activado..."
+
+# 1. Linting con python -m flake8 (Compatible con Windows/GCP)
+echo "🔍 Validando sintaxis Python..."
+npx lint-staged || { echo "❌ Lint falló. Corregí los errores antes de comitear."; exit 1; }
+
+# 2. Smoke Test Crítico
+echo "🔍 Ejecutando Smoke Test local..."
+npx playwright test tests/smoke.spec.js -g "Login" --project=chromium || { echo "❌ Test falló. Bloqueando commit."; exit 1; }
+
+echo "✅ Blindaje superado."

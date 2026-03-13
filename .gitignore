@@ -23,3 +23,10 @@ uploads/*
 # OS
 .DS_Store
 Thumbs.db
+
+# Node / Playwright
+node_modules/
+playwright-report/
+test-results/
+test_output.txt
+.husky/_/

@@ -1,0 +1,35 @@
+{
+  "name": "ctrl_f_fisico_app",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "npx playwright test",
+    "lint": "flake8 app.py models.py",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.py": "python -m flake8"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zorro6061/Busca-todo.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/zorro6061/Busca-todo/issues"
+  },
+  "homepage": "https://github.com/zorro6061/Busca-todo#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.58.2",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.3.3"
+  },
+  "dependencies": {
+    "@sentry/browser": "^10.43.0",
+    "@sentry/tracing": "^7.120.4"
+  }
+}
