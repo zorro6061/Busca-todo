@@ -76,10 +76,42 @@
     filter: none !important;
 }
 
-/* Secondary (Glass) buttons and standard text should keep silver/white text */
-.btn-secondary,
+/* ── MOBILE ACCESSIBILITY & CONTRAST (Revision 99) ── */
+/* Ensure all interactive targets are at least 44x44px for field use */
+.btn, 
+.template-card,
+.variant-item,
+.nav-links a,
+.mobile-nav-item {
+    min-height: 44px !important;
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Reinforced Outdoor Contrast */
+:root {
+    --text-high-contrast: #ffffff;
+}
+
 .page-subtitle,
-.hero-subtitle {
-    color: #ffffff !important;
-    opacity: 0.9 !important;
+.hero-subtitle,
+.variant-content p {
+    color: var(--text-high-contrast) !important;
+    opacity: 1 !important; /* Full opacity for sunlight visibility */
+    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+}
+
+/* Specific Mobile Overrides */
+@media (max-width: 768px) {
+    .gradient-text {
+        font-size: 2.2rem !important;
+    }
+    .card {
+        padding: 20px !important;
+    }
+    .btn-lg {
+        padding: 16px 24px !important;
+        width: 100% !important;
+    }
 }
