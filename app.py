@@ -1247,10 +1247,10 @@ def nuevo_plano():
                 img = Image.new('RGBA', (1000, 1000), color='#0a0a0a')
                 draw = ImageDraw.Draw(img)
                 
-                # 1. Grid técnico sutil
+                # 1. Grid técnico sutil (Rev 102: Contraste industrial)
                 for i in range(0, 1000, 50):
-                    draw.line([(i, 0), (i, 1000)], fill='#1a1a1a', width=1)
-                    draw.line([(0, i), (1000, i)], fill='#1a1a1a', width=1)
+                    draw.line([(i, 0), (i, 1000)], fill='#222', width=1)
+                    draw.line([(0, i), (1000, i)], fill='#222', width=1)
                 
                 if preset:
                     silver_line = '#e2e8f0'
@@ -1270,14 +1270,14 @@ def nuevo_plano():
                     for wall in preset.get('walls', []):
                         if 'rect' in wall:
                             r = wall['rect']
-                            th = wall.get('thickness', 5)
+                            th = wall.get('thickness', 8)  # Rev 102: Base 8px
                             # Sombra sutil
                             draw.rectangle([r[0]+2, r[1]+2, r[2]+2, r[3]+2], outline=(0,0,0,100), width=th)
                             # Muro metálico
                             draw.rectangle(r, outline=silver_line, width=th)
                         elif 'line' in wall:
                             l = wall['line']
-                            th = wall.get('thickness', 4)
+                            th = wall.get('thickness', 6)  # Rev 102: Base 6px
                             draw.line(l, fill=silver_line, width=th)
 
                     # 4. Labels de Zona (Bold + Badge)
@@ -2656,12 +2656,10 @@ def actualizar_posicion_ubicacion():
 
 @app.route('/api/ubicaciones/<int:ubi_id>/full', methods=['GET'])
 def get_ubicacion_full(ubi_id):
-    from models import Ubicacion, Zona, Objeto  # Added imports for the new function
-    import json  # Added import for json
+    from models import Ubicacion, Zona
     try:
         ubi = Ubicacion.query.get_or_404(ubi_id)
         zonas = Zona.query.filter_by(plano_id=ubi.plano_id).all()
-
 
         objetos_data = []
         for obj in ubi.objetos:
@@ -2672,7 +2670,6 @@ def get_ubicacion_full(ubi_id):
                 'zona_id': obj.zona_id
             })
 
-
         zonas_data = []
         for z in zonas:
             zonas_data.append({
@@ -2680,7 +2677,6 @@ def get_ubicacion_full(ubi_id):
                 'nombre': z.nombre,
                 'color': z.color
             })
-
 
         return jsonify({
             'status': 'success',

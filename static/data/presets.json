@@ -5,8 +5,8 @@
       "name": "Estándar 20x40",
       "description": "Galpón industrial con oficina lateral y área de despacho.",
       "walls": [
-        {"rect": [50, 50, 950, 950], "thickness": 6},
-        {"rect": [50, 50, 300, 300], "thickness": 4}
+        {"rect": [50, 50, 950, 950], "thickness": 12},
+        {"rect": [50, 50, 300, 300], "thickness": 10}
       ],
       "zones": [
         {"rect": [53, 53, 297, 297], "label": "OFICINA", "color": "#2d3748"},
@@ -22,8 +22,8 @@
       "name": "Largo con Oficina Lateral",
       "description": "Distribución alargada ideal para naves logísticas.",
       "walls": [
-        {"rect": [200, 50, 800, 950], "thickness": 6},
-        {"rect": [200, 50, 500, 250], "thickness": 4}
+        {"rect": [200, 50, 800, 950], "thickness": 12},
+        {"rect": [200, 50, 500, 250], "thickness": 10}
       ],
       "zones": [
         {"rect": [203, 53, 497, 247], "label": "ADMIN", "color": "#2d3748"},
@@ -38,7 +38,7 @@
       "name": "Cuadrado Doble Entrada",
       "description": "Diseño simétrico con doble acceso de carga.",
       "walls": [
-        {"rect": [100, 100, 900, 900], "thickness": 6}
+        {"rect": [100, 100, 900, 900], "thickness": 12}
       ],
       "zones": [
         {"rect": [103, 103, 400, 200], "label": "ZONA A", "color": "#2d3748"},
@@ -53,8 +53,8 @@
       "name": "Monoambiente",
       "description": "Espacio abierto moderno tipo loft.",
       "walls": [
-        {"rect": [150, 150, 850, 850], "thickness": 5},
-        {"rect": [150, 150, 350, 350], "thickness": 3}
+        {"rect": [150, 150, 850, 850], "thickness": 10},
+        {"rect": [150, 150, 350, 350], "thickness": 8}
       ],
       "zones": [
         {"rect": [153, 153, 347, 347], "label": "BAÑO", "color": "#2d3748"},
@@ -67,9 +67,9 @@
       "name": "Apartamento 2 Dormitorios",
       "description": "Planta funcional para familias.",
       "walls": [
-        {"rect": [100, 100, 900, 900], "thickness": 5},
-        {"line": [500, 100, 500, 900], "thickness": 4},
-        {"line": [100, 500, 500, 500], "thickness": 4}
+        {"rect": [100, 100, 900, 900], "thickness": 10},
+        {"line": [500, 100, 500, 900], "thickness": 8},
+        {"line": [100, 500, 500, 500], "thickness": 8}
       ],
       "zones": [
         {"rect": [105, 105, 495, 495], "label": "DOR 1", "color": "#2d3748"},
@@ -83,9 +83,9 @@
       "name": "Duplex con Pasillo",
       "description": "Distribución en niveles con pasillo central.",
       "walls": [
-        {"rect": [200, 50, 800, 950], "thickness": 5},
-        {"line": [450, 50, 450, 950], "thickness": 3},
-        {"line": [550, 50, 550, 950], "thickness": 3}
+        {"rect": [200, 50, 800, 950], "thickness": 10},
+        {"line": [450, 50, 450, 950], "thickness": 8},
+        {"line": [550, 50, 550, 950], "thickness": 8}
       ],
       "zones": [
         {"rect": [453, 50, 547, 950], "label": "PASILLO", "color": "#2d3748"}
@@ -99,8 +99,8 @@
       "name": "Taller Estándar Pro",
       "description": "Optimizado para máxima superficie de trabajo.",
       "walls": [
-        {"rect": [50, 50, 950, 950], "thickness": 5},
-        {"rect": [50, 50, 950, 180], "thickness": 4}
+        {"rect": [50, 50, 950, 950], "thickness": 10},
+        {"rect": [50, 50, 950, 180], "thickness": 8}
       ],
       "zones": [
         {"rect": [53, 53, 947, 177], "label": "WALL TOOLS", "color": "#2d3748"},
