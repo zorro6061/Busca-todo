@@ -18,16 +18,16 @@
             <div style="margin-bottom: var(--space-lg);">
                 <div class="grid grid-3" style="gap: var(--space-sm);">
                     <button type="button" id="btn-mode-upload" class="btn btn-primary"
-                        style="border-radius: var(--radius-md);">
-                        📸 Foto
+                        style="border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; gap: 8px;">
+                        <span class="material-symbols-rounded">photo_camera</span> Foto
                     </button>
                     <button type="button" id="btn-mode-template" class="btn btn-secondary"
-                        style="border-radius: var(--radius-md);">
-                        ✨ Plantilla
+                        style="border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; gap: 8px;">
+                        <span class="material-symbols-rounded">auto_awesome</span> Plantilla
                     </button>
                     <button type="button" id="btn-mode-draw" class="btn btn-secondary"
-                        style="border-radius: var(--radius-md); opacity: 0.5;">
-                        ✏️ Croquis
+                        style="border-radius: var(--radius-md); opacity: 0.5; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                        <span class="material-symbols-rounded">edit_square</span> Croquis
                     </button>
                 </div>
                 <input type="hidden" name="metodo" id="input-metodo" value="upload">
@@ -39,15 +39,21 @@
                 <label>Elegí una estructura base</label>
                 <div class="grid grid-3" style="gap: var(--space-md); margin-top: 12px;">
                     <div class="template-card" onclick="selectTemplate('galpon')" id="tpl-galpon">
-                        <span class="tpl-icon">🏭</span>
+                        <div class="tpl-icon-container">
+                            <span class="material-symbols-rounded">factory</span>
+                        </div>
                         <p>Galpón</p>
                     </div>
                     <div class="template-card" onclick="selectTemplate('casa')" id="tpl-casa">
-                        <span class="tpl-icon">🏠</span>
+                        <div class="tpl-icon-container">
+                            <span class="material-symbols-rounded">home</span>
+                        </div>
                         <p>Casa</p>
                     </div>
                     <div class="template-card" onclick="selectTemplate('taller')" id="tpl-taller">
-                        <span class="tpl-icon">🛠️</span>
+                        <div class="tpl-icon-container">
+                            <span class="material-symbols-rounded">construction</span>
+                        </div>
                         <p>Taller</p>
                     </div>
                 </div>
@@ -278,10 +284,31 @@
         box-shadow: 0 10px 30px rgba(99, 102, 241, 0.2);
     }
 
-    .tpl-icon {
-        font-size: 2rem;
-        margin-bottom: 4px;
-        display: block;
+    .tpl-icon-container {
+        width: 56px;
+        height: 56px;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 8px;
+        transition: all 0.3s ease;
+    }
+
+    .template-card:hover .tpl-icon-container {
+        background: rgba(255, 255, 255, 0.1);
+        transform: scale(1.1);
+    }
+
+    .template-card.active .tpl-icon-container {
+        background: var(--primary);
+        color: white;
+        box-shadow: 0 0 20px var(--primary-glow);
+    }
+
+    .material-symbols-rounded {
+        font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 48;
     }
 
     .template-card p {
