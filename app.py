@@ -322,7 +322,7 @@ _db_ready = False
 @app.before_request
 def initialize_vanguard():
     # RUTAS DE SALUD: Bypass total (no DB, no auth)
-    if request.path in ['/alive', '/health', '/api/health'] or request.path.startswith('/static/'):
+    if request.path in ['/alive', '/health', '/api/health', '/api/debug-dashboard'] or request.path.startswith('/static/'):
         return
 
     # --- INICIALIZACIÓN DE BD: Corre para TODAS las rutas (incluyendo home pública) ---
@@ -606,7 +606,9 @@ def index():
                             ultima_ubi=ultima_ubi,
                             show_onboarding=show_onboarding)
     except Exception as e:
-        vanguard_log(f"FALLBACK INDEX ACTIVE: {e}")
+        import traceback
+        vanguard_log(f"FALLBACK INDEX ACTIVE. Error: {e}")
+        vanguard_log(traceback.format_exc())
         return render_template('index.html', 
                              plano_count=0,
                              obj_count=0, 
@@ -631,6 +633,26 @@ def internal_server_error(e):
     app.logger.error(f"Error 500: {str(e)}\n{traceback.format_exc()}")
     db.session.rollback()
     return render_template('500.html'), 500
+
+@app.route('/api/debug-dashboard')
+def debug_dashboard():
+    """Diagnóstico de variables para el Dashboard"""
+    import traceback
+    try:
+        from sqlalchemy import func
+        stats = {
+            "planos": Plano.query.count(),
+            "objetos": Objeto.query.count(),
+            "categorias": db.session.query(func.count(func.distinct(Objeto.categoria_principal))).scalar() or 0,
+            "ultima_id": (Ubicacion.query.order_by(Ubicacion.id.desc()).first()).id if Ubicacion.query.count() > 0 else None
+        }
+        return jsonify({
+            "status": "Logic Process OK",
+            "stats": stats,
+            "db_ready": _db_ready
+        })
+    except Exception as e:
+        return f"<pre>DIAGNOSTIC FAILED:\n{traceback.format_exc()}</pre>", 500
 
 @app.context_processor
 def inject_config():
