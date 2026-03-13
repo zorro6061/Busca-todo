@@ -54,3 +54,21 @@
     border: 1px solid rgba(255, 255, 255, 0.15) !important;
     box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5) !important;
 }
+
+/* ── CONTRAST CORRECTION (Revision 97.1) ── */
+/* Primary buttons (White background) must have dark text */
+.btn-primary {
+    background: var(--primary) !important;
+    color: #000000 !important;
+    font-weight: 700 !important;
+}
+
+.btn-primary .material-symbols-rounded {
+    color: #000000 !important;
+    filter: none !important;
+}
+
+/* Secondary (Glass) buttons should keep silver/white text */
+.btn-secondary {
+    color: #ffffff !important;
+}
