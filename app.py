@@ -152,6 +152,7 @@ def migrate_semantic_columns():
                 "ALTER TABLE ubicaciones ADD COLUMN IF NOT EXISTS punto_especifico VARCHAR(150)",
                 "ALTER TABLE objetos ADD COLUMN IF NOT EXISTS posicion_relativa VARCHAR(50)",
                 "ALTER TABLE objetos ADD COLUMN IF NOT EXISTS contenedor VARCHAR(100)",
+                "ALTER TABLE objetos ADD COLUMN IF NOT EXISTS zona_id INTEGER",
             ]
         else:  # SQLite (desarrollo local)
             # SQLite no soporta IF NOT EXISTS en ALTER TABLE, usamos try/except
@@ -161,6 +162,7 @@ def migrate_semantic_columns():
                 "ALTER TABLE ubicaciones ADD COLUMN punto_especifico VARCHAR(150)",
                 "ALTER TABLE objetos ADD COLUMN posicion_relativa VARCHAR(50)",
                 "ALTER TABLE objetos ADD COLUMN contenedor VARCHAR(100)",
+                "ALTER TABLE objetos ADD COLUMN zona_id INTEGER",
             ]
         for sql in migrations:
             try:
@@ -1404,7 +1406,7 @@ def health_check():
         return jsonify({
             "status": "Unhealthy",
             "error": str(e),
-            "version": "1.0.7-hotfix-sql"
+            "version": "1.0.9-hotfix-sql-final"
         }), 500
 
 @app.route('/plano/editar-zonas/<int:plano_id>')

@@ -85,9 +85,7 @@ class Zona(db.Model):
     plano_id = db.Column(db.Integer, db.ForeignKey('planos.id'), nullable=False)
     
     # Relación inversa
-    objetos = db.relationship('Objeto', backref='zona', lazy=True, 
-                                primaryjoin="Zona.id == Objeto.zona_id",
-                                foreign_keys="Objeto.zona_id")
+    objetos = db.relationship('Objeto', backref='zona', lazy=True)
     plano_rel = db.relationship('Plano', backref=db.backref('zonas', lazy=True))
 
 class Mueble(db.Model):
