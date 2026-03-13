@@ -1192,11 +1192,24 @@ def nuevo_plano():
             filename = secure_filename(file.filename)
             filename = upload_image_to_gcs(file, filename)
         elif metodo == 'template' and template_type:
-            # 🥈 Pure Silver Blueprints Base (Rev 97.5)
+            # 🥈 Pure Silver Blueprints Base v2 (Rev 98: Arquitectura Funcional)
             try:
-                from PIL import Image, ImageDraw, ImageFont
-                # Fondo oscuro profundo para resaltar el "Silver"
-                img = Image.new('RGB', (1000, 1000), color='#0a0a0a')
+                import json
+                from PIL import Image, ImageDraw, ImageFont, ImageFilter
+                import os
+                
+                # Cargar presets
+                presets_path = os.path.join(app.static_folder, 'data', 'presets.json')
+                with open(presets_path, 'r', encoding='utf-8') as f:
+                    presets = json.load(f)
+                
+                # Obtener variante (por ahora la primera si no se especifica)
+                variant_id = request.form.get('variant_id')
+                category_presets = presets.get(template_type, [])
+                preset = next((p for p in category_presets if p['id'] == variant_id), category_presets[0]) if category_presets else None
+                
+                # Fondo oscuro profundo
+                img = Image.new('RGBA', (1000, 1000), color='#0a0a0a')
                 draw = ImageDraw.Draw(img)
                 
                 # 1. Grid técnico sutil
@@ -1204,49 +1217,61 @@ def nuevo_plano():
                     draw.line([(i, 0), (i, 1000)], fill='#1a1a1a', width=1)
                     draw.line([(0, i), (1000, i)], fill='#1a1a1a', width=1)
                 
-                silver_line = '#e2e8f0'
-                silver_fill = (255, 255, 255, 15) # Transparente sutil para zonas
-                
-                if template_type == 'galpon':
-                    # Muros perimetrales
-                    draw.rectangle([50, 50, 950, 950], outline=silver_line, width=5)
-                    # Zona Oficina
-                    draw.rectangle([50, 50, 300, 300], outline=silver_line, width=3)
-                    # Zona Carga (Dashed look via lines)
-                    for x in range(350, 950, 20):
-                        draw.line([x, 700, x+10, 700], fill=silver_line, width=2)
-                    draw.text((70, 70), "OFICINA", fill=silver_line)
-                    draw.text((600, 720), "AREA CARGA", fill=silver_line)
+                if preset:
+                    silver_line = '#e2e8f0'
+                    metallic_fill = '#4a5568'
                     
-                elif template_type == 'casa':
-                    # Perímetro
-                    draw.rectangle([100, 100, 900, 900], outline=silver_line, width=4)
-                    # Living / Cocina Dividida
-                    draw.line([500, 100, 500, 900], fill=silver_line, width=3)
-                    # Dormitorio
-                    draw.line([100, 500, 500, 500], fill=silver_line, width=3)
-                    draw.text((200, 200), "DORMITORIO", fill=silver_line)
-                    draw.text((650, 450), "LIVING / COCINA", fill=silver_line)
+                    # 2. Dibujar Zonas (Zonificación por Color 5% Opacity)
+                    overlay = Image.new('RGBA', (1000, 1000), (0,0,0,0))
+                    overlay_draw = ImageDraw.Draw(overlay)
+                    for zone in preset.get('zones', []):
+                        r = zone['rect']
+                        overlay_draw.rectangle(r, fill=(255, 255, 255, 13)) # ~5% alpha
+                        overlay_draw.rectangle(r, outline=(255, 255, 255, 30), width=1)
+                    img = Image.alpha_composite(img, overlay)
+                    draw = ImageDraw.Draw(img) # Refresh draw object
                     
-                elif template_type == 'taller':
-                    # Diseño Taller con banco integrado
-                    draw.rectangle([50, 50, 950, 950], outline=silver_line, width=4)
-                    # Muro de herramientas
-                    draw.rectangle([50, 50, 950, 150], outline=silver_line, width=2)
-                    # Banco de trabajo (Bloque en el fondo)
-                    draw.rectangle([200, 750, 800, 900], outline=silver_line, width=3)
-                    draw.text((450, 80), "PANEL HERRAMIENTAS", fill=silver_line)
-                    draw.text((450, 810), "BANCO", fill=silver_line)
+                    # 3. Dibujar Muros (Sólidos con Sombra)
+                    for wall in preset.get('walls', []):
+                        if 'rect' in wall:
+                            r = wall['rect']
+                            th = wall.get('thickness', 5)
+                            # Sombra sutil
+                            draw.rectangle([r[0]+2, r[1]+2, r[2]+2, r[3]+2], outline=(0,0,0,100), width=th)
+                            # Muro metálico
+                            draw.rectangle(r, outline=silver_line, width=th)
+                        elif 'line' in wall:
+                            l = wall['line']
+                            th = wall.get('thickness', 4)
+                            draw.line(l, fill=silver_line, width=th)
 
+                    # 4. Labels de Zona (Bold + Badge)
+                    for zone in preset.get('zones', []):
+                        r = zone['rect']
+                        label = zone['label']
+                        # Badge background
+                        text_w = len(label) * 10
+                        center_x = (r[0] + r[2]) // 2
+                        center_y = (r[1] + r[3]) // 2
+                        draw.rectangle([center_x - text_w//2 - 5, center_y - 12, center_x + text_w//2 + 5, center_y + 12], fill='#1a202c', outline=silver_line, width=1)
+                        draw.text((center_x - text_w//2, center_y - 10), label, fill=silver_line)
+
+                # Convertir a RGB para guardar como PNG/JPG
+                final_img = img.convert('RGB')
                 import io
                 img_io = io.BytesIO()
-                img.save(img_io, 'PNG')
+                final_img.save(img_io, 'PNG')
                 img_io.seek(0)
                 temp_filename = f"blueprint_{template_type}_{uuid.uuid4().hex[:6]}.png"
                 filename = upload_image_to_gcs(img_io, temp_filename)
+                
+                # Pre-poblamiento dinámico desde el preset
+                if preset and 'furniture' in preset:
+                    latest_preset = preset # For use inside DB session
             except Exception as e:
-                app.logger.error(f"Error generando blueprint: {e}")
+                app.logger.error(f"Error generando blueprint rev98: {e}")
                 filename = "default_silver_blueprint.png" # Fallback
+                latest_preset = None
 
         elif metodo == 'draw' and drawing_data:
             # Procesar imagen del canvas (base64) en memoria
@@ -1268,21 +1293,19 @@ def nuevo_plano():
             db.session.add(nuevo)
             db.session.flush() # Para tener el ID
 
-            # Pre-poblar muebles según el template
-            if metodo == 'template':
-                if template_type == 'galpon':
-                    # Dos estanterías industriales largas alineadas a muros
-                    db.session.add(Mueble(tipo='estanteria', nombre='Rack A1', pos_x=12, pos_y=35, ancho=5, alto=50, plano_id=nuevo.id))
-                    db.session.add(Mueble(tipo='estanteria', nombre='Rack B2', pos_x=83, pos_y=35, ancho=5, alto=50, plano_id=nuevo.id))
-                elif template_type == 'casa':
-                    # Una mesa y un estante
-                    db.session.add(Mueble(tipo='mesa', nombre='Mesa Living', pos_x=65, pos_y=40, ancho=20, alto=10, plano_id=nuevo.id))
-                    db.session.add(Mueble(tipo='estanteria', nombre='Estante Dormitorio', pos_x=15, pos_y=20, ancho=30, alto=5, plano_id=nuevo.id))
-                elif template_type == 'taller':
-                    # Banco de trabajo y estante de herramientas
-                    db.session.add(Mueble(tipo='mesa', nombre='Banco de Trabajo', pos_x=50, pos_y=82, ancho=60, alto=10, plano_id=nuevo.id))
-                    db.session.add(Mueble(tipo='estanteria', nombre='Panel de Herramientas', pos_x=50, pos_y=10, ancho=60, alto=5, plano_id=nuevo.id))
-
+            # Pre-pobla muebles dinámicamente según el preset (Rev 98)
+            if metodo == 'template' and latest_preset:
+                for f_data in latest_preset.get('furniture', []):
+                    db.session.add(Mueble(
+                        tipo=f_data['tipo'],
+                        nombre=f_data['nombre'],
+                        pos_x=f_data['x'],
+                        pos_y=f_data['y'],
+                        ancho=f_data['w'],
+                        alto=f_data['h'],
+                        plano_id=nuevo.id
+                    ))
+            
             db.session.commit()
             flash(f'✓ Plano "{nombre}" creado en la nube con éxito.')
             if metodo == 'template':

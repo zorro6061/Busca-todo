@@ -32,29 +32,37 @@
                 </div>
                 <input type="hidden" name="metodo" id="input-metodo" value="upload">
                 <input type="hidden" name="template_type" id="input-template-type" value="">
+                <input type="hidden" name="variant_id" id="input-variant-id" value="">
             </div>
 
             <!-- Template selection section -->
             <div id="section-template" style="display: none; margin-bottom: var(--space-lg);" class="reveal">
-                <label>Elegí una estructura base</label>
-                <div class="grid grid-3" style="gap: var(--space-md); margin-top: 12px;">
-                    <div class="template-card" onclick="selectTemplate('galpon')" id="tpl-galpon">
+                <label>1. Elegí una categoría</label>
+                <div class="grid grid-3" style="gap: var(--space-md); margin-top: 12px; margin-bottom: 24px;">
+                    <div class="template-card" onclick="selectCategory('galpon')" id="tpl-galpon">
                         <div class="tpl-icon-container">
                             <span class="material-symbols-rounded">factory</span>
                         </div>
                         <p>Galpón</p>
                     </div>
-                    <div class="template-card" onclick="selectTemplate('casa')" id="tpl-casa">
+                    <div class="template-card" onclick="selectCategory('casa')" id="tpl-casa">
                         <div class="tpl-icon-container">
                             <span class="material-symbols-rounded">home</span>
                         </div>
                         <p>Casa</p>
                     </div>
-                    <div class="template-card" onclick="selectTemplate('taller')" id="tpl-taller">
+                    <div class="template-card" onclick="selectCategory('taller')" id="tpl-taller">
                         <div class="tpl-icon-container">
                             <span class="material-symbols-rounded">construction</span>
                         </div>
                         <p>Taller</p>
+                    </div>
+                </div>
+
+                <div id="section-variants" style="display: none;" class="reveal">
+                    <label>2. Elegí el diseño (Blueprint)</label>
+                    <div id="variants-list" class="grid grid-1" style="gap: var(--space-sm); margin-top: 12px;">
+                        <!-- Dinámico via JS -->
                     </div>
                 </div>
             </div>
@@ -125,67 +133,61 @@
     const inputMetodo = document.getElementById('input-metodo');
     const inputTemplateType = document.getElementById('input-template-type');
 
-    // Auto-select template from URL if present
-    const urlParams = new URLSearchParams(window.location.search);
-    const preselectedTemplate = urlParams.get('template');
-    
-    function initTemplateFromUrl() {
-        if (preselectedTemplate) {
-            btnTemplate.click();
-            selectTemplate(preselectedTemplate);
-            window.showIsland(`Plantilla ${preselectedTemplate.toUpperCase()} cargada`, 2000, 'success');
-        }
-    }
+    let allPresets = {};
 
-    if (document.readyState === 'loading') {
-        window.addEventListener('DOMContentLoaded', initTemplateFromUrl);
-    } else {
-        initTemplateFromUrl();
-    }
+    // Cargar Presets al inicio
+    fetch('/static/data/presets.json')
+        .then(r => r.json())
+        .then(data => {
+            allPresets = data;
+            // Si hay un template preseleccionado vía URL, inicializarlo
+            if (preselectedTemplate) {
+                selectCategory(preselectedTemplate);
+            }
+        });
 
-    function resetButtons() {
-        btnUpload.className = 'btn btn-secondary';
-        btnTemplate.className = 'btn btn-secondary';
-        btnDraw.className = 'btn btn-secondary';
-        btnUpload.style.opacity = '1';
-        btnTemplate.style.opacity = '1';
-        btnDraw.style.opacity = '1';
-    }
-
-    btnUpload.onclick = () => {
-        resetButtons();
-        inputMetodo.value = 'upload';
-        btnUpload.className = 'btn btn-primary';
-        sectionUpload.style.display = 'block';
-        sectionDraw.style.display = 'none';
-        sectionTemplate.style.display = 'none';
-    };
-
-    btnTemplate.onclick = () => {
-        resetButtons();
-        inputMetodo.value = 'template';
-        btnTemplate.className = 'btn btn-primary';
-        sectionUpload.style.display = 'none';
-        sectionDraw.style.display = 'none';
-        sectionTemplate.style.display = 'block';
-    };
-
-    btnDraw.onclick = () => {
-        resetButtons();
-        inputMetodo.value = 'draw';
-        btnDraw.className = 'btn btn-primary';
-        sectionUpload.style.display = 'none';
-        sectionDraw.style.display = 'block';
-        sectionTemplate.style.display = 'none';
-        resizeCanvas();
-    };
-
-    window.selectTemplate = (type) => {
+    window.selectCategory = (type) => {
         inputTemplateType.value = type;
         document.querySelectorAll('.template-card').forEach(c => c.classList.remove('active'));
-        document.getElementById(`tpl-${type}`).classList.add('active');
-        window.showIsland(`Plantilla ${type.toUpperCase()} seleccionada`, 1500, 'success');
+        const card = document.getElementById(`tpl-${type}`);
+        if(card) card.classList.add('active');
+        
+        // Mostrar variaciones
+        renderVariants(type);
+        sectionTemplate.querySelector('#section-variants').style.display = 'block';
     };
+
+    function renderVariants(category) {
+        const list = document.getElementById('variants-list');
+        list.innerHTML = '';
+        const variants = allPresets[category] || [];
+        
+        variants.forEach((v, index) => {
+            const div = document.createElement('div');
+            div.className = 'variant-item brilliance-click';
+            div.innerHTML = `
+                <div class="variant-content">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <strong>${v.name}</strong>
+                        <span class="badge" style="background:rgba(255,255,255,0.1); font-size:10px;">PRESET ${index+1}</span>
+                    </div>
+                    <p style="margin:4px 0 0; font-size:0.75rem; color:var(--text-dim);">${v.description}</p>
+                </div>
+                <span class="material-symbols-rounded check-icon">check_circle</span>
+            `;
+            div.onclick = () => selectVariant(v.id, div);
+            list.appendChild(div);
+            
+            // Auto-seleccionar primera variante
+            if (index === 0) selectVariant(v.id, div);
+        });
+    }
+
+    function selectVariant(id, element) {
+        document.getElementById('input-variant-id').value = id;
+        document.querySelectorAll('.variant-item').forEach(i => i.classList.remove('active'));
+        element.classList.add('active');
+    }
 
     // Canvas Logic
     const canvas = document.getElementById('canvas-plano');
@@ -338,6 +340,42 @@
 
     .template-card.active p {
         color: white;
+    }
+    .variant-item {
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid var(--glass-border);
+        border-radius: var(--radius-md);
+        padding: 16px 20px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        transition: all 0.2s ease;
+    }
+
+    .variant-item:hover {
+        background: rgba(255, 255, 255, 0.06);
+    }
+
+    .variant-item.active {
+        background: rgba(255, 255, 255, 0.08);
+        border-color: #fff;
+        box-shadow: 0 0 15px rgba(255, 255, 255, 0.1);
+    }
+
+    .variant-item .check-icon {
+        opacity: 0;
+        color: #fff;
+        transition: opacity 0.2s ease;
+    }
+
+    .variant-item.active .check-icon {
+        opacity: 1;
+    }
+
+    .variant-content strong {
+        color: #fff;
+        font-size: 0.95rem;
     }
 </style>
 {% endblock %}

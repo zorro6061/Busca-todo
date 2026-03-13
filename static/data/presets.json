@@ -1,0 +1,114 @@
+{
+  "galpon": [
+    {
+      "id": "galpon_std",
+      "name": "Estándar 20x40",
+      "description": "Galpón industrial con oficina lateral y área de despacho.",
+      "walls": [
+        {"rect": [50, 50, 950, 950], "thickness": 6},
+        {"rect": [50, 50, 300, 300], "thickness": 4}
+      ],
+      "zones": [
+        {"rect": [53, 53, 297, 297], "label": "OFICINA", "color": "#2d3748"},
+        {"rect": [350, 750, 947, 947], "label": "CARGA / DESPACHO", "color": "#1a202c"}
+      ],
+      "furniture": [
+        {"tipo": "estanteria", "nombre": "Rack A1", "x": 12, "y": 40, "w": 5, "h": 45},
+        {"tipo": "estanteria", "nombre": "Rack B2", "x": 80, "y": 40, "w": 5, "h": 45}
+      ]
+    },
+    {
+      "id": "galpon_largo",
+      "name": "Largo con Oficina Lateral",
+      "description": "Distribución alargada ideal para naves logísticas.",
+      "walls": [
+        {"rect": [200, 50, 800, 950], "thickness": 6},
+        {"rect": [200, 50, 500, 250], "thickness": 4}
+      ],
+      "zones": [
+        {"rect": [203, 53, 497, 247], "label": "ADMIN", "color": "#2d3748"},
+        {"rect": [203, 800, 797, 947], "label": "EXPEDICIÓN", "color": "#1a202c"}
+      ],
+      "furniture": [
+        {"tipo": "estanteria", "nombre": "Rack Central", "x": 50, "y": 50, "w": 20, "h": 20}
+      ]
+    },
+    {
+      "id": "galpon_sq",
+      "name": "Cuadrado Doble Entrada",
+      "description": "Diseño simétrico con doble acceso de carga.",
+      "walls": [
+        {"rect": [100, 100, 900, 900], "thickness": 6}
+      ],
+      "zones": [
+        {"rect": [103, 103, 400, 200], "label": "ZONA A", "color": "#2d3748"},
+        {"rect": [600, 103, 897, 200], "label": "ZONA B", "color": "#2d3748"}
+      ],
+      "furniture": []
+    }
+  ],
+  "casa": [
+    {
+      "id": "casa_mono",
+      "name": "Monoambiente",
+      "description": "Espacio abierto moderno tipo loft.",
+      "walls": [
+        {"rect": [150, 150, 850, 850], "thickness": 5},
+        {"rect": [150, 150, 350, 350], "thickness": 3}
+      ],
+      "zones": [
+        {"rect": [153, 153, 347, 347], "label": "BAÑO", "color": "#2d3748"},
+        {"rect": [153, 600, 847, 847], "label": "LIVING / KITCHEN", "color": "#1a202c"}
+      ],
+      "furniture": []
+    },
+    {
+      "id": "casa_2dor",
+      "name": "Apartamento 2 Dormitorios",
+      "description": "Planta funcional para familias.",
+      "walls": [
+        {"rect": [100, 100, 900, 900], "thickness": 5},
+        {"line": [500, 100, 500, 900], "thickness": 4},
+        {"line": [100, 500, 500, 500], "thickness": 4}
+      ],
+      "zones": [
+        {"rect": [105, 105, 495, 495], "label": "DOR 1", "color": "#2d3748"},
+        {"rect": [105, 505, 495, 895], "label": "DOR 2", "color": "#2d3748"},
+        {"rect": [505, 105, 895, 895], "label": "SOCIAL", "color": "#1a202c"}
+      ],
+      "furniture": []
+    },
+    {
+      "id": "casa_duplex",
+      "name": "Duplex con Pasillo",
+      "description": "Distribución en niveles con pasillo central.",
+      "walls": [
+        {"rect": [200, 50, 800, 950], "thickness": 5},
+        {"line": [450, 50, 450, 950], "thickness": 3},
+        {"line": [550, 50, 550, 950], "thickness": 3}
+      ],
+      "zones": [
+        {"rect": [453, 50, 547, 950], "label": "PASILLO", "color": "#2d3748"}
+      ],
+      "furniture": []
+    }
+  ],
+  "taller": [
+    {
+      "id": "taller_pro",
+      "name": "Taller Estándar Pro",
+      "description": "Optimizado para máxima superficie de trabajo.",
+      "walls": [
+        {"rect": [50, 50, 950, 950], "thickness": 5},
+        {"rect": [50, 50, 950, 180], "thickness": 4}
+      ],
+      "zones": [
+        {"rect": [53, 53, 947, 177], "label": "WALL TOOLS", "color": "#2d3748"},
+        {"rect": [200, 800, 800, 947], "label": "MAIN BENCH", "color": "#1a202c"}
+      ],
+      "furniture": [
+        {"tipo": "mesa", "nombre": "Banco Principal", "x": 50, "y": 88, "w": 40, "h": 10}
+      ]
+    }
+  ]
+}
