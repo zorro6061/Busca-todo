@@ -23,17 +23,17 @@
 
                 <!-- Botones Duales Premium -->
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px;">
-                    <button type="button" class="btn btn-secondary"
+                    <button type="button" class="btn btn-secondary hover-glow"
                         style="display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 20px 10px; border-radius: 16px; background: rgba(255,255,255,0.03);"
                         onclick="document.getElementById('camera-input').click();">
-                        <span style="font-size: 1.5rem;">📸</span>
+                        <span class="material-symbols-rounded" style="font-size: 24px;">photo_camera</span>
                         <span
                             style="font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">Capturar</span>
                     </button>
-                    <button type="button" class="btn btn-secondary"
+                    <button type="button" class="btn btn-secondary hover-glow"
                         style="display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 20px 10px; border-radius: 16px; background: rgba(255,255,255,0.03);"
                         onclick="document.getElementById('gallery-input').click();">
-                        <span style="font-size: 1.5rem;">🖼️</span>
+                        <span class="material-symbols-rounded" style="font-size: 24px;">photo_library</span>
                         <span
                             style="font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">Galería</span>
                     </button>
@@ -77,9 +77,9 @@
 
             <!-- ── Jerarquía de Ubicación Semántica ── -->
             <div id="location-section"
-                style="margin-bottom: var(--space-xl); padding: var(--space-lg); background: rgba(99,102,241,0.06); border: 1px solid rgba(99,102,241,0.15); border-radius: var(--radius-xl);">
+                style="margin-bottom: var(--space-xl); padding: var(--space-lg); background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); border-radius: var(--radius-xl);">
                 <p
-                    style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: var(--primary); margin-bottom: var(--space-md);">
+                    style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: #fff; margin-bottom: var(--space-md); opacity: 0.8;">
                     📍 ¿Dónde está?
                 </p>
 
@@ -90,15 +90,15 @@
                         style="width: 100%; padding: 14px 18px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: var(--radius-lg); color: var(--text-primary); font-size: 0.9rem;"
                         onchange="actualizarNombreAuto()">
                         <option value="">— No especificada —</option>
-                        <option value="Living">🛋️ Living / Sala</option>
-                        <option value="Cocina">🍳 Cocina</option>
-                        <option value="Dormitorio">🛏️ Dormitorio</option>
-                        <option value="Dormitorio Juana">🎀 Dormitorio Juana</option>
-                        <option value="Dormitorio Vicente">⚽ Dormitorio Vicente</option>
-                        <option value="Baño">🚿 Baño</option>
-                        <option value="Garage">🔧 Garage</option>
-                        <option value="Lavadero">🧺 Lavadero</option>
-                        <option value="Estudio">💻 Estudio / Escritorio</option>
+                        <option value="Living">Living / Sala</option>
+                        <option value="Cocina">Cocina</option>
+                        <option value="Dormitorio">Dormitorio</option>
+                        <option value="Dormitorio Juana">Dormitorio Juana</option>
+                        <option value="Dormitorio Vicente">Dormitorio Vicente</option>
+                        <option value="Baño">Baño</option>
+                        <option value="Garage">Garage</option>
+                        <option value="Lavadero">Lavadero</option>
+                        <option value="Exterior">Exterior / Patio</option>
                         <option value="Patio">🌿 Patio / Jardín</option>
                         <option value="Otro">📦 Otro</option>
                     </select>
@@ -138,7 +138,10 @@
     <h3
         style="margin-top: var(--space-xl); letter-spacing: 3px; text-transform: uppercase; font-size: 0.78rem; color: var(--text-dim);">
         Analizando...</h3>
-    <p style="color: var(--text-muted); margin-top: 6px; font-size: 0.78rem;">Gemini Vision identificando objetos</p>
+    <p style="color: var(--text-muted); margin-top: 6px; font-size: 0.78rem; display: flex; align-items: center; gap: 8px;">
+        <span class="material-symbols-rounded" style="font-size: 16px; color: var(--primary);">auto_awesome</span>
+        Gemini Vision identificando objetos
+    </p>
 </div>
 
 <style>

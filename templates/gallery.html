@@ -21,8 +21,8 @@
             <!-- Fallback Material Symbol (si la imagen falla) -->
             <div class="card-img-fallback" style="display: none;">
                 <span class="material-symbols-rounded"
-                    style="font-size: 48px; color: rgba(99,102,241,0.4);">view_in_ar</span>
-                <span style="font-size: 0.72rem; color: var(--text-muted); margin-top: 6px;">Imagen no disponible</span>
+                    style="font-size: 48px; color: rgba(255,255,255,0.4);">view_in_ar</span>
+                <span style="font-size: 0.72rem; color: var(--text-dim); margin-top: 6px;">Imagen no disponible</span>
             </div>
             <div class="card-gallery-gradient"></div>
             <span class="badge badge-primary card-gallery-badge">
@@ -35,8 +35,8 @@
             {% if ubi.habitacion %}
             <div style="margin-bottom: 4px;">
                 <span class="badge"
-                    style="background: rgba(99,102,241,0.1); color: var(--primary); font-size: 0.68rem; padding: 3px 8px;">
-                    <span class="material-symbols-rounded" style="font-size: 12px; vertical-align: -2px;">room</span>
+                    style="background: rgba(255,255,255,0.08); color: #fff; font-size: 0.68rem; padding: 4px 10px; border: 1px solid rgba(255,255,255,0.1);">
+                    <span class="material-symbols-rounded" style="font-size: 13px; vertical-align: -2px;">room</span>
                     {{ ubi.habitacion }}
                 </span>
                 {% if ubi.mueble_texto %}
@@ -57,8 +57,8 @@
             {% endif %}
             {% if ubi.plano_id %}
             <div style="margin-top: 8px;">
-                <span class="badge badge-success" style="font-size: 0.7rem;">
-                    <span class="material-symbols-rounded" style="font-size: 13px; vertical-align: -2px;">map</span>
+                <span class="badge" style="font-size: 0.7rem; display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.2);">
+                    <span class="material-symbols-rounded" style="font-size: 13px;">map</span>
                     En mapa
                 </span>
             </div>
@@ -66,12 +66,11 @@
         </div>
     </div>
     {% else %}
-    <div class="empty-state">
-        <span class="material-symbols-rounded"
-            style="font-size: 64px; color: var(--primary); opacity: 0.6;">photo_camera</span>
-        <h3 style="margin-bottom: 6px; margin-top: 16px;">Aún no indexaste ningún espacio</h3>
-        <p>Sacá una foto y la IA hará el resto.</p>
-        <a href="{{ url_for('upload') }}" class="btn btn-primary" style="margin-top: var(--space-lg);">Empezar</a>
+    <div class="empty-state-v2 reveal">
+        <span class="material-symbols-rounded empty-state-icon-v2">no_photography</span>
+        <h3>Aún no indexaste ningún espacio</h3>
+        <p>Sacá una foto de tu habitación, cajón o estante y la IA hará el resto.</p>
+        <a href="{{ url_for('upload') }}" class="btn btn-primary hover-glow" style="margin-top: 24px; border-radius: 980px; padding: 12px 32px;">Empezar</a>
     </div>
     {% endfor %}
 </div>
@@ -87,11 +86,13 @@
                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
             <div class="card-img-fallback" style="display: none; height: 200px;">
                 <span class="material-symbols-rounded"
-                    style="font-size: 56px; color: rgba(99,102,241,0.3);">view_in_ar</span>
+                    style="font-size: 56px; color: rgba(255,255,255,0.3);">view_in_ar</span>
             </div>
             <button onclick="cerrarDetalle()"
-                style="position: absolute; top: 12px; right: 12px; background: rgba(0,0,0,0.5); backdrop-filter: blur(10px); border: none; color: white; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; font-size: 1rem; transition: transform 0.2s;"
-                onmouseenter="this.style.transform='scale(1.1)'" onmouseleave="this.style.transform=''">✕</button>
+                style="position: absolute; top: 12px; right: 12px; background: rgba(0,0,0,0.5); backdrop-filter: blur(10px); border: none; color: white; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s;"
+                onmouseenter="this.style.transform='scale(1.1)'" onmouseleave="this.style.transform=''">
+                <span class="material-symbols-rounded" style="font-size: 18px;">close</span>
+            </button>
         </div>
         <div style="padding: var(--space-lg) var(--space-xl);">
             <h2 id="det-nombre" style="margin-bottom: 4px;"></h2>
@@ -239,23 +240,22 @@
     try {
         objetosPorUbi = {
             {% for ubi in ubicaciones %}
-        "{{ ubi.id }}": [
-            {% for obj in ubi.objetos %}
+            "{{ ubi.id }}": [
+                {% for obj in ubi.objetos %}
                 {
-                {
-                    nombre: "{{ obj.nombre|default('Objeto', true)|escape }}",
-                    categoria: "{{ (obj.categoria_principal or 'General')|escape }}",
-                    descripcion: "{{ (obj.descripcion or 'No disponible')|escape }}",
-                    color: "{{ (obj.color_predominante or 'No disponible')|escape }}",
-                    material: "{{ (obj.material or 'No disponible')|escape }}",
-                    estado: "{{ (obj.estado or 'No disponible')|escape }}",
-                    contenedor: "{{ (obj.contenedor or '')|escape }}",
-                    posicion_relativa: "{{ (obj.posicion_relativa or '')|escape }}",
-                    confianza: {{ ((obj.confianza or 0.8) * 100)|int }}
-                },
-{% endfor %}
-            ],
-    {% endfor %}
+                    "nombre": {{ obj.nombre|default('Objeto', true)|tojson }},
+                    "categoria": {{ (obj.categoria_principal or 'General')|tojson }},
+                    "descripcion": {{ (obj.descripcion or 'No disponible')|tojson }},
+                    "color": {{ (obj.color_predominante or 'No disponible')|tojson }},
+                    "material": {{ (obj.material or 'No disponible')|tojson }},
+                    "estado": {{ (obj.estado or 'No disponible')|tojson }},
+                    "contenedor": {{ (obj.contenedor or '')|tojson }},
+                    "posicion_relativa": {{ (obj.posicion_relativa or '')|tojson }},
+                    "confianza": {{ ((obj.confianza or 0.8) * 100)|int }}
+                }{% if not loop.last %},{% endif %}
+                {% endfor %}
+            ]{% if not loop.last %},{% endif %}
+            {% endfor %}
         };
     } catch (e) {
         console.error('[UI-INIT] Error construyendo mapa de objetos:', e);
@@ -308,7 +308,7 @@
         document.getElementById('det-img').src = imgBase + imagen;
         document.getElementById('det-nombre').textContent = nombre;
         document.getElementById('det-tags').textContent = tags || 'Sin análisis aún';
-        document.getElementById('det-obj-count').textContent = '📦 ' + objCount + ' objetos';
+        document.getElementById('det-obj-count').innerHTML = '<span class="material-symbols-rounded" style="font-size: 14px; vertical-align: middle;">inventory_2</span> ' + objCount + ' objetos';
         const debugBadge = document.getElementById('det-debug-id');
         if (debugBadge) debugBadge.textContent = 'ID: ' + id;
 

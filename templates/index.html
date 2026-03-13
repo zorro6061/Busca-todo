@@ -6,27 +6,35 @@
 {% if show_onboarding %}
 <div id="onboarding-overlay" class="onboarding-overlay" onclick="dismissOnboarding()">
     <div class="onboarding-modal" onclick="event.stopPropagation()">
-        <div class="onboarding-icon-box">🔍</div>
+        <div class="onboarding-icon-box" style="display: flex; justify-content: center; margin-bottom: 24px;">
+            <span class="material-symbols-rounded" style="font-size: 80px; color: #fff; font-variation-settings: 'wght' 100;">manage_search</span>
+        </div>
         <h2>¡Bienvenido a tu buscador físico!</h2>
         <p>Encontrá cualquier objeto de tu casa, taller o galpón en segundos. Olvidate de revolver cajas.</p>
         
         <div class="onboarding-steps">
             <div class="onboarding-step">
-                <div class="step-icon">🗺️</div>
+                <div class="step-icon">
+                    <span class="material-symbols-rounded">map</span>
+                </div>
                 <div class="step-text">
                     <h4>Creá tu Mapa</h4>
                     <p>Empezá eligiendo una plantilla base (Casa, Galpón o Taller).</p>
                 </div>
             </div>
             <div class="onboarding-step">
-                <div class="step-icon">🛋️</div>
+                <div class="step-icon">
+                    <span class="material-symbols-rounded">inventory_2</span>
+                </div>
                 <div class="step-text">
                     <h4>Ubicá tus Muebles</h4>
                     <p>Arrastrá estanterías, roperos o cajas al plano modular.</p>
                 </div>
             </div>
             <div class="onboarding-step">
-                <div class="step-icon">📸</div>
+                <div class="step-icon">
+                    <span class="material-symbols-rounded">photo_camera</span>
+                </div>
                 <div class="step-text">
                     <h4>Sacá la Foto</h4>
                     <p>Tocá un mueble, sacale foto al interior y la IA hará el resto.</p>
@@ -73,7 +81,7 @@
 <section class="hero-search-section">
     <div class="fade-up">
         <h1 class="hero-title">
-            <span class="material-symbols-rounded hero-icon">search</span>
+            <span class="material-symbols-rounded hero-icon" style="color: #fff;">search</span>
             ¿Dónde está?
         </h1>
         <p class="hero-subtitle">
@@ -172,15 +180,44 @@
         <div class="card glass-card pillar-card reveal">
             <div class="pillar-icon-wrapper">
                 <span class="material-symbols-rounded">explore</span>
+         <div class="action-grid fade-up fade-up-3">
+        <!-- Explorar -->
+        <a href="{{ url_for('gallery') }}" class="action-card-premium card-interactive hover-glow glass-border">
+            <div class="card-icon-wrapper">
+                <span class="material-symbols-rounded">category</span>
             </div>
-            <h3>Navegación Antygrabyty</h3>
-            <p>Olvidate de las listas. Ubicá tus herramientas en mapas 3D y planos tácticos con precisión quirúrgica.</p>
-        </div>
+            <div class="card-content">
+                <h3>Explorar Objetos</h3>
+                <p>Navegación visual por categorías e IA.</p>
+            </div>
+            <span class="material-symbols-rounded card-arrow">chevron_right</span>
+        </a>
 
-        <!-- Tarjeta 2: Cerebro Gemini -->
-        <div class="card glass-card pillar-card reveal">
-            <div class="pillar-icon-wrapper ia-accent">
-                <span class="material-symbols-rounded">psychology</span>
+        <!-- Optimizar -->
+        <a href="{{ url_for('ai_optimizer') }}" class="action-card-premium card-interactive hover-glow glass-border">
+            <div class="card-icon-wrapper">
+                <span class="material-symbols-rounded">auto_awesome</span>
+            </div>
+            <div class="card-content">
+                <h3>IA Optimizer</h3>
+                <p>Mejorar precisión con Computer Vision.</p>
+            </div>
+            <span class="material-symbols-rounded card-arrow">chevron_right</span>
+        </a>
+
+        <!-- Escáner -->
+        <a href="{{ url_for('video_scanner') }}" class="action-card-premium card-interactive hover-glow glass-border">
+            <div class="card-icon-wrapper">
+                <span class="material-symbols-rounded">videocam</span>
+            </div>
+            <div class="card-content">
+                <h3>Escáner de Video</h3>
+                <p>Indexación ultra-rápida por cuadrantes.</p>
+            </div>
+            <span class="material-symbols-rounded card-arrow">chevron_right</span>
+        </a>
+    </div>
+ss="material-symbols-rounded">psychology</span>
             </div>
             <h3>Cerebro Gemini 3</h3>
             <p>Procesamos fotos y texto en tiempo real para que la app 'vea' y aprenda de tu inventario automáticamente.</p>
@@ -202,24 +239,30 @@
 <section class="reveal" style="padding: 20px;">
     <div class="action-center-grid">
         <!-- Tarjeta 1: Editor Modular -->
-        <div class="card action-card" onclick="window.location='{{ url_for('list_planos') }}'">
+        <div class="card action-card hover-glow" onclick="window.location='{{ url_for('list_planos') }}'">
             <span class="badge-new">RECOMENDADO</span>
-            <span class="action-icon">🏗️</span>
+            <span class="action-icon">
+                <span class="material-symbols-rounded" style="font-size: 32px;">category</span>
+            </span>
             <h3>Arquitectura Modular</h3>
             <p>Armá tu espacio en 30 segundos con bloques inteligentes.</p>
         </div>
 
         <!-- Tarjeta 2: Plantillas Inteligentes -->
-        <div class="card action-card" onclick="window.location='{{ url_for('nuevo_plano') }}'">
+        <div class="card action-card hover-glow" onclick="window.location='{{ url_for('nuevo_plano') }}'">
             <span class="badge-new">BETA</span>
-            <span class="action-icon">✨</span>
+            <span class="action-icon">
+                <span class="material-symbols-rounded" style="font-size: 32px;">auto_awesome</span>
+            </span>
             <h3>Librería de Moldes</h3>
             <p>Usá estructuras base de Galpón, Casa o Taller con un clic.</p>
         </div>
 
         <!-- Tarjeta 3: Scanner Multimodal -->
-        <div class="card action-card" onclick="window.location='{{ url_for('list_planos') }}'">
-            <span class="action-icon">📹</span>
+        <div class="card action-card hover-glow" onclick="window.location='{{ url_for('list_planos') }}'">
+            <span class="action-icon">
+                <span class="material-symbols-rounded" style="font-size: 32px;">videocam</span>
+            </span>
             <h3>Video Scanner IA</h3>
             <p>Indexá cientos de objetos recorriendo tu espacio con el celu.</p>
         </div>

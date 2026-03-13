@@ -1232,3 +1232,85 @@ label {
     letter-spacing: 0.5px;
 }
 
+
+/* -- Revision 97: Premium UI Utilities -- */
+
+/* Skeleton Loader (Apple style pulse) */
+.skeleton {
+    position: relative;
+    overflow: hidden;
+    background-color: rgba(255, 255, 255, 0.05);
+    border-radius: var(--radius-md, 12px);
+}
+
+.skeleton::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 255, 255, 0.03),
+        transparent
+    );
+    animation: skeleton-pulse 1.5s infinite;
+}
+
+@keyframes skeleton-pulse {
+    100% { transform: translateX(100%); }
+}
+
+/* Micro-interactions (Tactile Feel) */
+.btn, .card-interactive, .action-card, .template-card, .draggable-component {
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.btn:active, .card-interactive:active, .action-card:active {
+    transform: scale(0.97);
+}
+
+.hover-glow:hover {
+    box-shadow: 0 0 20px var(--primary-glow);
+    border-color: var(--primary);
+    transform: translateY(-2px);
+}
+
+/* Minimalist Empty State */
+.empty-state-v2 {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    text-align: center;
+    color: var(--text-dim);
+}
+
+.empty-state-icon-v2 {
+    font-size: 80px;
+    color: rgba(255, 255, 255, 0.03);
+    font-variation-settings: 'FILL' 0, 'wght' 100, 'GRAD' 0, 'opsz' 48;
+    margin-bottom: 24px;
+}
+
+.empty-state-v2 h3 {
+    font-size: 1.2rem;
+    font-weight: 500;
+    margin-bottom: 8px;
+    color: var(--text-main);
+}
+
+.empty-state-v2 p {
+    font-size: 0.9rem;
+    max-width: 300px;
+}
+
+/* Material Symbols Overrides */
+.ms-thin {
+    font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+}
+
+.ms-filled {
+    font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}

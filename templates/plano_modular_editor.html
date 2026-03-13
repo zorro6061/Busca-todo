@@ -5,7 +5,9 @@
     
     <!-- Sidebar de Componentes -->
     <aside class="card" style="width: 280px; flex-shrink: 0; padding: var(--space-lg); display: flex; flex-direction: column; background: rgba(10,10,10,0.8); backdrop-filter: blur(20px);">
-        <h3 style="margin-bottom: var(--space-md); font-size: 1.1rem; border-bottom: 1px solid var(--glass-border); padding-bottom: 12px;">🪑 Componentes</h3>
+        <h3 style="margin-bottom: var(--space-md); font-size: 1.1rem; border-bottom: 1px solid var(--glass-border); padding-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+            <span class="material-symbols-rounded ms-thin" style="font-size: 20px;">category</span> Componentes
+        </h3>
         <p style="font-size: 0.75rem; color: var(--text-dim); margin-bottom: var(--space-lg);">Arrastrá los muebles al plano para empezar a organizar.</p>
         
         <div id="component-list" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 12px;">
@@ -46,9 +48,13 @@
             </div>
         </div>
 
-        <div style="margin-top: var(--space-xl); border-top: 1px solid var(--glass-border); padding-top: var(--space-md);">
-            <button onclick="saveModularLayout()" class="btn btn-primary" style="width: 100%;">💾 Guardar Layout</button>
-            <a href="{{ url_for('ver_plano', plano_id=plano.id) }}" class="btn btn-secondary" style="width: 100%; margin-top: 8px;">Volver</a>
+        <div style="margin-top: var(--space-xl); border-top: 1px solid var(--glass-border); padding-top: var(--space-md); display: flex; flex-direction: column; gap: 8px;">
+            <button onclick="saveModularLayout()" class="btn btn-primary hover-glow" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                <span class="material-symbols-rounded" style="font-size: 18px;">save</span> Guardar Layout
+            </button>
+            <a href="{{ url_for('ver_plano', plano_id=plano.id) }}" class="btn btn-secondary" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                <span class="material-symbols-rounded" style="font-size: 18px;">arrow_back</span> Volver
+            </a>
         </div>
     </aside>
 
@@ -56,10 +62,12 @@
     <main style="flex: 1; position: relative; background: #050505; border-radius: var(--radius-2xl); overflow: hidden; border: 1.5px solid var(--glass-border);">
         <!-- Island HUD -->
         <div id="editor-hud" style="position: absolute; top: 20px; left: 50%; transform: translateX(-50%); z-index: 100; transition: all 0.5s;">
-            <div class="hud-panel" style="background: rgba(0,0,0,0.7); backdrop-filter: blur(10px); padding: 8px 16px; border-radius: 980px; border: 1px solid rgba(255,255,255,0.1); border-top-color: var(--primary);">
-                <span style="font-size: 0.75rem; font-weight: 700; color: var(--primary);">MODO DISEÑO ISO-3D</span>
-                <span style="margin: 0 10px; opacity: 0.3;">|</span>
-                <span id="snap-status" style="font-size: 0.7rem; color: var(--success);">🧲 SNAP ACTIVO</span>
+            <div class="hud-panel" style="background: rgba(0,0,0,0.7); backdrop-filter: blur(10px); padding: 8px 16px; border-radius: 980px; border: 1px solid rgba(255,255,255,0.1); border-top-color: var(--primary); display: flex; align-items: center; gap: 10px;">
+                <span style="font-size: 0.75rem; font-weight: 700; color: #fff;">MODO DISEÑO ISO-3D</span>
+                <span style="opacity: 0.3;">|</span>
+                <span id="snap-status" style="font-size: 0.7rem; color: #fff; display: flex; align-items: center; gap: 4px; opacity: 0.9;">
+                    <span class="material-symbols-rounded ms-filled" style="font-size: 14px;">bolt</span> SNAP ACTIVO
+                </span>
             </div>
         </div>
 

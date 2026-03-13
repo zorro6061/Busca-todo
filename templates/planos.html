@@ -11,27 +11,29 @@
 
 <!-- ══ QUICK STARTERS (Revision 69) ══ -->
 <div class="reveal" style="margin-bottom: var(--space-xl);">
-    <h4 style="margin-bottom: 12px; opacity: 0.7;">🚀 Abrir Plantilla Maestra</h4>
+    <h4 style="margin-bottom: 12px; opacity: 0.7; display: flex; align-items: center; gap: 8px;">
+        <span class="material-symbols-rounded ms-thin">auto_awesome</span> Abrir Plantilla Maestra
+    </h4>
     <div class="grid grid-3" style="gap: 12px;">
-        <div class="card card-interactive" style="padding: 16px; display: flex; align-items: center; gap: 12px; background: rgba(99,102,241,0.05); border-color: rgba(99,102,241,0.2);"
+        <div class="card card-interactive hover-glow glass-border" style="padding: 16px; display: flex; align-items: center; gap: 12px;"
              onclick="window.location='{{ url_for('nuevo_plano') }}?template=galpon'">
-            <span style="font-size: 1.5rem;">🏭</span>
+            <span class="material-symbols-rounded" style="font-size: 24px; color: #fff;">factory</span>
             <div>
                 <h4 style="margin:0; font-size: 0.85rem; color: #fff;">Nuevo Galpón</h4>
                 <p style="font-size: 0.7rem; color: var(--text-dim);">Estructura Industrial</p>
             </div>
         </div>
-        <div class="card card-interactive" style="padding: 16px; display: flex; align-items: center; gap: 12px; background: rgba(139,92,246,0.05); border-color: rgba(139,92,246,0.2);"
+        <div class="card card-interactive hover-glow glass-border" style="padding: 16px; display: flex; align-items: center; gap: 12px;"
              onclick="window.location='{{ url_for('nuevo_plano') }}?template=casa'">
-            <span style="font-size: 1.5rem;">🏠</span>
+            <span class="material-symbols-rounded" style="font-size: 24px; color: #fff;">home</span>
             <div>
                 <h4 style="margin:0; font-size: 0.85rem; color: #fff;">Nueva Casa</h4>
                 <p style="font-size: 0.7rem; color: var(--text-dim);">Estructura Hogar</p>
             </div>
         </div>
-        <div class="card card-interactive" style="padding: 16px; display: flex; align-items: center; gap: 12px; background: rgba(16,185,129,0.05); border-color: rgba(16,185,129,0.2);"
+        <div class="card card-interactive hover-glow glass-border" style="padding: 16px; display: flex; align-items: center; gap: 12px;"
              onclick="window.location='{{ url_for('nuevo_plano') }}?template=taller'">
-            <span style="font-size: 1.5rem;">🛠️</span>
+            <span class="material-symbols-rounded" style="font-size: 24px; color: #fff;">construction</span>
             <div>
                 <h4 style="margin:0; font-size: 0.85rem; color: #fff;">Nuevo Taller</h4>
                 <p style="font-size: 0.7rem; color: var(--text-dim);">Estructura Táctica</p>
@@ -45,16 +47,17 @@
     <div class="card card-interactive reveal {% if loop.index <= 3 %}reveal-delay-{{ loop.index }}{% endif %}"
         style="padding: 0; overflow: hidden;" onclick="window.location='{{ url_for('ver_plano', plano_id=plano.id) }}'">
         <div
-            style="height: 180px; background: linear-gradient(135deg, rgba(99,102,241,0.08), rgba(139,92,246,0.08)); display: flex; align-items: center; justify-content: center; position: relative;">
+            style="height: 180px; background: linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0.1)); display: flex; align-items: center; justify-content: center; position: relative;">
             {% if plano.imagen_path %}
             <img src="{{ safe_gcs_url(plano.imagen_path) }}"
                 style="width: 100%; height: 100%; object-fit: cover; transition: transform 0.6s var(--transition-smooth);">
             {% else %}
-            <span style="font-size: 3.5rem; opacity: 0.3;">🗺️</span>
+            <span class="material-symbols-rounded" style="font-size: 4rem; opacity: 0.1; color: #fff; font-variation-settings: 'wght' 100;">map</span>
             {% endif %}
-            <span class="badge badge-primary"
-                style="position: absolute; top: 12px; right: 12px; backdrop-filter: blur(10px); background: rgba(0,0,0,0.5);">
-                📍 {{ plano.ubicaciones|length }} ubicaciones
+            <span class="badge"
+                style="position: absolute; top: 12px; right: 12px; backdrop-filter: blur(10px); background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #fff; font-size: 0.7rem; padding: 4px 10px;">
+                <span class="material-symbols-rounded" style="font-size: 14px; vertical-align: -2px;">location_on</span>
+                {{ plano.ubicaciones|length }} ubicaciones
             </span>
         </div>
         <div style="padding: var(--space-md) var(--space-lg) var(--space-lg);">
@@ -63,26 +66,29 @@
                 {{ plano.ubicaciones|length }} espacios ubicados
             </p>
             <div style="display: flex; gap: 6px; margin-top: var(--space-md);">
-                <a href="{{ url_for('ver_plano', plano_id=plano.id) }}" class="btn btn-sm btn-secondary"
+                <a href="{{ url_for('ver_plano', plano_id=plano.id) }}" class="btn btn-sm btn-secondary hover-glow"
                     onclick="event.stopPropagation();">Ver Mapa</a>
                 <a href="{{ url_for('editar_plano', plano_id=plano.id) }}" class="btn btn-sm btn-secondary"
-                    onclick="event.stopPropagation();">✏️</a>
+                    onclick="event.stopPropagation();">
+                    <span class="material-symbols-rounded" style="font-size: 16px;">edit</span>
+                </a>
                 <form action="{{ url_for('eliminar_plano', plano_id=plano.id) }}" method="POST" style="margin: 0;"
                     onclick="event.stopPropagation();">
                     <button type="submit" class="btn btn-sm"
-                        style="background: var(--danger-dim); color: #fca5a5; border: 1px solid rgba(239,68,68,0.15);"
-                        onclick="return confirm('¿Eliminar este plano?');">🗑️</button>
+                        style="background: var(--danger-dim); color: #fca5a5; border: 1px solid rgba(239,68,68,0.15); display: flex; align-items: center; justify-content: center;"
+                        onclick="return confirm('¿Eliminar este plano?');">
+                        <span class="material-symbols-rounded" style="font-size: 16px;">delete</span>
+                    </button>
                 </form>
             </div>
         </div>
     </div>
     {% else %}
-    <div class="empty-state">
-        <div class="empty-state-icon">🗺️</div>
+    <div class="empty-state-v2 reveal">
+        <span class="material-symbols-rounded empty-state-icon-v2">map</span>
         <h3 style="margin-bottom: 6px;">Aún no creaste ningún plano</h3>
-        <p>Creá un plano maestro para organizar tus espacios.</p>
-        <a href="{{ url_for('nuevo_plano') }}" class="btn btn-primary" style="margin-top: var(--space-lg);">Crear
-            Plano</a>
+        <p>Creá un plano maestro (Casa, Taller o Galpón) para empezar a organizar tus objetos en el espacio.</p>
+        <a href="{{ url_for('nuevo_plano') }}" class="btn btn-primary hover-glow" style="margin-top: 24px; border-radius: 980px; padding: 12px 32px;">Crear Plano</a>
     </div>
     {% endfor %}
 </div>

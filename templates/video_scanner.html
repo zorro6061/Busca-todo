@@ -28,7 +28,9 @@
 
         <!-- MODO B — Plan B: FOTO A FOTO (recomendado móvil) -->
         <div id="modo-foto" style="text-align: center; margin-bottom: var(--space-2xl);">
-            <div style="font-size: 3rem; margin-bottom: var(--space-md);">📸</div>
+            <div style="margin-bottom: var(--space-md);">
+                <span class="material-symbols-rounded" style="font-size: 3rem; color: #fff; font-variation-settings: 'wght' 100;">photo_camera</span>
+            </div>
             <h2 style="margin-bottom: 8px;">Modo Foto Automático</h2>
             <p style="color: var(--text-dim); margin-bottom: var(--space-lg); max-width: 400px; margin-left: auto; margin-right: auto;">
                 Recomendado para Rafael. La cámara toma una foto cada 2 segundos mientras recorrés el espacio. Sin videos pesados.
@@ -40,11 +42,11 @@
                     style="width: 100%; border-radius: var(--radius-xl); background: #000; display: block;"></video>
                 <div id="frame-flash" style="position: absolute; inset: 0; border-radius: var(--radius-xl); background: white; opacity: 0; pointer-events: none; transition: opacity 0.1s;"></div>
                 <div id="frame-counter-badge"
-                    style="position: absolute; top: 12px; right: 12px; background: rgba(0,0,0,0.7); backdrop-filter: blur(10px); color: white; padding: 6px 14px; border-radius: 980px; font-size: 0.8rem; font-weight: 700;">
-                    📸 <span id="frame-count">0</span>/8 fotos
+                    style="position: absolute; top: 12px; right: 12px; background: rgba(0,0,0,0.7); backdrop-filter: blur(10px); color: white; padding: 6px 14px; border-radius: 980px; font-size: 0.8rem; font-weight: 700; display: flex; align-items: center; gap: 6px;">
+                    <span class="material-symbols-rounded" style="font-size: 16px;">photo_camera</span> <span id="frame-count">0</span>/8 fotos
                 </div>
                 <div id="countdown-badge"
-                    style="position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); background: var(--primary); color: white; padding: 8px 20px; border-radius: 980px; font-size: 0.85rem; font-weight: 700; display: none;">
+                    style="position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); background: rgba(255,255,255,0.2); backdrop-filter: blur(10px); color: white; padding: 8px 20px; border-radius: 980px; font-size: 0.85rem; font-weight: 700; border: 1px solid rgba(255,255,255,0.3); display: none;">
                     ⏱ Próxima en <span id="countdown-sec">2</span>s
                 </div>
             </div>
@@ -71,10 +73,12 @@
         <!-- MODO A — Video clásico -->
         <form action="{{ url_for('video_scanner', plano_id=plano.id) }}" method="POST" enctype="multipart/form-data"
             id="video-form">
-            <div id="video-drop-zone"
+            <div id="video-drop-zone" class="card-interactive hover-glow"
                 style="border: 2px dashed rgba(255,255,255,0.08); border-radius: var(--radius-2xl); padding: var(--space-2xl) var(--space-xl); cursor: pointer; transition: all 0.4s; text-align: center;"
                 onclick="document.getElementById('video-input').click();">
-                <div style="font-size: 3rem; opacity: 0.3; margin-bottom: var(--space-md);">📹</div>
+                <div style="opacity: 0.3; margin-bottom: var(--space-md);">
+                    <span class="material-symbols-rounded" style="font-size: 3rem; font-variation-settings: 'wght' 100;">videocam</span>
+                </div>
                 <h3 style="margin-bottom: 8px;">Cargar Video del Recorrido</h3>
                 <p style="color: var(--text-dim); margin-bottom: var(--space-lg); font-size: 0.85rem;">Grabá el espacio lentamente. Máximo 200 MB.</p>
                 <button type="button" class="btn btn-secondary">Seleccionar Archivo (Foto o Video)</button>
@@ -88,11 +92,11 @@
     </div>
 
     <!-- Step 2: Procesando -->
-    <div id="step-2" class="card reveal visible step-content"
+    <div id="step-2" class="card reveal visible step-content glass-border"
         style="text-align: center; padding: var(--space-3xl) var(--space-xl);">
         <div style="position: relative; width: 80px; height: 80px; margin: 0 auto var(--space-xl);">
-            <div style="position: absolute; inset: 0; border: 3px solid var(--primary-subtle); border-radius: 50%;"></div>
-            <div style="position: absolute; inset: 0; border: 3px solid transparent; border-top-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite;"></div>
+            <div style="position: absolute; inset: 0; border: 3px solid rgba(255,255,255,0.1); border-radius: 50%;"></div>
+            <div style="position: absolute; inset: 0; border: 3px solid transparent; border-top-color: #fff; border-radius: 50%; animation: spin 1s linear infinite;"></div>
         </div>
         <h2 style="margin-bottom: 8px;">Analizando con IA</h2>
         <p style="color: var(--text-dim); margin-bottom: var(--space-xl);">Gemini está detectando objetos en cada foto...</p>
@@ -128,7 +132,7 @@
                         style="width: 100%; height: 180px; object-fit: cover;">
                     <div class="frame-overlay"
                         style="position: absolute; inset: 0; background: rgba(99, 102, 241, 0.4); display: none; align-items: center; justify-content: center;">
-                        <span style="font-size: 2.5rem; filter: drop-shadow(0 0 10px rgba(0,0,0,0.5));">✓</span>
+                        <span class="material-symbols-rounded" style="font-size: 48px; color: white;">check_circle</span>
                     </div>
                     {% if frame.objects %}
                     <span class="badge badge-primary"
