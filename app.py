@@ -1192,27 +1192,61 @@ def nuevo_plano():
             filename = secure_filename(file.filename)
             filename = upload_image_to_gcs(file, filename)
         elif metodo == 'template' and template_type:
-            # Crear un fondo minimalista según la plantilla
-            # Por ahora usamos una imagen blanca con grid sutil (generada via PIL o simplemente una constante)
-            # Para simplificar y que sea "limpio", subimos una imagen de 1000x1000 blanca.
+            # 🥈 Pure Silver Blueprints Base (Rev 97.5)
             try:
-                from PIL import Image, ImageDraw
-                img = Image.new('RGB', (1000, 1000), color='#f8f9fa')
+                from PIL import Image, ImageDraw, ImageFont
+                # Fondo oscuro profundo para resaltar el "Silver"
+                img = Image.new('RGB', (1000, 1000), color='#0a0a0a')
                 draw = ImageDraw.Draw(img)
-                # Dibujar grid suave
-                for i in range(0, 1000, 50):
-                    draw.line([(i, 0), (i, 1000)], fill='#e9ecef', width=1)
-                    draw.line([(0, i), (1000, i)], fill='#e9ecef', width=1)
                 
+                # 1. Grid técnico sutil
+                for i in range(0, 1000, 50):
+                    draw.line([(i, 0), (i, 1000)], fill='#1a1a1a', width=1)
+                    draw.line([(0, i), (1000, i)], fill='#1a1a1a', width=1)
+                
+                silver_line = '#e2e8f0'
+                silver_fill = (255, 255, 255, 15) # Transparente sutil para zonas
+                
+                if template_type == 'galpon':
+                    # Muros perimetrales
+                    draw.rectangle([50, 50, 950, 950], outline=silver_line, width=5)
+                    # Zona Oficina
+                    draw.rectangle([50, 50, 300, 300], outline=silver_line, width=3)
+                    # Zona Carga (Dashed look via lines)
+                    for x in range(350, 950, 20):
+                        draw.line([x, 700, x+10, 700], fill=silver_line, width=2)
+                    draw.text((70, 70), "OFICINA", fill=silver_line)
+                    draw.text((600, 720), "AREA CARGA", fill=silver_line)
+                    
+                elif template_type == 'casa':
+                    # Perímetro
+                    draw.rectangle([100, 100, 900, 900], outline=silver_line, width=4)
+                    # Living / Cocina Dividida
+                    draw.line([500, 100, 500, 900], fill=silver_line, width=3)
+                    # Dormitorio
+                    draw.line([100, 500, 500, 500], fill=silver_line, width=3)
+                    draw.text((200, 200), "DORMITORIO", fill=silver_line)
+                    draw.text((650, 450), "LIVING / COCINA", fill=silver_line)
+                    
+                elif template_type == 'taller':
+                    # Diseño Taller con banco integrado
+                    draw.rectangle([50, 50, 950, 950], outline=silver_line, width=4)
+                    # Muro de herramientas
+                    draw.rectangle([50, 50, 950, 150], outline=silver_line, width=2)
+                    # Banco de trabajo (Bloque en el fondo)
+                    draw.rectangle([200, 750, 800, 900], outline=silver_line, width=3)
+                    draw.text((450, 80), "PANEL HERRAMIENTAS", fill=silver_line)
+                    draw.text((450, 810), "BANCO", fill=silver_line)
+
                 import io
                 img_io = io.BytesIO()
                 img.save(img_io, 'PNG')
                 img_io.seek(0)
-                temp_filename = f"template_{template_type}_{uuid.uuid4().hex[:6]}.png"
+                temp_filename = f"blueprint_{template_type}_{uuid.uuid4().hex[:6]}.png"
                 filename = upload_image_to_gcs(img_io, temp_filename)
             except Exception as e:
-                app.logger.error(f"Error generando template: {e}")
-                filename = "default_white.png" # Fallback
+                app.logger.error(f"Error generando blueprint: {e}")
+                filename = "default_silver_blueprint.png" # Fallback
 
         elif metodo == 'draw' and drawing_data:
             # Procesar imagen del canvas (base64) en memoria
