@@ -1004,10 +1004,12 @@ def upload():
             for item in resultado.get("items", []):
                 nombre_obj = item.get("nombre", "Objeto detectado")
                 # Generar embedding semántico para el objeto
-                contexto_obj = f"Objeto: {nombre_obj}. Categoría: {
-                    item.get('categoria_principal')}. Descripción: {
-                    item.get('descripcion')}. Tags: {
-                    item.get('tags_semanticos')}"
+                contexto_obj = (
+                    f"Objeto: {nombre_obj}. "
+                    f"Categoría: {item.get('categoria_principal')}. "
+                    f"Descripción: {item.get('descripcion')}. "
+                    f"Tags: {item.get('tags_semanticos')}"
+                )
                 emb_obj = generar_embedding(contexto_obj)
 
                 nuevo_objeto = Objeto(
