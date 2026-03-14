@@ -1057,8 +1057,10 @@ def upload():
                 return redirect(url_for("gallery"))
 
             # Si la confianza es media, damos el link de edición rápido
-            edit_link = f' <a href="/ubicacion/editar/{
-                nueva_ubicacion.id}" style="color:var(--primary); font-weight:bold; margin-left:8px;">[Editar]</a>'
+            edit_link = (
+                f' <a href="/ubicacion/editar/{nueva_ubicacion.id}" '
+                'style="color:var(--primary); font-weight:bold; margin-left:8px;">[Editar]</a>'
+            )
             flash(f'✓ "{nombre_ubicacion}" indexado correctamente.' + edit_link)
             vanguard_log(
                 f"[DB-SUCCESS] Ubicación '{nombre_ubicacion}' guardada (Fricción Manual)."
