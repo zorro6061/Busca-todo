@@ -9,9 +9,11 @@ class MonitoringManager:
 
     @staticmethod
     def send_heartbeat(process_name="General"):
-        heartbeat_url = os.environ.get('BETTER_STACK_HEARTBEAT_URL')
+        heartbeat_url = os.environ.get("BETTER_STACK_HEARTBEAT_URL")
         if not heartbeat_url or "placeholder" in heartbeat_url:
-            vanguard_log(f"Heartbeat skipped for {process_name} (URL not configured)", "DEBUG")
+            vanguard_log(
+                f"Heartbeat skipped for {process_name} (URL not configured)", "DEBUG"
+            )
             return False
         try:
             # Better Stack Heartbeat es un simple GET
@@ -20,7 +22,10 @@ class MonitoringManager:
                 vanguard_log(f"Heartbeat sent successfully for: {process_name}", "INFO")
                 return True
             else:
-                vanguard_log(f"Heartbeat failed for {process_name}. Status: {res.status_code}", "WARNING")
+                vanguard_log(
+                    f"Heartbeat failed for {process_name}. Status: {res.status_code}",
+                    "WARNING",
+                )
         except Exception as e:
             vanguard_log(f"Error sending heartbeat for {process_name}: {e}", "ERROR")
             sentry_sdk.capture_exception(e)

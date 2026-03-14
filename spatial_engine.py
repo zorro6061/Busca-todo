@@ -1,11 +1,12 @@
 import numpy as np
 
+
 class SpatialEngine:
     """
     Engine for Projective Geometry and Perspective Correction (SLAM-lite).
     Maps image-space detections to 2D floor plan coordinates.
     """
-    
+
     @staticmethod
     def solve_homography(src_pts, dst_pts):
         """
@@ -17,9 +18,9 @@ class SpatialEngine:
         for i in range(4):
             x, y = src_pts[i][0], src_pts[i][1]
             u, v = dst_pts[i][0], dst_pts[i][1]
-            A.append([-x, -y, -1, 0, 0, 0, x*u, y*u, u])
-            A.append([0, 0, 0, -x, -y, -1, x*v, y*v, v])
-        
+            A.append([-x, -y, -1, 0, 0, 0, x * u, y * u, u])
+            A.append([0, 0, 0, -x, -y, -1, x * v, y * v, v])
+
         A = np.asarray(A)
         # Solve A * h = 0 using SVD
         U, S, Vh = np.linalg.svd(A)
@@ -60,8 +61,10 @@ class SpatialEngine:
         """
         return np.eye(3).tolist()
 
+
 def serialize_h(H):
     return H.flatten().tolist()
+
 
 def deserialize_h(H_list):
     return np.array(H_list).reshape(3, 3)

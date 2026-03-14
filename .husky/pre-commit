@@ -1,14 +1,17 @@
-#!/usr/bin/env sh
-. "$(dirname -- "$0")/_/husky.sh"
+
 
 echo "🛡️ Rev 101: Escudo de Blindaje Activado..."
 
-# 1. Linting con python -m flake8 (Compatible con Windows/GCP)
-echo "🔍 Validando sintaxis Python..."
-npx lint-staged || { echo "❌ Lint falló. Corregí los errores antes de comitear."; exit 1; }
+# 1. Seguridad: Gitleaks (Buscador de secretos)
+echo "🛡️ Escaneando secretos con Gitleaks..."
+python -m pre_commit run gitleaks --all-files || { echo "❌ Se detectaron posibles secretos. Commit bloqueado por seguridad."; exit 1; }
 
-# 2. Smoke Test Crítico
+# 2. Linting y Formateo: Black & Prettier & Flake8
+echo "🔍 Validando sintaxis y formateo (Black/Prettier/Flake8)..."
+npx lint-staged || { echo "❌ Error de validación o formateo."; exit 1; }
+
+# 3. Smoke Test Crítico
 echo "🔍 Ejecutando Smoke Test local..."
 npx playwright test tests/smoke.spec.js -g "Login" --project=chromium || { echo "❌ Test falló. Bloqueando commit."; exit 1; }
 
-echo "✅ Blindaje superado."
+echo "✅ Blindaje Rev 105 superado."

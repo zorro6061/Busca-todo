@@ -1,0 +1,98 @@
+{
+  "v": 3,
+  "name": "Busca-todo - Modo Magia (Rev 105)",
+  "folders": [],
+  "requests": [
+    {
+      "v": "1",
+      "name": "Health Check (Audit)",
+      "method": "GET",
+      "endpoint": "{{baseUrl}}/api/health",
+      "params": [],
+      "headers": [],
+      "preRequestScript": "",
+      "testScript": "pw.test(\"Status is Healthy\", () => {\n  pw.expect(pw.response.status).toBe(200);\n  pw.expect(pw.response.body.status).toBe(\"Healthy\");\n});",
+      "body": {
+        "contentType": null,
+        "body": null
+      }
+    },
+    {
+      "v": "1",
+      "name": "Subida con Modo Magia (Bypass)",
+      "method": "POST",
+      "endpoint": "{{baseUrl}}/upload",
+      "params": [],
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "multipart/form-data"
+        }
+      ],
+      "preRequestScript": "",
+      "testScript": "pw.test(\"Redirects to Gallery on success\", () => {\n  pw.expect(pw.response.status).toBe(302);\n});",
+      "body": {
+        "contentType": "multipart/form-data",
+        "body": [
+          {
+            "key": "location_name",
+            "value": "Test Room",
+            "active": true
+          },
+          {
+            "key": "file",
+            "value": "",
+            "active": true,
+            "isFile": true
+          }
+        ]
+      }
+    },
+    {
+      "v": "1",
+      "name": "Búsqueda Semántica",
+      "method": "GET",
+      "endpoint": "{{baseUrl}}/search",
+      "params": [
+        {
+          "key": "q",
+          "value": "caja de herramientas",
+          "active": true
+        }
+      ],
+      "headers": [],
+      "preRequestScript": "",
+      "testScript": "pw.test(\"Search returns results\", () => {\n  pw.expect(pw.response.status).toBe(200);\n});",
+      "body": {
+        "contentType": null,
+        "body": null
+      }
+    },
+    {
+      "v": "1",
+      "name": "Debug Dashboard",
+      "method": "GET",
+      "endpoint": "{{baseUrl}}/api/debug-dashboard",
+      "params": [],
+      "headers": [],
+      "preRequestScript": "",
+      "testScript": "",
+      "body": {
+        "contentType": null,
+        "body": null
+      }
+    }
+  ],
+  "auth": {
+    "authType": "none",
+    "authActive": true
+  },
+  "headers": [],
+  "variables": [
+    {
+      "key": "baseUrl",
+      "value": "http://127.0.0.1:5001",
+      "active": true
+    }
+  ]
+}

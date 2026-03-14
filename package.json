@@ -9,7 +9,13 @@
     "prepare": "husky"
   },
   "lint-staged": {
-    "*.py": "python -m flake8"
+    "*.py": [
+      "python -m black",
+      "python -m flake8"
+    ],
+    "*.js": [
+      "prettier --write"
+    ]
   },
   "repository": {
     "type": "git",
@@ -26,7 +32,8 @@
   "devDependencies": {
     "@playwright/test": "^1.58.2",
     "husky": "^9.1.7",
-    "lint-staged": "^16.3.3"
+    "lint-staged": "^16.3.3",
+    "prettier": "^3.8.1"
   },
   "dependencies": {
     "@sentry/browser": "^10.43.0",
