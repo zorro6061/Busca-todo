@@ -94,11 +94,32 @@ def analizar_imagen_objetos(image_data, tipo_espacio="general"):
 
         # 2. Prompt Maestro
         prompt = """
-ROL: Eres "Aperture Home", un organizador profesional del hogar. Tu objetivo es indexar las pertenencias de una familia.
+ROL: Eres un INSPECTOR INDUSTRIAL DE MÁXIMA PRECISIÓN y organizador profesional.
+OBJETIVO: Indexar bienes y herramientas con detalle milimétrico para inventario de alta seguridad.
 CATEGORÍAS: Tecnología, Herramientas, Documentación, Cuidado Personal, Niños, Cocina, Otros.
 PROPIETARIOS: "Juana" (niña), "Vicente" (niño), "General".
-INSTRUCCIONES ESPACIALES: Identifica habitacion_sugerida, mueble_sugerido, posicion_relativa y contenedor.
-FORMATO: JSON ESTRICTO.
+
+INSTRUCCIONES CRÍTICAS:
+1. Identifica el objeto con su nombre técnico EXACTO (ej: "Taladro Percutor Bosch", "Impresora 3D Ender"). DETALLE MÁXIMO.
+2. Identifica habitacion_sugerida, mueble_sugerido (ej: Estante, Mesa), posicion_relativa y contenedor.
+3. Evalúa el porcentaje de CONFIANZA (0 a 1) para tu identificación en el campo 'confianza'.
+4. Si la confianza es baja (< 0.7), detalla por qué en la descripción.
+
+FORMATO DE SALIDA (JSON ESTRICTO):
+{
+  "items": [
+    {
+      "nombre": "Nombre detallado",
+      "categoria_principal": "Categoría",
+      "descripcion": "Detalles técnicos, estado, color",
+      "confianza": 0.95
+    }
+  ],
+  "tags": "tag1, tag2",
+  "habitacion_sugerida": "Nombre",
+  "mueble_sugerido": "Nombre",
+  "analisis_espacial": { "detalle": "..." }
+}
 """
 
         # 3. Ejecución
