@@ -959,6 +959,11 @@ def upload():
         mueble_texto = request.form.get("mueble_texto", "").strip() or None
         punto_especifico = request.form.get("punto_especifico", "").strip() or None
 
+        # 🚀 Rev 114: Coordenadas y Plano vinculados instantáneamente
+        plano_id = request.form.get("plano_id")
+        pos_x = request.form.get("pos_x")
+        pos_y = request.form.get("pos_y")
+
         if file.filename == "":
             flash("No se seleccionó ningún archivo")
             return redirect(request.url)
@@ -1005,6 +1010,14 @@ def upload():
                 punto_especifico=punto_especifico,
                 embedding_json=json.dumps(emb_ubi) if emb_ubi else None,
             )
+            
+            # Asignar coordenadas si vienen del mapa
+            if plano_id:
+                nueva_ubicacion.plano_id = int(plano_id)
+            if pos_x and pos_y:
+                nueva_ubicacion.pos_x = float(pos_x)
+                nueva_ubicacion.pos_y = float(pos_y)
+
             db.session.add(nueva_ubicacion)
             db.session.flush()
 
@@ -1062,6 +1075,8 @@ def upload():
                 vanguard_log(
                     f"[MAGIA-ACTIVE] Bypass de confirmación para {nombre_ubicacion}"
                 )
+                if plano_id:
+                    return redirect(url_for("ver_plano", plano_id=int(plano_id)))
                 return redirect(url_for("gallery"))
 
             # Si la confianza es media, damos el link de edición rápido
@@ -1074,6 +1089,8 @@ def upload():
                 f"[DB-SUCCESS] Ubicación '{nombre_ubicacion}' guardada (Fricción Manual)."
             )
 
+            if plano_id:
+                return redirect(url_for("ver_plano", plano_id=int(plano_id)))
             return redirect(url_for("gallery"))
 
         except Exception as e:

@@ -159,7 +159,7 @@
                     <div id="pins-layer" style="position: absolute; inset: 0; pointer-events: none; z-index: 100;"></div>
                     <!-- ESCUDO DESACTIVADO: pointer-events: none por defecto. Solo se activa en modo edición. -->
                     <div id="hotspots-layer"
-                        style="position: absolute; inset: 0; cursor: crosshair; pointer-events: none; {{ 'display: none;' if not (plano and plano.imagen_path) else '' }}">
+                        style="position: absolute; inset: 0; cursor: crosshair; pointer-events: auto; {{ 'display: none;' if not (plano and plano.imagen_path) else '' }}">
                     </div>
                 </div>
             </div>
@@ -242,9 +242,10 @@
             <p style="color: var(--text-dim); font-size: 0.8rem; margin-bottom: var(--space-lg);">Crea un nuevo espacio
                 para este plano.</p>
             <form action="{{ url_for('upload') }}" method="POST" enctype="multipart/form-data">
-                <!-- Pasamos el plano_id para que al volver sepamos dónde estamos -->
                 {% if plano %}
                 <input type="hidden" name="plano_id" value="{{ plano.id if plano else 0 }}">
+                <input type="hidden" name="pos_x" id="nueva-pos-x">
+                <input type="hidden" name="pos_y" id="nueva-pos-y">
                 {% endif %}
                 <div style="margin-bottom: var(--space-md);">
                     <label>Nombre</label>
@@ -427,7 +428,19 @@
                 tempCoords = { x, y };
                 document.getElementById('modal-hotspot').style.display = 'flex';
                 document.getElementById('hs-nombre').focus();
-                // No desactivar aquí — el usuario puede crear varios hotspots seguidos
+            } else if (MapStore.unplaced.length === 0) {
+                // Nueva Ubicación en Punto Vacío (Alineación Rafa)
+                const posXInput = document.getElementById('nueva-pos-x');
+                const posYInput = document.getElementById('nueva-pos-y');
+                if (posXInput && posYInput) {
+                    posXInput.value = x;
+                    posYInput.value = y;
+                    document.getElementById('modal-nueva').style.display = 'flex';
+                    setTimeout(() => {
+                        const inputNombre = document.querySelector('#modal-nueva input[name="nombre_ubicacion"]');
+                        if (inputNombre) inputNombre.focus();
+                    }, 300);
+                }
             }
         }
 
