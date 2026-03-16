@@ -73,7 +73,13 @@
 
         <!-- El Plano / Fondo -->
         <div id="canvas-container" style="width: 100%; height: 100%; overflow: hidden; display: flex; align-items: center; justify-content: center; background: radial-gradient(circle at center, #1a1a1a 0%, #050505 100%);">
-            <div id="modular-canvas" style="position: relative; width: 1000px; height: 1000px; background-image: url('{{ safe_gcs_url(plano.imagen_path) }}'); background-size: cover; box-shadow: 0 50px 100px rgba(0,0,0,0.8); transform-origin: center center;">
+            <div id="modular-canvas" style="position: relative; width: 1000px; height: 1000px; 
+                {% if 'default' in (plano.imagen_path or '') %}
+                    background-color: #09090b; background-image: linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px); background-size: 25px 25px;
+                {% else %}
+                    background-image: url('{{ safe_gcs_url(plano.imagen_path) }}'); background-size: cover;
+                {% endif %}
+                box-shadow: 0 50px 100px rgba(0,0,0,0.8); transform-origin: center center;">
                 <!-- Los muebles se renderizan aquí -->
                 <div id="furniture-layer" style="position: absolute; inset: 0;"></div>
             </div>
