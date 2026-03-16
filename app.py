@@ -1328,15 +1328,31 @@ def smart_search_api():
             fuzz.token_sort_ratio(query, nombre_lower)
         ])
 
+        # Evitar falsos positivos en palabras cortas (ej: "mate" en "materiales")
+        def word_match(q, t):
+            import re
+            if not t: return 0
+            return 100 if re.search(rf"\b{re.escape(q)}\b", t) else 0
+
         # Score de ubicaciones y categorías (Contexto)
-        scores_otros = [
-            fuzz.ratio(query, cat_lower),
-            fuzz.partial_ratio(query, habitacion_lower) if habitacion_lower else 0,
-            fuzz.partial_ratio(query, mueble_lower) if mueble_lower else 0,
-            fuzz.partial_ratio(query, punto_lower) if punto_lower else 0,
-            fuzz.partial_ratio(query, ubi_nombre) if ubi_nombre else 0,
-            fuzz.partial_ratio(query, tags_lower) if tags_lower else 0,
-        ]
+        if len(query) <= 5:
+            scores_otros = [
+                fuzz.ratio(query, cat_lower),
+                word_match(query, habitacion_lower),
+                word_match(query, mueble_lower),
+                word_match(query, punto_lower),
+                word_match(query, ubi_nombre),
+                word_match(query, tags_lower)
+            ]
+        else:
+            scores_otros = [
+                fuzz.ratio(query, cat_lower),
+                fuzz.partial_ratio(query, habitacion_lower) if habitacion_lower else 0,
+                fuzz.partial_ratio(query, mueble_lower) if mueble_lower else 0,
+                fuzz.partial_ratio(query, punto_lower) if punto_lower else 0,
+                fuzz.partial_ratio(query, ubi_nombre) if ubi_nombre else 0,
+                fuzz.partial_ratio(query, tags_lower) if tags_lower else 0,
+            ]
         score_otros = max(scores_otros)
 
         # Ponderación: 70% Nombre, 30% Contexto/Ubicación
@@ -1346,7 +1362,7 @@ def smart_search_api():
             mejor_score = max_score
             mejor = obj
 
-    if not mejor or mejor_score < 60:
+    if not mejor or mejor_score < 70:
         return jsonify(
             {"success": False, "error": f'No encontramos nada para "{query}"'}
         )

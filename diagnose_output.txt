@@ -1,0 +1,99 @@
+
+--- Diagnóstico para: Cajas de Panel LED Empotrable/Sobreponer ---
+Score Nombre: 50.0
+Otros - Cat: 26.66666666666667
+Otros - Hab: 0.0
+Otros - Mueble: 0.0
+Otros - Punto: 0.0
+Otros - Ubi_nombre: 75.0
+Otros - Tags: 75.0
+TOTAL SCORE (Ponderado: 70/30): 57.5
+Campos: hab='', mueble='', punto='', ubi='estante 1', tags='un estante de madera en un almacén o taller técnico, densamente poblado con suministros de iluminación led (marcas ixec y vivion), tornillería de marca patta, y herramientas de diagnóstico como un termómetro infrarrojo. se observa una mezcla de inventario nuevo y objetos de uso diario como altavoces y cajas de embalaje abiertas.'
+
+--- Diagnóstico para: Panel LED de sobreponer DENSE 10W ---
+Score Nombre: 50.0
+Otros - Cat: 26.66666666666667
+Otros - Hab: 0.0
+Otros - Mueble: 0.0
+Otros - Punto: 0.0
+Otros - Ubi_nombre: 50.0
+Otros - Tags: 100.0
+TOTAL SCORE (Ponderado: 70/30): 65.0
+Campos: hab='', mueble='', punto='', ubi='estant 1 3°', tags='el espacio es un rincón de almacenamiento o bodega técnica que contiene suministros eléctricos y de iluminación. los objetos están organizados principalmente en pilas verticales: a la izquierda paneles led de marca dense, en el centro paneles ixec de menor tamaño y a la derecha una columna de interruptores diferenciales sassin. en la base se observan materiales de embalaje y accesorios listos para instalación.'
+
+--- Diagnóstico para: Panel LED de sobreponer DENSE 15W ---
+Score Nombre: 50.0
+Otros - Cat: 26.66666666666667
+Otros - Hab: 0.0
+Otros - Mueble: 0.0
+Otros - Punto: 0.0
+Otros - Ubi_nombre: 50.0
+Otros - Tags: 100.0
+TOTAL SCORE (Ponderado: 70/30): 65.0
+Campos: hab='', mueble='', punto='', ubi='estant 1 3°', tags='el espacio es un rincón de almacenamiento o bodega técnica que contiene suministros eléctricos y de iluminación. los objetos están organizados principalmente en pilas verticales: a la izquierda paneles led de marca dense, en el centro paneles ixec de menor tamaño y a la derecha una columna de interruptores diferenciales sassin. en la base se observan materiales de embalaje y accesorios listos para instalación.'
+
+--- Diagnóstico para: Panel LED de sobreponer iXEC 5W ---
+Score Nombre: 50.0
+Otros - Cat: 26.66666666666667
+Otros - Hab: 0.0
+Otros - Mueble: 0.0
+Otros - Punto: 0.0
+Otros - Ubi_nombre: 50.0
+Otros - Tags: 100.0
+TOTAL SCORE (Ponderado: 70/30): 65.0
+Campos: hab='', mueble='', punto='', ubi='estant 1 3°', tags='el espacio es un rincón de almacenamiento o bodega técnica que contiene suministros eléctricos y de iluminación. los objetos están organizados principalmente en pilas verticales: a la izquierda paneles led de marca dense, en el centro paneles ixec de menor tamaño y a la derecha una columna de interruptores diferenciales sassin. en la base se observan materiales de embalaje y accesorios listos para instalación.'
+
+--- Diagnóstico para: Stack de cajas IXEC Panel LED de Sobreponer ---
+Score Nombre: 50.0
+Otros - Cat: 26.66666666666667
+Otros - Hab: 0.0
+Otros - Mueble: 0.0
+Otros - Punto: 0.0
+Otros - Ubi_nombre: 75.0
+Otros - Tags: 75.0
+TOTAL SCORE (Ponderado: 70/30): 57.5
+Campos: hab='', mueble='', punto='', ubi='estante 1 4°', tags='un estante de almacenamiento industrial o de taller organizado con suministros eléctricos y de iluminación. se observa un predominio de productos de la marca ixec y vivion. el espacio contiene tanto stock nuevo en sus cajas originales como herramientas de medición de uso frecuente.'
+
+--- Diagnóstico para: Panel LED iXEC de sobreponer 10W (4 unidades) ---
+Score Nombre: 50.0
+Otros - Cat: 26.66666666666667
+Otros - Hab: 0.0
+Otros - Mueble: 0.0
+Otros - Punto: 0.0
+Otros - Ubi_nombre: 75.0
+Otros - Tags: 100.0
+TOTAL SCORE (Ponderado: 70/30): 65.0
+Campos: hab='', mueble='', punto='', ubi='estante 2 ', tags='un estante de almacenamiento o bodega técnica que contiene inventario de material eléctrico e iluminación. los productos están organizados en pilas verticales por marca y modelo, destacando paneles led de la marca ixec, dispositivos de protección eléctrica sassin y luminarias de techo. la disposición sugiere un sistema de almacenamiento de repuestos o stock para instalaciones.'
+
+--- Diagnóstico para: Panel LED iXEC de sobreponer 5W (5 unidades) ---
+Score Nombre: 50.0
+Otros - Cat: 26.66666666666667
+Otros - Hab: 0.0
+Otros - Mueble: 0.0
+Otros - Punto: 0.0
+Otros - Ubi_nombre: 75.0
+Otros - Tags: 100.0
+TOTAL SCORE (Ponderado: 70/30): 65.0
+Campos: hab='', mueble='', punto='', ubi='estante 2 ', tags='un estante de almacenamiento o bodega técnica que contiene inventario de material eléctrico e iluminación. los productos están organizados en pilas verticales por marca y modelo, destacando paneles led de la marca ixec, dispositivos de protección eléctrica sassin y luminarias de techo. la disposición sugiere un sistema de almacenamiento de repuestos o stock para instalaciones.'
+
+--- Diagnóstico para: Panel LED de sobreponer IXEC 10W ---
+Score Nombre: 50.0
+Otros - Cat: 26.66666666666667
+Otros - Hab: 0.0
+Otros - Mueble: 0.0
+Otros - Punto: 0.0
+Otros - Ubi_nombre: 75.0
+Otros - Tags: 75.0
+TOTAL SCORE (Ponderado: 70/30): 57.5
+Campos: hab='', mueble='', punto='', ubi='estante 4 ', tags='panel led de sobreponer ixec 10w, panel led de sobreponer ixec 15w, cajas de productos marca dense, control remoto universal para aire acondicionado k-1028e, control remoto universal rm-l1388, caja de componentes eléctricos vivion, caja de cartón para pilas alcalinas (reutilizada), precintos plásticos blancos (sujetacables), soporte de estantería metálico perforado, cajas de cartón corrugado sin rotular'
+
+--- Diagnóstico para: Panel LED de sobreponer IXEC 15W ---
+Score Nombre: 50.0
+Otros - Cat: 26.66666666666667
+Otros - Hab: 0.0
+Otros - Mueble: 0.0
+Otros - Punto: 0.0
+Otros - Ubi_nombre: 75.0
+Otros - Tags: 75.0
+TOTAL SCORE (Ponderado: 70/30): 57.5
+Campos: hab='', mueble='', punto='', ubi='estante 4 ', tags='panel led de sobreponer ixec 10w, panel led de sobreponer ixec 15w, cajas de productos marca dense, control remoto universal para aire acondicionado k-1028e, control remoto universal rm-l1388, caja de componentes eléctricos vivion, caja de cartón para pilas alcalinas (reutilizada), precintos plásticos blancos (sujetacables), soporte de estantería metálico perforado, cajas de cartón corrugado sin rotular'
