@@ -1321,10 +1321,15 @@ def smart_search_api():
         ubi_nombre = (obj.ubicacion.nombre or "").lower()
         tags_lower = (obj.ubicacion.tags or "").lower()
 
-        scores = [
+        # Score del Nombre (Prioridad Alta)
+        score_nombre = max([
             fuzz.ratio(query, nombre_lower),
             fuzz.partial_ratio(query, nombre_lower),
-            fuzz.token_sort_ratio(query, nombre_lower),
+            fuzz.token_sort_ratio(query, nombre_lower)
+        ])
+
+        # Score de ubicaciones y categorías (Contexto)
+        scores_otros = [
             fuzz.ratio(query, cat_lower),
             fuzz.partial_ratio(query, habitacion_lower) if habitacion_lower else 0,
             fuzz.partial_ratio(query, mueble_lower) if mueble_lower else 0,
@@ -1332,8 +1337,11 @@ def smart_search_api():
             fuzz.partial_ratio(query, ubi_nombre) if ubi_nombre else 0,
             fuzz.partial_ratio(query, tags_lower) if tags_lower else 0,
         ]
+        score_otros = max(scores_otros)
 
-        max_score = max(scores)
+        # Ponderación: 70% Nombre, 30% Contexto/Ubicación
+        max_score = (score_nombre * 0.7) + (score_otros * 0.3)
+
         if max_score > mejor_score:
             mejor_score = max_score
             mejor = obj
