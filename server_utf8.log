@@ -1,0 +1,59 @@
+﻿python.exe : [INFO][VANGUARD][2026-03-16 13:19:07] --- STAGE 
+0: MODULE LOAD START ---
+En línea: 1 Carácter: 43
++ ... ents\Busca-todo'; & .venv\Scripts\python.exe app.py > 
+server.log 2>&1
++                       
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ([INFO][VANGUARD 
+   ... LOAD START ---:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+[INFO][VANGUARD][2026-03-16 13:19:07] PID: 14444 | CWD: 
+C:\Users\Dell\Documents\Busca-todo
+[INFO][VANGUARD][2026-03-16 13:19:07] Python Version: 3.14.3 
+(tags/v3.14.3:323c59a, Feb  3 2026, 16:04:56) [MSC v.1944 64 
+bit (AMD64)]
+[INFO][VANGUARD][2026-03-16 13:19:07] Cargando variables de 
+entorno...
+[INFO][VANGUARD][2026-03-16 13:19:07] Priorizando 
+DATABASE_URL para sincronizaci¾n externa
+[INFO][VANGUARD][2026-03-16 13:19:07] Iniciando auditorÝa de 
+secuencias PostgreSQL...
+[INFO][VANGUARD][2026-03-16 13:19:10] Secuencia de 
+'ubicaciones' validada.
+[INFO][VANGUARD][2026-03-16 13:19:11] Secuencia de 'objetos' 
+validada.
+[INFO][VANGUARD][2026-03-16 13:19:11] Secuencia de 'planos' 
+validada.
+[INFO][VANGUARD][2026-03-16 13:19:11] Secuencia de 'muebles' 
+validada.
+[INFO][VANGUARD][2026-03-16 13:19:11] Secuencia de 'zonas' 
+validada.
+[INFO][VANGUARD][2026-03-16 13:19:11] Secuencia de 'config' 
+validada.
+[INFO][VANGUARD][2026-03-16 13:19:12] Secuencia de 'users' 
+validada.
+[INFO][VANGUARD][2026-03-16 13:19:12] Sincronizaci¾n de 
+secuencias FINALIZADA \u2705
+[INFO][VANGUARD][2026-03-16 13:19:13] \u2705 Migraci¾n de 
+columnas semßnticas y espaciales completada.
+[INFO][VANGUARD][2026-03-16 13:19:15] \u2705 Tabla 'users' 
+verificada/creada.
+[INFO][VANGUARD][2026-03-16 13:19:15] --- STAGE 1: SYSTEM 
+READY ---
+Traceback (most recent call last):
+  File "C:\Users\Dell\Documents\Busca-todo\app.py", line 
+3400, in <module>
+    print(f"[VANGUARD-STARTUP] \U0001f680 Levando anclas en 
+el puerto {port} fijo (Usa http://127.0.0.1:{port})")
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Dell\AppData\Local\Python\pythoncore-3.14-64
+\Lib\encodings\cp1252.py", line 19, in encode
+    return 
+codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           
+~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character 
+'\U0001f680' in position 19: character maps to <undefined>

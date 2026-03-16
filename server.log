@@ -1,0 +1,267 @@
+[INFO][VANGUARD][2026-03-16 13:23:14] --- STAGE 0: MODULE LOAD START ---
+[INFO][VANGUARD][2026-03-16 13:23:14] PID: 15356 | CWD: C:\Users\Dell\Documents\Busca-todo
+[INFO][VANGUARD][2026-03-16 13:23:14] Python Version: 3.14.3 (tags/v3.14.3:323c59a, Feb  3 2026, 16:04:56) [MSC v.1944 64 bit (AMD64)]
+[INFO][VANGUARD][2026-03-16 13:23:14] Cargando variables de entorno...
+[INFO][VANGUARD][2026-03-16 13:23:14] Priorizando DATABASE_URL para sincronización externa
+[INFO][VANGUARD][2026-03-16 13:23:14] Iniciando auditoría de secuencias PostgreSQL...
+[INFO][VANGUARD][2026-03-16 13:23:17] Secuencia de 'ubicaciones' validada.
+[INFO][VANGUARD][2026-03-16 13:23:17] Secuencia de 'objetos' validada.
+[INFO][VANGUARD][2026-03-16 13:23:17] Secuencia de 'planos' validada.
+[INFO][VANGUARD][2026-03-16 13:23:17] Secuencia de 'muebles' validada.
+[INFO][VANGUARD][2026-03-16 13:23:18] Secuencia de 'zonas' validada.
+[INFO][VANGUARD][2026-03-16 13:23:18] Secuencia de 'config' validada.
+[INFO][VANGUARD][2026-03-16 13:23:18] Secuencia de 'users' validada.
+[INFO][VANGUARD][2026-03-16 13:23:18] Sincronización de secuencias FINALIZADA ✅
+[INFO][VANGUARD][2026-03-16 13:23:20] ✅ Migración de columnas semánticas y espaciales completada.
+[INFO][VANGUARD][2026-03-16 13:23:21] ✅ Tabla 'users' verificada/creada.
+[INFO][VANGUARD][2026-03-16 13:23:21] --- STAGE 1: SYSTEM READY ---
+[VANGUARD-STARTUP] 🚀 Levando anclas en el puerto 5001 fijo (Usa http://127.0.0.1:5001)
+ * Serving Flask app 'app'
+ * Debug mode: off
+WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5001
+ * Running on http://192.168.31.85:5001
+Press CTRL+C to quit
+[INFO][VANGUARD][2026-03-16 13:23:37] QA BYPASS ACTIVE: Session forced for request.
+[INFO][VANGUARD][2026-03-16 13:23:37] LOGIN-TEST HIT. PLAYWRIGHT_TEST env raw: true, app.debug: False, FORCING BYPASS=TRUE
+[INFO][VANGUARD][2026-03-16 13:23:37] LOGIN-TEST SUCCESS: Set user_id to zorro6061@gmail.com
+127.0.0.1 - - [16/Mar/2026 13:23:37] "GET /login-test HTTP/1.1" 302 -
+[INFO][VANGUARD][2026-03-16 13:23:37] Iniciando secuencia de boot (Async Robust)...
+[INFO][VANGUARD][2026-03-16 13:23:37] DB: Verificando conexión (timeout 10s)...
+[INFO][VANGUARD][2026-03-16 13:23:37] Vanguard Engine: Hilo de BD lanzado.
+[INFO][VANGUARD][2026-03-16 13:23:37] DB: Ejecutando db.create_all()...
+127.0.0.1 - - [16/Mar/2026 13:23:40] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [16/Mar/2026 13:23:40] "GET /static/css/toasts.css?v=7 HTTP/1.1" 304 -
+127.0.0.1 - - [16/Mar/2026 13:23:40] "GET /static/css/silver.css?v=1 HTTP/1.1" 304 -
+127.0.0.1 - - [16/Mar/2026 13:23:40] "GET /static/js/main.js?v=7 HTTP/1.1" 304 -
+127.0.0.1 - - [16/Mar/2026 13:23:40] "GET /static/css/style.css?v=7 HTTP/1.1" 304 -
+[INFO][VANGUARD][2026-03-16 13:23:40] DB: Verificando migraciones...
+127.0.0.1 - - [16/Mar/2026 13:23:40] "GET /manifest.json?v=5 HTTP/1.1" 304 -
+127.0.0.1 - - [16/Mar/2026 13:23:40] "GET /static/icons/icon-192.png HTTP/1.1" 304 -
+127.0.0.1 - - [16/Mar/2026 13:23:42] "GET /sw.js HTTP/1.1" 304 -
+[INFO][VANGUARD][2026-03-16 13:23:44] DB: Secuencia de arranque finalizada con éxito.
+[ERROR][VANGUARD][2026-03-16 13:23:53] ERROR CRÍTICO en ver_plano(1): Could not build url for endpoint 'search'. Did you mean 'smart_search_api' instead?
+[INFO][VANGUARD][2026-03-16 13:23:53] Traceback (most recent call last):
+  File "C:\Users\Dell\Documents\Busca-todo\app.py", line 1827, in ver_plano
+    return render_template(
+        "plano_view.html",
+    ...<5 lines>...
+        ubicaciones_sin_plano=ubicaciones_sin_plano,
+    )
+  File "C:\Users\Dell\Documents\Busca-todo\.venv\Lib\site-packages\flask\templating.py", line 151, in render_template
+    return _render(app, template, context)
+  File "C:\Users\Dell\Documents\Busca-todo\.venv\Lib\site-packages\flask\templating.py", line 132, in _render
+    rv = template.render(context)
+  File "C:\Users\Dell\Documents\Busca-todo\.venv\Lib\site-packages\jinja2\environment.py", line 1295, in render
+    self.environment.handle_exception()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Dell\Documents\Busca-todo\.venv\Lib\site-packages\jinja2\environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "C:\Users\Dell\Documents\Busca-todo\templates\plano_view.html", line 1, in top-level template code
+    {% extends 'layout.html' %}
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Dell\Documents\Busca-todo\templates\layout.html", line 151, in top-level template code
+    {% block content %}{% endblock %}
+    ^^^^^^^^^^^^^^^^^
+  File "C:\Users\Dell\Documents\Busca-todo\templates\plano_view.html", line 1098, in block 'content'
+    <a href="{{ url_for('search') }}" style="display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--text-dim);font-size:0.65rem;font-weight:600;text-decoration:none;padding:6px 16px;">
+    ^^^^^^^^^^^^^^^^^
+  File "C:\Users\Dell\Documents\Busca-todo\.venv\Lib\site-packages\flask\app.py", line 1121, in url_for
+    return self.handle_url_build_error(error, endpoint, values)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Dell\Documents\Busca-todo\.venv\Lib\site-packages\flask\app.py", line 1110, in url_for
+    rv = url_adapter.build(  # type: ignore[union-attr]
+        endpoint,
+    ...<3 lines>...
+        force_external=_external,
+    )
+  File "C:\Users\Dell\Documents\Busca-todo\.venv\Lib\site-packages\werkzeug\routing\map.py", line 901, in build
+    raise BuildError(endpoint, values, method, self)
+werkzeug.routing.exceptions.BuildError: Could not build url for endpoint 'search'. Did you mean 'smart_search_api' instead?
+
+C:\Users\Dell\Documents\Busca-todo\app.py:1845: LegacyAPIWarning: The Query.get() method is considered legacy as of the 1.x series of SQLAlchemy and becomes a legacy construct in 2.0. The method is now available as Session.get() (deprecated since: 2.0) (Background on SQLAlchemy 2.0 at: https://sqlalche.me/e/b8d9)
+  plano_fb = Plano.query.get(plano_id)
+[2026-03-16 13:23:53,645] ERROR in app: Exception on /plano/1 [GET]
+Traceback (most recent call last):
+  File "C:\Users\Dell\Documents\Busca-todo\app.py", line 1827, in ver_plano
+    return render_template(
+        "plano_view.html",
+    ...<5 lines>...
+        ubicaciones_sin_plano=ubicaciones_sin_plano,
+    )
+  File "C:\Users\Dell\Documents\Busca-todo\.venv\Lib\site-packages\flask\templating.py", line 151, in render_template
+    return _render(app, template, context)
+  File "C:\Users\Dell\Documents\Busca-todo\.venv\Lib\site-packages\flask\templating.py", line 132, in _render
+    rv = template.render(context)
+  File "C:\Users\Dell\Documents\Busca-todo\.venv\Lib\site-packages\jinja2\environment.py", line 1295, in render
+    self.environment.handle_exception()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Dell\Documents\Busca-todo\.venv\Lib\site-packages\jinja2\environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "C:\Users\Dell\Documents\Busca-todo\templates\plano_view.html", line 1, in top-level template code
+    {% extends 'layout.html' %}
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Dell\Documents\Busca-todo\templates\layout.html", line 151, in top-level template code
+    {% block content %}{% endblock %}
+    ^^^^^^^^^^^^^^^^^
+  File "C:\Users\Dell\Documents\Busca-todo\templates\plano_view.html", line 1098, in block 'content'
+    <a href="{{ url_for('search') }}" style="display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--text-dim);font-size:0.65rem;font-weight:600;text-decoration:none;padding:6px 16px;">
+    ^^^^^^^^^^^^^^^^^
+  File "C:\Users\Dell\Documents\Busca-todo\.venv\Lib\site-packages\flask\app.py", line 1121, in url_for
+    return self.handle_url_build_error(error, endpoint, values)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Dell\Documents\Busca-todo\.venv\Lib\site-packages\flask\app.py", line 1110, in url_for
+    rv = url_adapter.build(  # type: ignore[union-attr]
+        endpoint,
+    ...<3 lines>...
+        force_external=_external,
+    )
+  File "C:\Users\Dell\Documents\Busca-todo\.venv\Lib\site-packages\werkzeug\routing\map.py", line 901, in build
+    raise BuildError(endpoint, values, method, self)
+werkzeug.routing.exceptions.BuildError: Could not build url for endpoint 'search'. Did you mean 'smart_search_api' instead?
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\Dell\Documents\Busca-todo\.venv\Lib\site-packages\flask\app.py", line 1511, in wsgi_app
+    response = self.full_dispatch_request()
+  File "C:\Users\Dell\Documents\Busca-todo\.venv\Lib\site-packages\flask\app.py", line 919, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "C:\Users\Dell\Documents\Busca-todo\.venv\Lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "C:\Users\Dell\Documents\Busca-todo\.venv\Lib\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\Dell\Documents\Busca-todo\app.py", line 1850, in ver_plano
+    return render_template(
+        "plano_view.html",
+    ...<5 lines>...
+        ubicaciones_sin_plano=[],
+    )
+  File "C:\Users\Dell\Documents\Busca-todo\.venv\Lib\site-packages\flask\templating.py", line 151, in render_template
+    return _render(app, template, context)
+  File "C:\Users\Dell\Documents\Busca-todo\.venv\Lib\site-packages\flask\templating.py", line 132, in _render
+    rv = template.render(context)
+  File "C:\Users\Dell\Documents\Busca-todo\.venv\Lib\site-packages\jinja2\environment.py", line 1295, in render
+    self.environment.handle_exception()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Dell\Documents\Busca-todo\.venv\Lib\site-packages\jinja2\environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "C:\Users\Dell\Documents\Busca-todo\templates\plano_view.html", line 1, in top-level template code
+    {% extends 'layout.html' %}
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Dell\Documents\Busca-todo\templates\layout.html", line 151, in top-level template code
+    {% block content %}{% endblock %}
+    ^^^^^^^^^^^^^^^^^
+  File "C:\Users\Dell\Documents\Busca-todo\templates\plano_view.html", line 1098, in block 'content'
+    <a href="{{ url_for('search') }}" style="display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--text-dim);font-size:0.65rem;font-weight:600;text-decoration:none;padding:6px 16px;">
+    ^^^^^^^^^^^^^^^^^
+  File "C:\Users\Dell\Documents\Busca-todo\.venv\Lib\site-packages\flask\app.py", line 1121, in url_for
+    return self.handle_url_build_error(error, endpoint, values)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Dell\Documents\Busca-todo\.venv\Lib\site-packages\flask\app.py", line 1110, in url_for
+    rv = url_adapter.build(  # type: ignore[union-attr]
+        endpoint,
+    ...<3 lines>...
+        force_external=_external,
+    )
+  File "C:\Users\Dell\Documents\Busca-todo\.venv\Lib\site-packages\werkzeug\routing\map.py", line 901, in build
+    raise BuildError(endpoint, values, method, self)
+werkzeug.routing.exceptions.BuildError: Could not build url for endpoint 'search'. Did you mean 'smart_search_api' instead?
+[2026-03-16 13:23:53,659] ERROR in app: Error 500: 500 Internal Server Error: The server encountered an internal error and was unable to complete your request. Either the server is overloaded or there is an error in the application.
+Traceback (most recent call last):
+  File "C:\Users\Dell\Documents\Busca-todo\app.py", line 1827, in ver_plano
+    return render_template(
+        "plano_view.html",
+    ...<5 lines>...
+        ubicaciones_sin_plano=ubicaciones_sin_plano,
+    )
+  File "C:\Users\Dell\Documents\Busca-todo\.venv\Lib\site-packages\flask\templating.py", line 151, in render_template
+    return _render(app, template, context)
+  File "C:\Users\Dell\Documents\Busca-todo\.venv\Lib\site-packages\flask\templating.py", line 132, in _render
+    rv = template.render(context)
+  File "C:\Users\Dell\Documents\Busca-todo\.venv\Lib\site-packages\jinja2\environment.py", line 1295, in render
+    self.environment.handle_exception()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Dell\Documents\Busca-todo\.venv\Lib\site-packages\jinja2\environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "C:\Users\Dell\Documents\Busca-todo\templates\plano_view.html", line 1, in top-level template code
+    {% extends 'layout.html' %}
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Dell\Documents\Busca-todo\templates\layout.html", line 151, in top-level template code
+    {% block content %}{% endblock %}
+    ^^^^^^^^^^^^^^^^^
+  File "C:\Users\Dell\Documents\Busca-todo\templates\plano_view.html", line 1098, in block 'content'
+    <a href="{{ url_for('search') }}" style="display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--text-dim);font-size:0.65rem;font-weight:600;text-decoration:none;padding:6px 16px;">
+    ^^^^^^^^^^^^^^^^^
+  File "C:\Users\Dell\Documents\Busca-todo\.venv\Lib\site-packages\flask\app.py", line 1121, in url_for
+    return self.handle_url_build_error(error, endpoint, values)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Dell\Documents\Busca-todo\.venv\Lib\site-packages\flask\app.py", line 1110, in url_for
+    rv = url_adapter.build(  # type: ignore[union-attr]
+        endpoint,
+    ...<3 lines>...
+        force_external=_external,
+    )
+  File "C:\Users\Dell\Documents\Busca-todo\.venv\Lib\site-packages\werkzeug\routing\map.py", line 901, in build
+    raise BuildError(endpoint, values, method, self)
+werkzeug.routing.exceptions.BuildError: Could not build url for endpoint 'search'. Did you mean 'smart_search_api' instead?
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\Dell\Documents\Busca-todo\.venv\Lib\site-packages\flask\app.py", line 1511, in wsgi_app
+    response = self.full_dispatch_request()
+  File "C:\Users\Dell\Documents\Busca-todo\.venv\Lib\site-packages\flask\app.py", line 919, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "C:\Users\Dell\Documents\Busca-todo\.venv\Lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "C:\Users\Dell\Documents\Busca-todo\.venv\Lib\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\Dell\Documents\Busca-todo\app.py", line 1850, in ver_plano
+    return render_template(
+        "plano_view.html",
+    ...<5 lines>...
+        ubicaciones_sin_plano=[],
+    )
+  File "C:\Users\Dell\Documents\Busca-todo\.venv\Lib\site-packages\flask\templating.py", line 151, in render_template
+    return _render(app, template, context)
+  File "C:\Users\Dell\Documents\Busca-todo\.venv\Lib\site-packages\flask\templating.py", line 132, in _render
+    rv = template.render(context)
+  File "C:\Users\Dell\Documents\Busca-todo\.venv\Lib\site-packages\jinja2\environment.py", line 1295, in render
+    self.environment.handle_exception()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Dell\Documents\Busca-todo\.venv\Lib\site-packages\jinja2\environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "C:\Users\Dell\Documents\Busca-todo\templates\plano_view.html", line 1, in top-level template code
+    {% extends 'layout.html' %}
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Dell\Documents\Busca-todo\templates\layout.html", line 151, in top-level template code
+    {% block content %}{% endblock %}
+    ^^^^^^^^^^^^^^^^^
+  File "C:\Users\Dell\Documents\Busca-todo\templates\plano_view.html", line 1098, in block 'content'
+    <a href="{{ url_for('search') }}" style="display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--text-dim);font-size:0.65rem;font-weight:600;text-decoration:none;padding:6px 16px;">
+    ^^^^^^^^^^^^^^^^^
+  File "C:\Users\Dell\Documents\Busca-todo\.venv\Lib\site-packages\flask\app.py", line 1121, in url_for
+    return self.handle_url_build_error(error, endpoint, values)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Dell\Documents\Busca-todo\.venv\Lib\site-packages\flask\app.py", line 1110, in url_for
+    rv = url_adapter.build(  # type: ignore[union-attr]
+        endpoint,
+    ...<3 lines>...
+        force_external=_external,
+    )
+  File "C:\Users\Dell\Documents\Busca-todo\.venv\Lib\site-packages\werkzeug\routing\map.py", line 901, in build
+    raise BuildError(endpoint, values, method, self)
+werkzeug.routing.exceptions.BuildError: Could not build url for endpoint 'search'. Did you mean 'smart_search_api' instead?
+
+127.0.0.1 - - [16/Mar/2026 13:23:54] "GET /plano/1 HTTP/1.1" 500 -
+127.0.0.1 - - [16/Mar/2026 13:23:54] "GET /static/css/style.css?v=7 HTTP/1.1" 304 -
+127.0.0.1 - - [16/Mar/2026 13:23:54] "GET /static/css/silver.css?v=1 HTTP/1.1" 304 -
+127.0.0.1 - - [16/Mar/2026 13:23:54] "GET /static/css/toasts.css?v=7 HTTP/1.1" 304 -
+127.0.0.1 - - [16/Mar/2026 13:23:54] "GET /static/js/main.js?v=7 HTTP/1.1" 304 -
+127.0.0.1 - - [16/Mar/2026 13:23:54] "GET /manifest.json?v=5 HTTP/1.1" 304 -
+127.0.0.1 - - [16/Mar/2026 13:23:54] "GET /static/icons/icon-192.png HTTP/1.1" 304 -
+127.0.0.1 - - [16/Mar/2026 13:23:56] "GET /sw.js HTTP/1.1" 304 -
