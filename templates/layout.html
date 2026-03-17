@@ -34,7 +34,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/static/sw-v7.js')
+                navigator.serviceWorker.register('/static/sw-v8.js')
                     .then(reg => {
                         console.log('SW Registered', reg);
                         // Escuchar si hay una actualización esperando
@@ -242,7 +242,9 @@
     </div>
 
     <!-- Debug Toggle (Revision 86 Phase 1) -->
-    <div class="debug-toggle" onclick="toggleDebugMode()" title="Modo Debug">🐛</div>
+    <div class="debug-toggle" onclick="toggleDebugMode()" title="Modo Debug" style="display: flex; align-items: center; justify-content: center;">
+        <span class="material-symbols-rounded" style="font-size: 20px; color: var(--primary);">bug_report</span>
+    </div>
 
     <style>
         .fab-camera {
@@ -415,7 +417,7 @@
         const installBtn = document.createElement('div');
         installBtn.id = 'pwa-install-prompt';
         installBtn.style = 'position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: var(--primary); color: white; padding: 12px 20px; border-radius: 980px; font-size: 0.85rem; font-weight: 600; display: none; z-index: 1000; box-shadow: 0 10px 25px rgba(0,0,0,0.5); cursor: pointer; align-items: center; gap: 8px;';
-        installBtn.innerHTML = '<span>📲 Instalar Busca-todo Home</span>';
+        installBtn.innerHTML = '<span style="display:flex;align-items:center;gap:6px;"><span class="material-symbols-rounded" style="font-size:18px;">install_mobile</span> Instalar Busca-todo Home</span>';
         document.body.appendChild(installBtn);
 
         window.addEventListener('beforeinstallprompt', (e) => {
@@ -445,7 +447,7 @@
         if (isIos() && !isInStandaloneMode()) {
             // Show a small hint for iOS users every few sessions
             setTimeout(() => {
-                showIsland("Tip: Toca 'Compartir' y 'Añadir a pantalla de inicio' 📲", 5000, 'success');
+                showIsland("Tip: Toca 'Compartir' y 'Añadir a pantalla de inicio'", 5000, 'success');
             }, 3000);
         }
 

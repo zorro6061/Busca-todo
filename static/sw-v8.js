@@ -1,4 +1,4 @@
-const CACHE_NAME = "busca-todo-v114-stale";
+const CACHE_NAME = "busca-todo-v115-pato";
 const urlsToCache = [
   "/",
   "/static/css/style.css",

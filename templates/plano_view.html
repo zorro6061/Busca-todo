@@ -126,7 +126,7 @@
             <!-- Map Container -->
             <div id="map-container"
                 style="position: relative; overflow: auto; min-height: 400px; width: 100%; display: flex; justify-content: center; background: #0a0a0a; border-radius: var(--radius-xl);">
-                <div id="map-inner" style="position: relative; display: inline-block;">
+                <div id="map-inner" style="position: relative; display: inline-block; will-change: transform;">
                     {% if plano and plano.imagen_path %}
                     <img id="plano-img" src="{{ safe_gcs_url(plano.imagen_path) if plano else '' }}"
                         style="display: block; max-width: none; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);">

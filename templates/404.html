@@ -1,10 +1,14 @@
 {% extends 'layout.html' %}
 {% block content %}
-<div class="empty-state reveal">
-    <div class="empty-state-icon" style="font-size: 5rem;">🔦</div>
-    <h1>404</h1>
-    <h3>Página no encontrada</h3>
-    <p>Parece que te moviste fuera del mapa. El objeto que buscás no está en esta ruta.</p>
-    <a href="{{ url_for('index') }}" class="btn btn-primary" style="margin-top: var(--space-xl);">Volver al Inicio</a>
+<div class="empty-state reveal" style="text-align: center; padding: var(--space-2xl) 0;">
+    <div class="empty-state-icon" style="display: flex; justify-content: center; align-items: center; margin-bottom: var(--space-lg);">
+        <span class="material-symbols-rounded" style="font-size: 5rem; color: var(--primary); opacity: 0.8; text-shadow: 0 0 30px var(--primary-glow);">search_off</span>
+    </div>
+    <h1 style="font-size: 4rem; margin-bottom: var(--space-sm); font-weight: 800;"><span class="gradient-text">404</span></h1>
+    <h3 style="color: white; margin-bottom: var(--space-md); font-weight: 600;">Página no encontrada</h3>
+    <p style="color: var(--text-dim); max-width: 400px; margin: 0 auto; line-height: 1.6;">Parece que te moviste fuera del mapa. El objeto que buscás no está en esta ruta.</p>
+    <a href="{{ url_for('index') }}" class="btn btn-primary btn-lg" style="margin-top: var(--space-xl); border-radius: 980px; box-shadow: 0 10px 30px var(--primary-glow);">
+        <span class="material-symbols-rounded" style="font-size: 20px;">home</span> Volver al Inicio
+    </a>
 </div>
 {% endblock %}

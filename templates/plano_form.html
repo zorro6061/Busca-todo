@@ -8,28 +8,32 @@
     </div>
 
     <form method="POST" enctype="multipart/form-data">
-        <div class="card" style="margin-bottom: var(--space-lg);">
+        <div class="card" style="margin-bottom: var(--space-lg); border-color: rgba(255,255,255,0.06); background: rgba(20,20,30,0.5); backdrop-filter: blur(20px);">
             <div style="margin-bottom: var(--space-lg);">
-                <label>Nombre de la Habitación / Espacio</label>
+                <label style="color: var(--text-dim); font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; display: block;">Nombre de la Habitación / Espacio</label>
                 <input type="text" name="nombre" placeholder="Ej: Cuarto Vicente, Cocina, Terraza..." required
-                    style="border-radius: 980px; padding: 16px 24px;">
+                    style="border-radius: 980px; padding: 16px 24px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.08); color: white; width: 100%; transition: all 0.3s ease; box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);">
             </div>
 
             <div style="margin-bottom: var(--space-lg);">
-                <div class="grid grid-3" style="gap: var(--space-sm);">
-                    <button type="button" id="btn-mode-upload" class="btn btn-primary"
-                        style="border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; gap: 8px;">
-                        <span class="material-symbols-rounded">photo_camera</span> Foto
+                <!-- Premium Segmented Control -->
+                <div class="segmented-control" style="background: rgba(0,0,0,0.4); padding: 6px; border-radius: 980px; display: flex; gap: 4px; border: 1px solid rgba(255,255,255,0.05); position: relative;">
+                    <button type="button" id="btn-mode-upload" class="segment-btn active"
+                        style="flex: 1; border-radius: 980px; padding: 12px; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 600; transition: all 0.3s ease; border: none; background: transparent; color: var(--text-dim); cursor: pointer; position: relative; z-index: 2;">
+                        <span class="material-symbols-rounded" style="font-size: 20px;">photo_camera</span> Foto
                     </button>
-                    <button type="button" id="btn-mode-template" class="btn btn-secondary"
-                        style="border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; gap: 8px;">
-                        <span class="material-symbols-rounded">auto_awesome</span> Plantilla
+                    <button type="button" id="btn-mode-template" class="segment-btn"
+                        style="flex: 1; border-radius: 980px; padding: 12px; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 600; transition: all 0.3s ease; border: none; background: transparent; color: var(--text-dim); cursor: pointer; position: relative; z-index: 2;">
+                        <span class="material-symbols-rounded" style="font-size: 20px;">auto_awesome</span> Plantilla
                     </button>
-                    <button type="button" id="btn-mode-draw" class="btn btn-secondary"
-                        style="border-radius: var(--radius-md); opacity: 0.5; display: flex; align-items: center; justify-content: center; gap: 8px;">
-                        <span class="material-symbols-rounded">edit_square</span> Croquis
+                    <button type="button" id="btn-mode-draw" class="segment-btn"
+                        style="flex: 1; border-radius: 980px; padding: 12px; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 600; transition: all 0.3s ease; border: none; background: transparent; color: var(--text-dim); cursor: pointer; position: relative; z-index: 2; opacity: 0.6;">
+                        <span class="material-symbols-rounded" style="font-size: 20px;">edit_square</span> Croquis
                     </button>
+                    <!-- Indicador Animado (Cambiado via JS) -->
+                    <div id="segment-indicator" style="position: absolute; top: 6px; bottom: 6px; left: 6px; width: calc(33.333% - 8px); background: rgba(99,102,241,0.15); border: 1px solid rgba(99,102,241,0.3); border-radius: 980px; z-index: 1; transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94); box-shadow: 0 4px 15px rgba(99,102,241,0.1);"></div>
                 </div>
+
                 <input type="hidden" name="metodo" id="input-metodo" value="upload">
                 <input type="hidden" name="template_type" id="input-template-type" value="">
                 <input type="hidden" name="variant_id" id="input-variant-id" value="">
@@ -37,30 +41,30 @@
 
             <!-- Template selection section -->
             <div id="section-template" style="display: none; margin-bottom: var(--space-lg);" class="reveal">
-                <label>1. Elegí una categoría</label>
+                <label style="color: var(--text-dim); font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">1. Elegí una categoría</label>
                 <div class="grid grid-3" style="gap: var(--space-md); margin-top: 12px; margin-bottom: 24px;">
                     <div class="template-card" onclick="selectCategory('galpon')" id="tpl-galpon">
                         <div class="tpl-icon-container">
-                            <span class="material-symbols-rounded">factory</span>
+                            <span class="material-symbols-rounded" style="font-size: 32px;">factory</span>
                         </div>
                         <p>Galpón</p>
                     </div>
                     <div class="template-card" onclick="selectCategory('casa')" id="tpl-casa">
                         <div class="tpl-icon-container">
-                            <span class="material-symbols-rounded">home</span>
+                            <span class="material-symbols-rounded" style="font-size: 32px;">home</span>
                         </div>
                         <p>Casa</p>
                     </div>
                     <div class="template-card" onclick="selectCategory('taller')" id="tpl-taller">
                         <div class="tpl-icon-container">
-                            <span class="material-symbols-rounded">construction</span>
+                            <span class="material-symbols-rounded" style="font-size: 32px;">construction</span>
                         </div>
                         <p>Taller</p>
                     </div>
                 </div>
 
                 <div id="section-variants" style="display: none;" class="reveal">
-                    <label>2. Elegí el diseño (Blueprint)</label>
+                    <label style="color: var(--text-dim); font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">2. Elegí el diseño (Blueprint)</label>
                     <div id="variants-list" class="grid grid-1" style="gap: var(--space-sm); margin-top: 12px;">
                         <!-- Dinámico via JS -->
                     </div>
@@ -68,12 +72,14 @@
             </div>
 
             <!-- Upload Section -->
-            <div id="section-upload" class="reveal visible">
-                <label>Foto de Referencia</label>
+            <div id="section-upload" class="reveal visible" style="text-align: center; padding: 30px 20px; background: rgba(0,0,0,0.2); border-radius: var(--radius-xl); border: 1px dashed rgba(255,255,255,0.1);">
+                <span class="material-symbols-rounded" style="font-size: 48px; color: var(--primary); margin-bottom: 16px; opacity: 0.8;">view_in_ar</span>
+                <label style="display: block; font-weight: 600; margin-bottom: 8px;">Foto de Referencia</label>
                 <input type="file" name="file" accept="image/*" capture="environment" class="btn btn-secondary"
-                    style="width: 100%; padding: 14px;">
-                <p style="color: var(--text-dim); font-size: 0.75rem; margin-top: 8px;">Misión: Saca una foto panorámica
-                    o abarcativa del espacio para poner Hotspots.</p>
+                    style="width: 100%; max-width: 300px; padding: 14px; margin: 0 auto; display: block;">
+                <p style="color: var(--text-dim); font-size: 0.8rem; margin-top: 16px; line-height: 1.5; max-width: 400px; margin-inline: auto;">
+                    Misión: Saca una foto panorámica o abarcativa del espacio para poner Hotspots.
+                </p>
             </div>
 
             <!-- Drawing Section -->
@@ -81,44 +87,48 @@
 
                 <div style="display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap;">
                     <button type="button" class="btn btn-sm btn-secondary tool-btn active" data-tool="pencil"
-                        title="Lápiz" style="display: flex; align-items: center; justify-content: center; width: 40px; height: 40px;">
+                        title="Lápiz" style="display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 12px;">
                         <span class="material-symbols-rounded" style="font-size: 18px;">edit</span>
                     </button>
                     <button type="button" class="btn btn-sm btn-secondary tool-btn" data-tool="line"
-                        title="Línea" style="display: flex; align-items: center; justify-content: center; width: 40px; height: 40px;">
+                        title="Línea" style="display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 12px;">
                         <span class="material-symbols-rounded" style="font-size: 18px;">horizontal_rule</span>
                     </button>
                     <button type="button" class="btn btn-sm btn-secondary tool-btn" data-tool="rect"
-                        title="Rectángulo" style="display: flex; align-items: center; justify-content: center; width: 40px; height: 40px;">
+                        title="Rectángulo" style="display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 12px;">
                         <span class="material-symbols-rounded" style="font-size: 18px;">rectangle</span>
                     </button>
                     <button type="button" class="btn btn-sm btn-secondary tool-btn" data-tool="circle"
-                        title="Círculo" style="display: flex; align-items: center; justify-content: center; width: 40px; height: 40px;">
+                        title="Círculo" style="display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 12px;">
                         <span class="material-symbols-rounded" style="font-size: 18px;">circle</span>
                     </button>
                     <button type="button" class="btn btn-sm btn-secondary tool-btn" data-tool="eraser"
-                        title="Borrador" style="display: flex; align-items: center; justify-content: center; width: 40px; height: 40px;">
+                        title="Borrador" style="display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 12px;">
                         <span class="material-symbols-rounded" style="font-size: 18px;">ink_eraser</span>
                     </button>
-                    <div style="width: 1px; background: var(--glass-border); margin: 0 4px;"></div>
+                    <div style="width: 1px; background: rgba(255,255,255,0.1); margin: 0 4px;"></div>
                     <button type="button" id="btn-clear-canvas" class="btn btn-sm btn-secondary"
-                        style="color: var(--danger); font-size: 0.75rem; text-transform: uppercase;">Limpiar</button>
+                        style="color: #ff6b6b; font-size: 0.75rem; text-transform: uppercase; border-radius: 12px; border-color: rgba(255,107,107,0.2); background: rgba(255,107,107,0.05);">Limpiar</button>
                 </div>
 
                 <div
-                    style="background: white; border-radius: var(--radius-md); overflow: hidden; box-shadow: var(--shadow-md);">
+                    style="background: white; border-radius: var(--radius-xl); overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.5);">
                     <canvas id="canvas-plano" width="800" height="500"
                         style="display: block; cursor: crosshair; width: 100%; height: auto;"></canvas>
                 </div>
                 <input type="hidden" name="canvas_data" id="canvas-data">
-                <p style="color: var(--text-dim); font-size: 0.75rem; margin-top: 8px;">Dibujá las paredes y límites de
-                    tu espacio.</p>
+                <p style="color: var(--text-dim); font-size: 0.75rem; margin-top: 12px; text-align: center;">Dibujá las paredes y límites de
+                    tu espacio a mano alzada.</p>
             </div>
         </div>
 
-        <div style="display: flex; gap: var(--space-md);">
-            <a href="{{ url_for('list_planos') }}" class="btn btn-secondary btn-lg" style="flex: 1;">Cancelar</a>
-            <button type="submit" class="btn btn-primary btn-lg" style="flex: 2;">Crear Plano →</button>
+        <div style="display: flex; gap: var(--space-md); align-items: center;">
+            <a href="{{ url_for('list_planos') }}" class="btn btn-secondary btn-lg" style="flex: 1; border-radius: 980px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                <span class="material-symbols-rounded" style="font-size: 20px;">arrow_back</span> Cancelar
+            </a>
+            <button type="submit" class="btn btn-primary btn-lg" style="flex: 2; border-radius: 980px; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 700; font-size: 1.1rem; box-shadow: 0 10px 30px var(--primary-glow);">
+                <span class="material-symbols-rounded" style="font-size: 20px;">add_circle</span> Crear Plano
+            </button>
         </div>
     </form>
 </div>
@@ -151,16 +161,27 @@
             }
         });
 
-    const resetButtons = () => {
-        [btnUpload, btnTemplate, btnDraw].forEach(b => {
-            b.classList.remove('btn-primary');
-            b.classList.add('btn-secondary');
+    const segmentIndicator = document.getElementById('segment-indicator');
+
+    const updateSegmentIndicator = (btn) => {
+        document.querySelectorAll('.segment-btn').forEach(b => {
+            b.classList.remove('active');
+            b.style.color = 'var(--text-dim)';
         });
+        btn.classList.add('active');
+        btn.style.color = 'white';
+
+        if(btn.id === 'btn-mode-upload') {
+            segmentIndicator.style.left = '6px';
+        } else if(btn.id === 'btn-mode-template') {
+            segmentIndicator.style.left = 'calc(33.333% + 2px)';
+        } else if(btn.id === 'btn-mode-draw') {
+            segmentIndicator.style.left = 'calc(66.666% - 2px)';
+        }
     };
 
     btnUpload.onclick = () => {
-        resetButtons();
-        btnUpload.classList.add('btn-primary'); btnUpload.classList.remove('btn-secondary');
+        updateSegmentIndicator(btnUpload);
         sectionUpload.style.display = 'block';
         sectionTemplate.style.display = 'none';
         sectionDraw.style.display = 'none';
@@ -168,8 +189,7 @@
     };
 
     btnTemplate.onclick = () => {
-        resetButtons();
-        btnTemplate.classList.add('btn-primary'); btnTemplate.classList.remove('btn-secondary');
+        updateSegmentIndicator(btnTemplate);
         sectionUpload.style.display = 'none';
         sectionTemplate.style.display = 'block';
         sectionDraw.style.display = 'none';
@@ -177,14 +197,16 @@
     };
 
     btnDraw.onclick = () => {
-        resetButtons();
-        btnDraw.classList.add('btn-primary'); btnDraw.classList.remove('btn-secondary');
+        updateSegmentIndicator(btnDraw);
         sectionUpload.style.display = 'none';
         sectionTemplate.style.display = 'none';
         sectionDraw.style.display = 'block';
         inputMetodo.value = 'dibujo';
         if(typeof resizeCanvas === 'function') resizeCanvas();
     };
+
+    // Inicializar indicador
+    updateSegmentIndicator(btnUpload);
 
     window.selectCategory = (type) => {
         inputTemplateType.value = type;
@@ -319,63 +341,81 @@
     }
 
     .template-card {
-        background: rgba(255, 255, 255, 0.03);
-        border: 1.5px solid var(--glass-border);
+        background: rgba(30,30,40,0.4);
+        border: 1px solid rgba(255, 255, 255, 0.05);
         border-radius: var(--radius-xl);
-        padding: var(--space-lg);
+        padding: var(--space-xl) var(--space-lg);
         text-align: center;
         cursor: pointer;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 8px;
+        gap: 12px;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .template-card::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: radial-gradient(circle at top right, rgba(255,255,255,0.05) 0%, transparent 60%);
+        pointer-events: none;
     }
 
     .template-card:hover {
-        background: rgba(255, 255, 255, 0.06);
-        border-color: rgba(255, 255, 255, 0.2);
-        transform: translateY(-4px);
+        background: rgba(40,40,55,0.6);
+        border-color: rgba(99,102,241,0.3);
+        transform: translateY(-5px);
+        box-shadow: 0 15px 35px rgba(0,0,0,0.3), 0 0 20px rgba(99,102,241,0.1);
     }
 
     .template-card.active {
-        background: rgba(255, 255, 255, 0.1);
-        border-color: #fff;
-        box-shadow: 0 10px 30px rgba(255, 255, 255, 0.15);
+        background: rgba(20,20,30,0.8);
+        border-color: var(--primary);
+        box-shadow: 0 0 0 2px rgba(99,102,241,0.2), 0 15px 40px rgba(0,0,0,0.5), inset 0 0 30px rgba(99,102,241,0.1);
     }
 
     .tpl-icon-container {
-        width: 56px;
-        height: 56px;
+        width: 64px;
+        height: 64px;
         background: rgba(255, 255, 255, 0.05);
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
         margin-bottom: 8px;
-        transition: all 0.3s ease;
+        transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        position: relative;
+        z-index: 2;
     }
 
     .template-card:hover .tpl-icon-container {
-        background: rgba(255, 255, 255, 0.1);
-        transform: scale(1.1);
+        background: rgba(99,102,241,0.1);
+        color: var(--primary);
+        transform: scale(1.15);
     }
 
     .template-card.active .tpl-icon-container {
         background: var(--primary);
         color: white;
-        box-shadow: 0 0 20px var(--primary-glow);
+        box-shadow: 0 0 30px var(--primary-glow);
+        transform: scale(1.1);
     }
 
     .material-symbols-rounded {
-        font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 48;
+        font-variation-settings: 'FILL' 1, 'wght' 300, 'GRAD' 0, 'opsz' 48;
     }
 
     .template-card p {
         margin: 0;
-        font-weight: 600;
-        font-size: 0.9rem;
+        font-weight: 700;
+        font-size: 1rem;
         color: var(--text-dim);
+        letter-spacing: -0.01em;
+        position: relative;
+        z-index: 2;
     }
 
     .template-card.active p {

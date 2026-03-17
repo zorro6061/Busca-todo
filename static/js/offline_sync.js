@@ -17,17 +17,73 @@ function openDB() {
     });
 }
 
+// Compresión de Imágenes Cliente (Rev 115)
+async function compressImage(file, maxWidth = 1920, quality = 0.8) {
+    if (!file.type.startsWith('image/')) return file;
+    
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = event => {
+            const img = new Image();
+            img.src = event.target.result;
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
+
+                if (width > maxWidth) {
+                    height = Math.round((height * maxWidth) / width);
+                    width = maxWidth;
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+                
+                canvas.toBlob((blob) => {
+                    const newFile = new File([blob], file.name, {
+                        type: 'image/jpeg',
+                        lastModified: Date.now(),
+                    });
+                    resolve(newFile);
+                }, 'image/jpeg', quality);
+            };
+            img.onerror = error => reject(error);
+        };
+        reader.onerror = error => reject(error);
+    });
+}
+
 // 2. Guardar en la Cola
 async function guardarOffline(formData) {
+    // Verificación de Cuota de Almacenamiento (Rev 115)
+    if (navigator.storage && navigator.storage.estimate) {
+        try {
+            const estimate = await navigator.storage.estimate();
+            const availableMB = (estimate.quota - estimate.usage) / (1024 * 1024);
+            if (availableMB < 50 && window.showIsland) {
+                window.showIsland("⚠️ Queda poco espacio en tu dispositivo para fotos offline.", 5000, 'warning');
+            }
+        } catch (err) {
+            console.warn("No se pudo estimar cuota de storage", err);
+        }
+    }
+
     const db = await openDB();
     const tx = db.transaction(STORE_NAME, 'readwrite');
     const store = tx.objectStore(STORE_NAME);
 
-    // Convertir FormData a objeto plano y extraer file como Blob
+    // Convertir FormData a objeto plano y extraer file como Blob (comprimido)
     const data = {};
     for (let [key, value] of formData.entries()) {
-        if (value instanceof File) {
-            // Guardar el Blob directamente
+        if (value instanceof File && value.type.startsWith('image/')) {
+            try {
+                value = await compressImage(value);
+            } catch(e) {
+                console.warn("Fallo compresión, guardando original", e);
+            }
             data[key] = value; 
         } else {
             data[key] = value;

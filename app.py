@@ -1549,6 +1549,12 @@ def list_planos():
     return render_template("planos.html", planos=planos)
 
 
+@app.route("/nuevo_plano")
+def redirect_nuevo_plano():
+    """Fallback route for backwards compatibility."""
+    return redirect(url_for("nuevo_plano"))
+
+
 @app.route("/plano/nuevo", methods=["GET", "POST"])
 def nuevo_plano():
     if request.method == "POST":
