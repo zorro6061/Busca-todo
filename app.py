@@ -780,6 +780,38 @@ def logout():
     return redirect(url_for("login"))
 
 
+@app.route("/test")
+def test_health():
+    database_status = "OK"
+    storage_status = "OK"
+
+    # 1. Verificar Base de Datos (Postgres)
+    try:
+        from models import db
+        from sqlalchemy import text
+        db.session.execute(text('SELECT 1'))
+    except Exception as e:
+        database_status = f"FALLO: {str(e)}"
+        app.logger.error(f"[/test] DB Error: {str(e)}")
+
+    # 2. Verificar Cloud Buckets (GCS)
+    try:
+        from google.cloud import storage
+        client = storage.Client()
+        bucket_name = app.config.get('GCS_BUCKET')
+        if bucket_name:
+            bucket = client.bucket(bucket_name)
+            # Listar 1 solo elemento para verificar permisos de lectura
+            list(bucket.list_blobs(max_results=1))
+        else:
+            storage_status = "ERROR: GCS_BUCKET no configurado"
+    except Exception as e:
+        storage_status = f"FALLO: {str(e)}"
+        app.logger.error(f"[/test] Storage Error: {str(e)}")
+
+    return render_template("test_health.html", database=database_status, storage=storage_status)
+
+
 @app.route("/")
 def index():
 
