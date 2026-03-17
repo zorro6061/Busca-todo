@@ -444,6 +444,10 @@ def initialize_vanguard():
             
         host = request.headers.get('Host', '')
         
+        # Bypass redirects for local test environments
+        if '127.0.0.1' in host or 'localhost' in host:
+            return
+            
         needs_redirect = False
         target_url = request.url
         

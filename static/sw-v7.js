@@ -1,4 +1,4 @@
-const CACHE_NAME = "busca-todo-v111-stale";
+const CACHE_NAME = "busca-todo-v114-stale";
 const urlsToCache = [
   "/",
   "/static/css/style.css",
@@ -38,17 +38,23 @@ self.addEventListener("fetch", (event) => {
   const isStatic = url.includes('/static/') || url.includes('fonts.googleapis') || url.includes('fonts.gstatic');
 
   if (isStatic) {
-    // 🏂 Estrategia: Stale-While-Revalidate (Cargar de cache, actualizar en background)
+    // 🏂 Estrategia: Stale-While-Revalidate
     event.respondWith(
-      caches.open(CACHE_NAME).then((cache) => {
-        return cache.match(event.request).then((cachedResponse) => {
-          const fetchedResponse = fetch(event.request).then((networkResponse) => {
-            cache.put(event.request, networkResponse.clone());
+      caches.match(event.request)
+        .catch(() => fetch(event.request))  // 🛡️ Fail-safe: Si falla el cache por entorno virtual
+        .then((cachedResponse) => {
+          const fetchPromise = fetch(event.request).then((networkResponse) => {
+            if (networkResponse && networkResponse.status === 200) {
+              caches.open(CACHE_NAME).then((cache) => {
+                cache.put(event.request, networkResponse.clone()).catch(() => {});
+              });
+            }
             return networkResponse;
-          }).catch(() => {}); // Fallback silencioso si no hay red
-          return cachedResponse || fetchedResponse;
-        });
-      })
+          }).catch(() => {
+             return cachedResponse; // Forzar cache si red cae
+          });
+          return cachedResponse || fetchPromise;
+        })
     );
   } else {
     // 🌐 Estrategia para rutas dinámicas: Red primero, Fallback Cache
