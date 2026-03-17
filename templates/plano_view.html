@@ -233,8 +233,9 @@
             </div>
         </div>
     </div>
+</div>
 
-    <!-- Modal Nueva Ubicación (Rápido) -->
+<!-- Modal Nueva Ubicación (Rápido) -->
     <div id="modal-nueva"
         style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 2000; align-items: center; justify-content: center; backdrop-filter: blur(10px);">
         <div class="card fade-up" style="max-width: 400px; width: 90%; padding: var(--space-xl);">
@@ -264,6 +265,28 @@
             </form>
         </div>
     </div>
+
+    <!-- 💡 Banner Guía de Inicio Rápido (Alineación Rafa) -->
+    <div id="guide-banner" style="position: fixed; bottom: 140px; left: 50%; transform: translateX(-50%); background: rgba(15,15,20,0.85); backdrop-filter: blur(20px); color: white; padding: 10px 24px; border-radius: 50px; border: 1.5px solid rgba(255,255,255,0.08); font-size: 0.8rem; font-weight: 600; display: flex; align-items: center; gap: 8px; z-index: 1050; transition: all 0.5s ease; box-shadow: 0 10px 30px rgba(0,0,0,0.6); pointer-events: none;">
+        <span style="font-size: 1.2rem;">💡</span> Toca cualquier zona vacía para agregar un objeto
+    </div>
+
+    <!-- 📍 Tarjeta Flotante de Previsualización (Pop-over) -->
+    <div id="pin-preview-card" style="display: none; position: absolute; background: rgba(15, 15, 20, 0.92); backdrop-filter: blur(25px); border: 1.5px solid var(--primary); border-radius: 16px; padding: 12px; width: 150px; box-shadow: 0 20px 40px rgba(0,0,0,0.7); z-index: 2500; flex-direction: column; align-items: center; text-align: center; gap: 8px; transform: translate(-50%, -110%); animation: fadeUp 0.2s cubic-bezier(0.18, 0.89, 0.32, 1.28);">
+        <img id="prev-img" style="width: 100%; height: 95px; border-radius: 10px; object-fit: cover; background: #111; border: 1px solid rgba(255,255,255,0.05);" src="" alt="">
+        <div style="width: 100%;">
+            <div id="prev-title" style="font-size: 0.8rem; font-weight: 800; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Nombre</div>
+            <div id="prev-desc" style="font-size: 0.65rem; color: var(--primary); font-weight: 700; margin-top: 2px;">Cargando...</div>
+        </div>
+        <a id="prev-link" href="#" class="btn btn-sm btn-primary" style="font-size: 0.65rem; padding: 5px 12px; border-radius: 50px; width: 100%; font-weight: 600;">Ver Detalles</a>
+    </div>
+
+    <style>
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translate(-50%, -100%) scale(0.95); }
+            to { opacity: 1; transform: translate(-50%, -110%) scale(1); }
+        }
+    </style>
 
     <!-- Overlay de Puntos en el Mapa (para el Paso 2) -->
     <div id="map-calib-overlay"
@@ -408,39 +431,17 @@
             showTapRipple(clientX, clientY);
 
             // Si hay un pin sin ubicar lo posicionamos
-            if (MapStore.unplaced.length > 0) {
-                const item = MapStore.unplaced[0];
-                // Mostrar pin fantasma INMEDIATO en el canvas
-                const ghostPin = document.createElement('div');
-                ghostPin.style.cssText = `position:absolute;left:${x}%;top:${y}%;transform:translate(-50%,-120%);z-index:20;font-size:2rem;pointer-events:none;filter:drop-shadow(0 0 8px rgba(99,102,241,0.9));animation:none;`;
-                ghostPin.textContent = '📍';
-                pinsLayer.appendChild(ghostPin);
-
-                window.showIsland(`📍 Ubicando: ${item.nombre}`, 2000, 'success');
-                MapStore.unplaced = MapStore.unplaced.filter(p => p.id !== item.id);
-                MapStore.pins = [...MapStore.pins, { ...item, x, y }];
-                // hotspot mode se recalcula en el próximo renderMap via subscriber
-                return;
-            }
-
-            // Crear Hotspot de sector (cuando hotspotModeActive y no hay unplaced)
-            if (hotspotModeActive) {
-                tempCoords = { x, y };
-                document.getElementById('modal-hotspot').style.display = 'flex';
-                document.getElementById('hs-nombre').focus();
-            } else if (MapStore.unplaced.length === 0) {
-                // Nueva Ubicación en Punto Vacío (Alineación Rafa)
-                const posXInput = document.getElementById('nueva-pos-x');
-                const posYInput = document.getElementById('nueva-pos-y');
-                if (posXInput && posYInput) {
-                    posXInput.value = x;
-                    posYInput.value = y;
-                    document.getElementById('modal-nueva').style.display = 'flex';
-                    setTimeout(() => {
-                        const inputNombre = document.querySelector('#modal-nueva input[name="nombre_ubicacion"]');
-                        if (inputNombre) inputNombre.focus();
-                    }, 300);
-                }
+            // Nueva Ubicación en Punto Vacío (Alineación Rafa)
+            const posXInput = document.getElementById('nueva-pos-x');
+            const posYInput = document.getElementById('nueva-pos-y');
+            if (posXInput && posYInput) {
+                posXInput.value = x;
+                posYInput.value = y;
+                document.getElementById('modal-nueva').style.display = 'flex';
+                setTimeout(() => {
+                    const inputNombre = document.querySelector('#modal-nueva input[name="nombre_ubicacion"]');
+                    if (inputNombre) inputNombre.focus();
+                }, 300);
             }
         }
 
@@ -590,7 +591,7 @@
                 pin.ondragstart = (e) => {
                     e.dataTransfer.setData('text/plain', JSON.stringify({ id: p.id, type: 'placed' }));
                 };
-                pin.onclick = (e) => { e.stopPropagation(); mostrarDetallePin(p); };
+                pin.onclick = (e) => { e.stopPropagation(); mostrarDetallePin(p, e); };
                 pinsLayer.appendChild(pin);
 
                 // Objetos individuales proyectados
@@ -855,10 +856,68 @@
         }
 
         // ── FALLBACK HELPERS ──
-        function mostrarDetallePin(p) {
-            window.showIsland(`Espacio: ${p.nombre}`, 2000, 'info');
-            // Redirigir a la galería filtrada o ver detalles (opcional)
+        // ── PREVISUALIZACIÓN DE PINES (Alineación Rafa) ──
+        function mostrarDetallePin(p, e) {
+            const card = document.getElementById('pin-preview-card');
+            const img = document.getElementById('prev-img');
+            const title = document.getElementById('prev-title');
+            const desc = document.getElementById('prev-desc');
+            const link = document.getElementById('prev-link');
+
+            if (!card) return;
+
+            // Llenar datos
+            title.textContent = p.nombre;
+            
+            // Buscar una foto para mostrar
+            let thumbUrl = '/static/images/placeholder.png'; // Fallback
+            if (p.imagen_path) thumbUrl = `/uploads/${p.imagen_path}`;
+            else if (p.objetos && p.objetos.length > 0 && p.objetos[0].imagen_path) {
+                thumbUrl = p.objetos[0].imagen_path; // GCS URL directa
+            }
+            img.src = thumbUrl;
+
+            const count = p.objetos ? p.objetos.length : (p.objetos_count || 0);
+            desc.textContent = `${count} objeto${count === 1 ? '' : 's'}`;
+            link.href = `/ubicacion/${p.id}`; // Redirigir a galería de la ubicación
+
+            // Posicionar con respecto al mouse/touch
+            const viewport = document.getElementById('map-container');
+            const rect = viewport ? viewport.getBoundingClientRect() : { left:0, top:0 };
+            const x = e.touches ? e.touches[0].clientX : e.clientX;
+            const y = e.touches ? e.touches[0].clientY : e.clientY;
+
+            // map-container es relative, pero el Pop-over también es hijo de body o similar?
+            // Si el Card está dentro de map-container, restamos rect.left.
+            // Verifiquemos dónde se insertó el Card. Está fuera de map-container!
+            // Si está fuera de map-container (directo en body o wrapper), x e y son absolutos.
+            // Pero si está en relative, rect es necesario.
+            const cardX = x - rect.left;
+            const cardY = y - rect.top;
+
+            card.style.left = cardX + 'px';
+            card.style.top = cardY + 'px';
+            card.style.display = 'flex';
+
+            // Cerrar al hacer clic en cualquier otro lado
+            document.addEventListener('click', function closeCard(evt) {
+                if (!card.contains(evt.target)) {
+                    card.style.display = 'none';
+                    document.removeEventListener('click', closeCard);
+                }
+            });
         }
+
+        // Auto-hide Banner Guía
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => {
+                const banner = document.getElementById('guide-banner');
+                if (banner) {
+                    banner.style.opacity = '0';
+                    setTimeout(() => banner.remove(), 500);
+                }
+            }, 6000); // 6 segundos de guía
+        });
 
         document.getElementById('map-search').oninput = applySearch;
         document.getElementById('btn-nueva-ubicacion').onclick = () =>

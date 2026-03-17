@@ -430,10 +430,35 @@ def debug_gemini():
 # --- INICIO DEL MOTOR VANGUARD (Safe Boot) ---
 _initialized = False
 _db_ready = False
+_recent_uploads = {}  # { "md5_hash": datetime.now() }
 
 
 @app.before_request
 def initialize_vanguard():
+    # --- REDIRECCIÓN 301 (Alineación Rafa para Indexación) ---
+    if not app.debug:  # Evitar redirigir en local
+        is_https = request.headers.get('X-Forwarded-Proto', 'http') == 'https'
+        # Fallback para request.is_secure si está detrás de proxy transparente
+        if not is_https and hasattr(request, 'is_secure') and request.is_secure:
+            is_https = True
+            
+        host = request.headers.get('Host', '')
+        
+        needs_redirect = False
+        target_url = request.url
+        
+        if not is_https:
+            target_url = target_url.replace('http://', 'https://', 1)
+            needs_redirect = True
+            
+        if 'aperturezen.com' in host and not host.startswith('www.'):
+            target_url = target_url.replace(host, 'www.' + host, 1)
+            needs_redirect = True
+            
+        if needs_redirect:
+            from flask import redirect
+            return redirect(target_url, code=301)
+
     # RUTAS DE SALUD: Bypass total (no DB, no auth)
     if request.path in [
         "/alive",
@@ -974,6 +999,24 @@ def upload():
             # 1. Leer bytes para la IA
             img_bytes = file.read()
             file.seek(0)  # Reset stream for GCS
+
+            # --- DEDUPLICACIÓN DE EMISIONES (Rev 111) ---
+            import hashlib
+            from datetime import datetime, timedelta
+            img_hash = hashlib.md5(img_bytes).hexdigest()
+            ahora = datetime.now()
+
+            # Limpiar cache antiguo (> 5 min)
+            for h in list(_recent_uploads.keys()):
+                if ahora - _recent_uploads[h] > timedelta(minutes=5):
+                    _recent_uploads.pop(h, None)
+
+            if img_hash in _recent_uploads:
+                app.logger.warning(f"[DEDUPLICACION] Foto duplicada bloqueada para {filename}")
+                flash("Esta foto ya se subió recientemente.", "warning")
+                return redirect(url_for('list_planos'))
+
+            _recent_uploads[img_hash] = ahora
 
             # 2. IA: Procesar desde memoria
             app.logger.info(

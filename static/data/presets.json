@@ -60,12 +60,15 @@
         {"rect": [153, 153, 347, 347], "label": "BAÑO", "color": "#2d3748"},
         {"rect": [153, 600, 847, 847], "label": "LIVING / KITCHEN", "color": "#1a202c"}
       ],
-      "furniture": []
+      "furniture": [
+        {"tipo": "baño", "nombre": "Baño Principal", "x": 15, "y": 15, "w": 20, "h": 20},
+        {"tipo": "cocina", "nombre": "Cocina / Kitchen", "x": 15, "y": 60, "w": 30, "h": 25}
+      ]
     },
     {
       "id": "casa_2dor",
       "name": "Apartamento 2 Dormitorios",
-      "description": "Planta funcional para familias.",
+      "description": "Planta funcional con zonas pre-diseñadas.",
       "walls": [
         {"rect": [100, 100, 900, 900], "thickness": 10},
         {"line": [500, 100, 500, 900], "thickness": 8},
@@ -76,7 +79,12 @@
         {"rect": [105, 505, 495, 895], "label": "DOR 2", "color": "#2d3748"},
         {"rect": [505, 105, 895, 895], "label": "SOCIAL", "color": "#1a202c"}
       ],
-      "furniture": []
+      "furniture": [
+        {"tipo": "baño", "nombre": "Baño", "x": 11, "y": 11, "w": 18, "h": 18},
+        {"tipo": "cocina", "nombre": "Cocina Integral", "x": 51, "y": 11, "w": 25, "h": 20},
+        {"tipo": "dormitorio", "nombre": "Dormitorio Principal", "x": 11, "y": 30, "w": 38, "h": 19},
+        {"tipo": "dormitorio", "nombre": "Dormitorio 2", "x": 11, "y": 51, "w": 38, "h": 38}
+      ]
     },
     {
       "id": "casa_duplex",
@@ -90,7 +98,10 @@
       "zones": [
         {"rect": [453, 50, 547, 950], "label": "PASILLO", "color": "#2d3748"}
       ],
-      "furniture": []
+      "furniture": [
+        {"tipo": "baño", "nombre": "Baño", "x": 21, "y": 10, "w": 23, "h": 15},
+        {"tipo": "cocina", "nombre": "Cocina", "x": 56, "y": 10, "w": 23, "h": 20}
+      ]
     }
   ],
   "taller": [

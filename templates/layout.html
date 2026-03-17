@@ -2,6 +2,9 @@
 <html lang="es">
 
 <head>
+    {% if request.path == '/' %}
+    <link rel="canonical" href="https://www.aperturezen.com/">
+    {% endif %}
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=5.0">
     <title>Ctrl+F Físico | Buscador de Objetos Reales</title>
@@ -314,6 +317,7 @@
     <div id="toast-container"></div>
 
     <script src="{{ url_for('static', filename='js/main.js') }}?v=7"></script>
+    <script src="{{ url_for('static', filename='js/offline_sync.js') }}?v=111"></script>
 
     <script>
         // ── Scroll-triggered navbar (Tesla-style) ──

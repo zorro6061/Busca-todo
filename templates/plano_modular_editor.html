@@ -46,6 +46,45 @@
                     <p class="comp-desc">Cerrado / Pared</p>
                 </div>
             </div>
+
+            <div style="margin: 12px 0; border-top: 1px dotted rgba(255,255,255,0.1);"></div>
+            <p style="font-size: 0.7rem; color: var(--primary); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Estructuras / Zonas</p>
+
+            <!-- Componente: Baño -->
+            <div class="draggable-component" draggable="true" data-type="baño" data-w="20" data-h="20">
+                <div class="iso-preview" style="background: #0284c7;"></div>
+                <div class="comp-info">
+                    <p class="comp-name">Zona Baño</p>
+                    <p class="comp-desc">Instalaciones Sanitarias</p>
+                </div>
+            </div>
+
+            <!-- Componente: Cocina -->
+            <div class="draggable-component" draggable="true" data-type="cocina" data-w="30" data-h="20">
+                <div class="iso-preview" style="background: #ea580c;"></div>
+                <div class="comp-info">
+                    <p class="comp-name">Zona Cocina</p>
+                    <p class="comp-desc">Mesadas / Vajilla</p>
+                </div>
+            </div>
+
+            <!-- Componente: Dormitorio -->
+            <div class="draggable-component" draggable="true" data-type="dormitorio" data-w="25" data-h="25">
+                <div class="iso-preview" style="background: #a855f7;"></div>
+                <div class="comp-info">
+                    <p class="comp-name">Zona Dormitorio</p>
+                    <p class="comp-desc">Habitación / Descanso</p>
+                </div>
+            </div>
+
+            <!-- Componente: Pared -->
+            <div class="draggable-component" draggable="true" data-type="pared" data-w="40" data-h="2.5">
+                <div class="iso-preview" style="background: #fff; height: 10px;"></div>
+                <div class="comp-info">
+                    <p class="comp-name">Pared / Divisoria</p>
+                    <p class="comp-desc">Tabique separador</p>
+                </div>
+            </div>
         </div>
 
         <div style="margin-top: var(--space-xl); border-top: 1px solid var(--glass-border); padding-top: var(--space-md); display: flex; flex-direction: column; gap: 8px;">
@@ -167,6 +206,26 @@
     .item-rack { 
         background: linear-gradient(135deg, #1e293b, #0f172a);
         border: 2px solid #334155 !important;
+    }
+
+    .item-baño { 
+        background: rgba(2, 132, 199, 0.4);
+        border: 2px solid #0284c7 !important;
+        backdrop-filter: blur(4px);
+    }
+    .item-cocina { 
+        background: rgba(234, 88, 12, 0.4);
+        border: 2px solid #ea580c !important;
+        backdrop-filter: blur(4px);
+    }
+    .item-dormitorio { 
+        background: rgba(168, 85, 247, 0.4);
+        border: 2px solid #a855f7 !important;
+        backdrop-filter: blur(4px);
+    }
+    .item-pared { 
+        background: #e2e8f0;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.5);
     }
 
     /* Seleccionado */
