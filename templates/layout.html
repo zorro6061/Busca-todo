@@ -416,8 +416,8 @@
         let deferredPrompt;
         const installBtn = document.createElement('div');
         installBtn.id = 'pwa-install-prompt';
-        installBtn.style = 'position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: var(--primary); color: white; padding: 12px 20px; border-radius: 980px; font-size: 0.85rem; font-weight: 600; display: none; z-index: 1000; box-shadow: 0 10px 25px rgba(0,0,0,0.5); cursor: pointer; align-items: center; gap: 8px;';
-        installBtn.innerHTML = '<span style="display:flex;align-items:center;gap:6px;"><span class="material-symbols-rounded" style="font-size:18px;">install_mobile</span> Instalar Busca-todo Home</span>';
+        installBtn.style = 'position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: var(--primary); color: #000; padding: 12px 20px; border-radius: 980px; font-size: 0.85rem; font-weight: 700; display: none; z-index: 1000; box-shadow: 0 10px 25px rgba(0,0,0,0.5); cursor: pointer; align-items: center; gap: 8px;';
+        installBtn.innerHTML = '<span style="display:flex;align-items:center;gap:6px;"><span class="material-symbols-rounded" style="font-size:18px; color: #000;">install_mobile</span> Instalar Busca-todo Home</span>';
         document.body.appendChild(installBtn);
 
         window.addEventListener('beforeinstallprompt', (e) => {
