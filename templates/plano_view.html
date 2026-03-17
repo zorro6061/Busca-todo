@@ -159,7 +159,7 @@
                     <div id="pins-layer" style="position: absolute; inset: 0; pointer-events: none; z-index: 100;"></div>
                     <!-- ESCUDO DESACTIVADO: pointer-events: none por defecto. Solo se activa en modo edición. -->
                     <div id="hotspots-layer"
-                        style="position: absolute; inset: 0; cursor: crosshair; pointer-events: auto; {{ 'display: none;' if not (plano and plano.imagen_path) else '' }}">
+                        style="position: absolute; inset: 0; cursor: crosshair; pointer-events: auto; {{ 'display: none;' if not (plano and plano.imagen_path) else '' }}; z-index: 150;">
                     </div>
                 </div>
             </div>
@@ -347,11 +347,10 @@
         }
 
         function disableHotspotMode() {
-            hotspotModeActive = false;
-            const layer = document.getElementById('hotspots-layer');
-            layer.style.pointerEvents = 'none';
-            layer.style.cursor = 'default';
-            console.log('[HOTSPOT] Modo edición INACTIVO');
+            // DESACTIVADO: Nunca bloquear toques — siempre permitir crear ubicaciones
+            // hotspotModeActive = false;
+            // layer.style.pointerEvents = 'none';
+            console.log('[HOTSPOT] Modo edición permanece ACTIVO (bypass gate)');
         }
 
         // ── CONFIGURACIÓN FASE 4: NAVEGADOR HÍBRIDO ──
@@ -676,16 +675,16 @@
 
         function zoomMap(v) {
             MapStore.currentZoom = Math.max(0.5, Math.min(3, MapStore.currentZoom + v));
-            img.style.transform = `scale(${MapStore.currentZoom})`;
-            img.style.transformOrigin = '0 0';
-            pinsLayer.style.transform = `scale(${MapStore.currentZoom})`;
-            pinsLayer.style.transformOrigin = '0 0';
+            // 🎯 Escalado UNIFICADO: todo el contenedor se mueve junto
+            const inner = document.getElementById('map-inner');
+            inner.style.transform = `scale(${MapStore.currentZoom})`;
+            inner.style.transformOrigin = '0 0';
         }
 
         function resetMap() {
             MapStore.currentZoom = 1;
-            img.style.transform = '';
-            pinsLayer.style.transform = '';
+            const inner = document.getElementById('map-inner');
+            inner.style.transform = '';
         }
 
         function filterByChip(chip, el) {
