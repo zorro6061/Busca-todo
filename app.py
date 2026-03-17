@@ -798,7 +798,7 @@ def test_health():
     try:
         from google.cloud import storage
         client = storage.Client()
-        bucket_name = app.config.get('GCS_BUCKET')
+        bucket_name = GCP_BUCKET_NAME
         if bucket_name:
             bucket = client.bucket(bucket_name)
             # Listar 1 solo elemento para verificar permisos de lectura
