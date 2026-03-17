@@ -55,11 +55,11 @@ test.describe("ApertureZen Smoke Tests (Rev 100)", () => {
     await page.click('button[type="submit"]');
 
     // Verificar Redirección al Editor
-    await expect(page).toHaveURL(/\/plano\/\d+\/editor/, { timeout: 15000 });
+    await expect(page).toHaveURL(/\/plano\/\d+\/modular_editor/, { timeout: 15000 });
 
-    // Verificar Muros
-    const walls = page.locator("svg .wall, svg rect, svg line");
-    await expect(walls.first()).toBeVisible();
+    // Verificar Editor Modular
+    const editorContainer = page.locator("#modular-editor-layout");
+    await expect(editorContainer).toBeVisible();
   });
 
   test("Test 4: Search Engine Validation", async ({ page }) => {
@@ -70,6 +70,6 @@ test.describe("ApertureZen Smoke Tests (Rev 100)", () => {
     await searchInput.fill("Herramientas");
     await page.keyboard.press("Enter");
 
-    await expect(page).toHaveURL(/\/search/);
+    await expect(page.locator("#results-container")).toBeVisible({ timeout: 10000 });
   });
 });

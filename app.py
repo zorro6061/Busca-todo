@@ -25,7 +25,7 @@ import sys
 import time
 import json
 import uuid
-import traceback
+
 import sentry_sdk
 from rapidfuzz import fuzz
 from sentry_sdk.integrations.flask import FlaskIntegration
@@ -2949,7 +2949,7 @@ def procesar_video():
                     track_pos_y = None
 
                     if h_matrix is not None and "bbox" in track:
-                        from spatial_engine import SpatialEngine
+
 
                         anchor = SpatialEngine.get_object_anchor(track["bbox"])
                         proj_x, proj_y = SpatialEngine.project_point(h_matrix, anchor)
