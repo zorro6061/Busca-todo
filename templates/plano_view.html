@@ -425,29 +425,51 @@
             // Feedback visual INSTANTÁNEO: círculo brillante aparece al toque
             const ripple = document.createElement('div');
             const inner = document.getElementById('map-inner');
-            const innerRect = inner.getBoundingClientRect();
-            const rx = clientX - innerRect.left;
-            const ry = clientY - innerRect.top;
-            ripple.style.cssText = `
-                position: absolute;
-                left: ${rx}px; top: ${ry}px;
-                width: 0; height: 0;
-                border-radius: 50%;
-                background: radial-gradient(circle, rgba(99,102,241,0.9) 0%, rgba(99,102,241,0) 70%);
-                transform: translate(-50%, -50%);
-                pointer-events: none;
-                z-index: 999;
-                transition: width 0.35s ease-out, height 0.35s ease-out, opacity 0.35s ease-out;
-                opacity: 1;
+            if (inner) {
+                const innerRect = inner.getBoundingClientRect();
+                const rx = clientX - innerRect.left;
+                const ry = clientY - innerRect.top;
+                ripple.style.cssText = `
+                    position: absolute;
+                    left: ${rx}px; top: ${ry}px;
+                    width: 0; height: 0;
+                    border-radius: 50%;
+                    background: radial-gradient(circle, rgba(99,102,241,0.9) 0%, rgba(99,102,241,0) 70%);
+                    transform: translate(-50%, -50%);
+                    pointer-events: none;
+                    z-index: 999;
+                    transition: width 0.35s ease-out, height 0.35s ease-out, opacity 0.35s ease-out;
+                    opacity: 1;
+                `;
+                inner.appendChild(ripple);
+                requestAnimationFrame(() => {
+                    ripple.style.width = '80px';
+                    ripple.style.height = '80px';
+                });
+                setTimeout(() => { ripple.style.opacity = '0'; }, 250);
+                setTimeout(() => ripple.remove(), 600);
+            }
+        }
+
+        // 🧠 CIRUGÍA PATO: Placeholder Pin de Carga
+        function crearPinPlaceholder(x, y) {
+            const layer = document.getElementById('pins-layer');
+            if (!layer) return;
+            
+            const pin = document.createElement('div');
+            pin.className = 'map-pin placeholder-pin';
+            pin.style.left = x + '%';
+            pin.style.top = y + '%';
+            pin.style.pointerEvents = 'none';
+            pin.style.zIndex = '500'; // Sobresale
+            
+            pin.innerHTML = `
+                <div class="pin-head" style="background: var(--warning); box-shadow: 0 0 15px rgba(245, 158, 11, 0.4); animation: brain-pulse 0.8s infinite alternate;">
+                    🧠
+                </div>
+                <div class="pin-label" style="background: rgba(0,0,0,0.85); backdrop-filter: blur(4px); padding: 4px 8px; border-radius: var(--radius-sm); font-size: 0.6rem; color: var(--warning); margin-top: 4px; font-weight: 800;">Indexando...</div>
             `;
-            inner.appendChild(ripple);
-            // Trigger animation
-            requestAnimationFrame(() => {
-                ripple.style.width = '80px';
-                ripple.style.height = '80px';
-            });
-            setTimeout(() => { ripple.style.opacity = '0'; }, 250);
-            setTimeout(() => ripple.remove(), 600);
+            layer.appendChild(pin);
         }
 
         function handleHotspotClick(e) {
@@ -468,14 +490,26 @@
             if (posXInput && posYInput) {
                 posXInput.value = x;
                 posYInput.value = y;
-                document.getElementById('modal-nueva').style.display = 'flex';
                 
-                // CIRUGÍA PATO: Disparar cámara/selector AL INSTANTE (Sin setTimeout para no romper activación de usuario)
+                // 🧠 CIRUGÍA PATO: 1. Crear Placeholder Pin (Prioridad Coordenadas)
+                crearPinPlaceholder(x, y);
+
+                // 2. Bypass del Modal (Se mantiene oculto)
+                document.getElementById('modal-nueva').style.display = 'none';
+                
                 const fileInput = document.querySelector('#modal-nueva input[name="file"]');
-                if (fileInput) fileInput.click();
-                
-                const inputNombre = document.querySelector('#modal-nueva input[name="nombre_ubicacion"]');
-                if (inputNombre) setTimeout(() => inputNombre.focus(), 300);
+                if (fileInput) {
+                    // 3. Auto-Submit Inteligente al obtener el Blob
+                    fileInput.onchange = function() {
+                        if (this.files && this.files.length > 0) {
+                            if (typeof window.showIsland === 'function') {
+                                window.showIsland('💡 IA Analizando Espacio...', 0, 'loading');
+                            }
+                            this.form.submit(); // Disparar Solo!
+                        }
+                    };
+                    fileInput.click(); // Abrir cámara directo en el mismo hilo
+                }
             }
         }
 
@@ -1123,6 +1157,11 @@
             0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
             70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(34, 197, 94, 0); }
             100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+        }
+
+        @keyframes brain-pulse {
+            0% { transform: scale(0.95); opacity: 0.8; }
+            100% { transform: scale(1.15); opacity: 1; }
         }
 
         /* ── RESPONSIVE MOBILE LAYOUT ── */
