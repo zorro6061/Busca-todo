@@ -127,30 +127,21 @@
             <div id="map-container"
                 style="position: relative; overflow: auto; min-height: 400px; width: 100%; display: flex; align-items: center; justify-content: center; background: #0a0a0a; border-radius: var(--radius-xl);">
                 <div id="map-inner" style="position: relative; display: inline-block; will-change: transform;">
-                    {% if plano and plano.imagen_path %}
-                    <img id="plano-img" src="{{ safe_gcs_url(plano.imagen_path) if plano else '' }}"
-                        style="display: block; max-width: none; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);">
-                    {% else %}
-                    <div class="empty-plano-state"
-                        style="width: 800px; height: 800px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: linear-gradient(135deg, #111 0%, #050505 100%); border: 2px dashed rgba(255,255,255,0.1); border-radius: var(--radius-md);">
-                        <span class="material-symbols-rounded"
-                            style="font-size: 80px; color: var(--primary); opacity: 0.5; margin-bottom: 20px;">add_a_photo</span>
+                    <!-- Plano Image with Graceful 404 Fallback -->
+                    <img id="plano-img" src="{{ safe_gcs_url(plano.imagen_path) if plano and plano.imagen_path else '' }}"
+                        style="display: {{ 'block' if plano and plano.imagen_path else 'none' }}; max-width: none; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);"
+                        onerror="if(this.src) { this.style.display='none'; document.getElementById('empty-plano-state-all').style.display='flex'; }">
+
+                    <div id="empty-plano-state-all" class="empty-plano-state"
+                        style="width: 800px; height: 800px; display: {{ 'flex' if not (plano and plano.imagen_path) else 'none' }}; flex-direction: column; align-items: center; justify-content: center; background: linear-gradient(135deg, #111 0%, #050505 100%); border: 2px dashed rgba(255,255,255,0.1); border-radius: var(--radius-md);">
+                        <span class="material-symbols-rounded" style="font-size: 80px; color: var(--primary); opacity: 0.5; margin-bottom: 20px;">add_a_photo</span>
                         <h3 style="margin-bottom: 8px;">Habitación sin Foto Maestra</h3>
-                        <p style="color: var(--text-dim); margin-bottom: 24px; max-width: 300px; text-align: center;">
-                            Para navegar al estilo Tesla, necesitamos una foto panorámica o gran angular del espacio.
-                        </p>
-                        <!-- CIRUGÍA NATIVA: label envuelve el input → abre galería directamente sin JS.click() -->
-                        <label for="file-input-maestro" class="btn btn-primary" id="btn-nueva-foto-maestra"
-                            style="cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
-                            <span class="material-symbols-rounded"
-                                style="font-size: 20px; vertical-align: -4px;">add_a_photo</span>
-                            Nueva Foto Maestra
+                        <p style="color: var(--text-dim); margin-bottom: 24px; max-width: 300px; text-align: center;">Para navegar al estilo Tesla, necesitamos una foto panorámica o gran angular del espacio.</p>
+                        <label for="file-input-maestro" class="btn btn-primary" id="btn-nueva-foto-maestra" style="cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+                            <span class="material-symbols-rounded" style="font-size: 20px; vertical-align: -4px;">add_a_photo</span> Nueva Foto Maestra
                         </label>
-                        <!-- Input nativo vinculado al label: NO synthetic click, abre galería de Rafael directo -->
-                        <input type="file" id="file-input-maestro" accept="image/*" capture="environment"
-                            style="position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none;">
+                        <input type="file" id="file-input-maestro" accept="image/*" capture="environment" style="position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none;">
                     </div>
-                    {% endif %}
 
                     <!-- Modular Furniture Layer (Revision 69) -->
                     <div id="muebles-layer" style="position: absolute; inset: 0; pointer-events: none; z-index: 40;"></div>
@@ -479,14 +470,12 @@
                 posYInput.value = y;
                 document.getElementById('modal-nueva').style.display = 'flex';
                 
-                // CIRUGÍA PATO: Disparar cámara/selector AL INSTANTE
-                setTimeout(() => {
-                    const fileInput = document.querySelector('#modal-nueva input[name="file"]');
-                    if (fileInput) fileInput.click();
-                    
-                    const inputNombre = document.querySelector('#modal-nueva input[name="nombre_ubicacion"]');
-                    if (inputNombre) inputNombre.focus();
-                }, 100);
+                // CIRUGÍA PATO: Disparar cámara/selector AL INSTANTE (Sin setTimeout para no romper activación de usuario)
+                const fileInput = document.querySelector('#modal-nueva input[name="file"]');
+                if (fileInput) fileInput.click();
+                
+                const inputNombre = document.querySelector('#modal-nueva input[name="nombre_ubicacion"]');
+                if (inputNombre) setTimeout(() => inputNombre.focus(), 300);
             }
         }
 
