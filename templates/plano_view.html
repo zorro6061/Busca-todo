@@ -125,14 +125,14 @@
 
             <!-- Map Container -->
             <div id="map-container"
-                style="position: relative; overflow: auto; min-height: 400px; width: 100%; display: flex; justify-content: center; background: #0a0a0a; border-radius: var(--radius-xl);">
+                style="position: relative; overflow: auto; min-height: 400px; width: 100%; display: flex; align-items: center; justify-content: center; background: #0a0a0a; border-radius: var(--radius-xl);">
                 <div id="map-inner" style="position: relative; display: inline-block; will-change: transform;">
                     {% if plano and plano.imagen_path %}
                     <img id="plano-img" src="{{ safe_gcs_url(plano.imagen_path) if plano else '' }}"
                         style="display: block; max-width: none; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);">
                     {% else %}
                     <div class="empty-plano-state"
-                        style="width: 800px; height: 600px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: linear-gradient(135deg, #111 0%, #050505 100%); border: 2px dashed rgba(255,255,255,0.1); border-radius: var(--radius-md);">
+                        style="width: 800px; height: 800px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: linear-gradient(135deg, #111 0%, #050505 100%); border: 2px dashed rgba(255,255,255,0.1); border-radius: var(--radius-md);">
                         <span class="material-symbols-rounded"
                             style="font-size: 80px; color: var(--primary); opacity: 0.5; margin-bottom: 20px;">add_a_photo</span>
                         <h3 style="margin-bottom: 8px;">Habitación sin Foto Maestra</h3>
@@ -242,7 +242,8 @@
             <h3 style="margin-bottom: var(--space-md);">➕ Nueva Ubicación</h3>
             <p style="color: var(--text-dim); font-size: 0.8rem; margin-bottom: var(--space-lg);">Crea un nuevo espacio
                 para este plano.</p>
-            <form action="{{ url_for('upload') }}" method="POST" enctype="multipart/form-data">
+            <!-- CIRUGÍA PATO: Spinner de Carga al subir -->
+            <form action="{{ url_for('upload') }}" method="POST" enctype="multipart/form-data" onsubmit="if(typeof window.showIsland === 'function') window.showIsland('Procesando Foto...', 0, 'loading');">
                 {% if plano %}
                 <input type="hidden" name="plano_id" value="{{ plano.id if plano else 0 }}">
                 <input type="hidden" name="pos_x" id="nueva-pos-x">
@@ -477,10 +478,15 @@
                 posXInput.value = x;
                 posYInput.value = y;
                 document.getElementById('modal-nueva').style.display = 'flex';
+                
+                // CIRUGÍA PATO: Disparar cámara/selector AL INSTANTE
                 setTimeout(() => {
+                    const fileInput = document.querySelector('#modal-nueva input[name="file"]');
+                    if (fileInput) fileInput.click();
+                    
                     const inputNombre = document.querySelector('#modal-nueva input[name="nombre_ubicacion"]');
                     if (inputNombre) inputNombre.focus();
-                }, 300);
+                }, 100);
             }
         }
 

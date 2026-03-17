@@ -97,6 +97,21 @@
         </div>
     </aside>
 
+    <!-- Modal Éxito Guardado -->
+    <div id="modal-success-save" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(10px); z-index: 9999; align-items: center; justify-content: center;">
+        <div class="card" style="max-width: 450px; width: 90%; text-align: center; padding: var(--space-2xl); border: 2px solid var(--success); border-radius: var(--radius-2xl);">
+            <div style="font-size: 3rem; margin-bottom: 10px;">✅</div>
+            <h2 style="margin-bottom: 8px; color: #fff;">¡Layout Guardado!</h2>
+            <p style="color: var(--text-dim); margin-bottom: 24px; font-size: 0.9rem;">El plano se ha actualizado correctamente en la nube con todas las zonas y magnitudes.</p>
+            <a href="{{ url_for('ver_plano', plano_id=plano.id) }}" class="btn btn-success hover-glow" style="width: 100%; padding: 16px; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 8px; border-radius: 980px; background: var(--success); color: #000;">
+                <span class="material-symbols-rounded" style="font-weight: 800;">rocket_launch</span> ¡Listo! Empezar a buscar
+            </a>
+            <button onclick="document.getElementById('modal-success-save').style.display='none'" class="btn btn-secondary" style="width: 100%; margin-top: 10px; border-radius: 980px;">
+                Seguir Editando
+            </button>
+        </div>
+    </div>
+
     <!-- Canvas de Diseño -->
     <main style="flex: 1; position: relative; background: #050505; border-radius: var(--radius-2xl); overflow: hidden; border: 1.5px solid var(--glass-border);">
         <!-- Island HUD -->
@@ -424,7 +439,7 @@
             const data = await res.json();
             if (data.success) {
                 window.showIsland("Layout guardado con éxito ✓", 2000, 'success');
-                setTimeout(() => location.reload(), 1500);
+                document.getElementById('modal-success-save').style.display = 'flex';
             }
         } catch (e) {
             window.showIsland("Error al guardar", 3000, 'error');
