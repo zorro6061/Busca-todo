@@ -644,9 +644,10 @@
                 // Pin Principal (Ubicación)
                 const pin = document.createElement('div');
                 pin.className = 'map-pin';
-                // OPTIMIZACIÓN: translate3d para GPU acceleration
-                pin.style.transform = `translate3d(${p.x}%, ${p.y}%, 0) translate(-50%, -50%)`;
-                pin.style.left = '0'; pin.style.top = '0'; // Reset top/left
+                // REVERTIDO A ESTÁNDAR: translate3d(%) ignora el ancho del mapa. Usando left/top nativos.
+                pin.style.left = `${p.x}%`;
+                pin.style.top = `${p.y}%`;
+                pin.style.transform = `translate(-50%, -50%)`;
                 pin.setAttribute('draggable', 'true');
 
                 // 🧠 CIRUGÍA PATO: Render Thumbnail real si existe foto
@@ -670,8 +671,9 @@
                         if (obj.x !== null && obj.y !== null) {
                             const dot = document.createElement('div');
                             dot.className = 'obj-dot';
-                            dot.style.transform = `translate3d(${obj.x}%, ${obj.y}%, 0) translate(-50%, -50%)`;
-                            dot.style.left = '0'; dot.style.top = '0';
+                            dot.style.left = `${obj.x}%`;
+                            dot.style.top = `${obj.y}%`;
+                            dot.style.transform = `translate(-50%, -50%)`;
                             dot.title = obj.nombre;
                             pinsLayer.appendChild(dot);
                         }
