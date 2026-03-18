@@ -106,7 +106,7 @@
 
     <!-- 🧠 CIRUGÍA PATO: Botón Primario Único de Captura -->
     <div class="fade-up" style="margin-top: 32px; display: flex; justify-content: center; animation-delay: 0.1s;">
-        <button onclick="window.location='{{ url_for('nuevo_plano') }}'" class="btn btn-primary" style="padding: 16px 36px; border-radius: 980px; font-size: 1.15rem; font-weight: 800; display: flex; align-items: center; gap: 12px; box-shadow: 0 10px 40px var(--primary-glow); border: 1px solid rgba(255,255,255,0.1); transform: scale(1); transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);" onmouseover="this.style.transform='scale(1.04)';" onmouseout="this.style.transform='scale(1)';">
+        <button onclick="startQuickCapture()" class="btn btn-primary" style="padding: 16px 36px; border-radius: 980px; font-size: 1.15rem; font-weight: 800; display: flex; align-items: center; gap: 12px; box-shadow: 0 10px 40px var(--primary-glow); border: 1px solid rgba(255,255,255,0.1); transform: scale(1); transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);" onmouseover="this.style.transform='scale(1.04)';" onmouseout="this.style.transform='scale(1)';">
             <span class="material-symbols-rounded" style="font-size: 24px;">photo_camera</span> 
             Registrar Objeto en Espacio
         </button>
@@ -728,6 +728,23 @@
 </style>
 
 <script>
+    // 🧠 CIRUGÍA PATO: Atajo a Lienzo de Fotos (Rev 121)
+    async function startQuickCapture() {
+        if (typeof window.showIsland === 'function') window.showIsland('Preparando Lienzo...', 0, 'loading');
+        try {
+            const res = await fetch('/api/quick-canvas', { method: 'POST' });
+            const data = await res.json();
+            if (data.success) {
+                window.location.href = `/plano/${data.id}`;
+            } else {
+                if (window.showIsland) window.showIsland("Error al crear lienzo", 3000, 'error');
+            }
+        } catch (e) {
+            console.error(e);
+            if (window.showIsland) window.showIsland("Error en red", 3000, 'error');
+        }
+    }
+
     // ═══ HERO SEARCH — Smart Search + Autocompletado ═══
     const searchInput = document.getElementById('smart-search-input');
     const spinner = document.getElementById('search-spinner');

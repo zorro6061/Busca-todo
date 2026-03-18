@@ -1,6 +1,20 @@
 {% extends 'layout.html' %}
 
 {% block content %}
+<!-- 🧼 CIRUGÍA PATO: Vista Inmersiva — Ocultar Controles Globales (Rev 121) -->
+<style>
+    .navbar, .mobile-nav, footer { display: none !important; }
+    #map-layout { height: 100vh !important; margin: 0 !important; padding: 0 !important; gap: 0 !important; }
+    .container { max-width: 100% !important; padding: 0 !important; margin: 0 !important; }
+    #map-sidebar { top: 20px !important; height: calc(100vh - 40px) !important; }
+</style>
+
+<!-- 🟢 Botón de Salida Inmersiva -->
+<a href="{{ url_for('index') }}" 
+   style="position: fixed; top: 16px; left: 16px; width: 42px; height: 42px; border-radius: 50%; background: rgba(10,10,12,0.85); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.08); display: flex; align-items: center; justify-content: center; color: white; text-decoration: none; z-index: 3000; box-shadow: 0 8px 32px rgba(0,0,0,0.6); transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);"
+   onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
+    <span class="material-symbols-rounded" style="font-size: 22px;">arrow_back</span>
+</a>
 <div id="map-layout" style="display: flex; gap: var(--space-lg); align-items: start; min-height: calc(100vh - 120px); position: relative;">
 
     <!-- LEFT SIDEBAR: Colapsado por defecto — se abre con toggle -->

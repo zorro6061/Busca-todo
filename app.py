@@ -1575,6 +1575,27 @@ def save_hotspot(plano_id):
         return jsonify({"success": False, "error": str(e)}), 500
 
 
+@app.route("/api/quick-canvas", methods=["POST"])
+def quick_canvas():
+    try:
+        # 🧠 CIRUGÍA PATO: Reusar Lienzo existente o crear uno nuevo (Rev 121)
+        p = Plano.query.filter_by(nombre="Lienzo de Fotos").first()
+        if p:
+            return jsonify({"success": True, "id": p.id})
+
+        new_p = Plano(
+            nombre="Lienzo de Fotos",
+            descripcion="Espacio de captura rápida",
+            imagen_path=None
+        )
+        db.session.add(new_p)
+        db.session.commit()
+        return jsonify({"success": True, "id": new_p.id})
+    except Exception as e:
+        app.logger.error(f"[QUICK-CANVAS-ERR] {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
 @app.route("/planos")
 def list_planos():
     planos = Plano.query.all()
