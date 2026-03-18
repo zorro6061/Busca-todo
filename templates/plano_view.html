@@ -659,10 +659,50 @@
                     </div>
                     <div class="pin-label" style="backdrop-filter: blur(4px); font-weight: 700;">${p.nombre}</div>
                 `;
-                pin.ondragstart = (e) => {
-                    e.dataTransfer.setData('text/plain', JSON.stringify({ id: p.id, type: 'placed' }));
+
+                // 🚀 REV 128: Drag & Drop Táctil con Auto-Guardado
+                let isDragging = false;
+                let startX, startY;
+                pin.addEventListener('touchstart', (e) => {
+                    isDragging = false;
+                    startX = e.touches[0].clientX;
+                    startY = e.touches[0].clientY;
+                }, { passive: true });
+
+                pin.addEventListener('touchmove', (e) => {
+                    if (Math.abs(e.touches[0].clientX - startX) > 10 || Math.abs(e.touches[0].clientY - startY) > 10) {
+                        isDragging = true;
+                        e.preventDefault(); // Evitar scroll mientras se mueve el pin
+                        const viewport = document.getElementById('map-inner');
+                        const rect = viewport.getBoundingClientRect();
+                        let newX = ((e.touches[0].clientX - rect.left) / rect.width) * 100;
+                        let newY = ((e.touches[0].clientY - rect.top) / rect.height) * 100;
+                        
+                        newX = Math.max(0, Math.min(100, newX));
+                        newY = Math.max(0, Math.min(100, newY));
+
+                        pin.style.left = `${newX}%`;
+                        pin.style.top = `${newY}%`;
+                        p.x = newX;
+                        p.y = newY;
+                    }
+                }, { passive: false });
+
+                pin.addEventListener('touchend', (e) => {
+                    if (isDragging) {
+                        e.stopPropagation();
+                        // 🚀 Auto-Guardado Silencioso via debouncedSync/guardarPosiciones
+                        MapStore.hasChanges = true;
+                        document.getElementById('save-panel').style.display = 'block';
+                        debouncedSync(); 
+                    }
+                });
+
+                pin.onclick = (e) => { 
+                    if (isDragging) return;
+                    e.stopPropagation(); 
+                    mostrarDetallePin(p, e); 
                 };
-                pin.onclick = (e) => { e.stopPropagation(); mostrarDetallePin(p, e); };
                 pinsLayer.appendChild(pin);
 
                 // Objetos individuales proyectados
@@ -969,6 +1009,15 @@
             // Pero si está en relative, rect es necesario.
             const cardX = x - rect.left;
             const cardY = y - rect.top;
+
+            // 🚀 REV 128: Collision Detection para Popups (Si está en el techo, abrir hacia abajo)
+            if (cardY < 180) { 
+                card.style.transform = 'translate(-50%, 15px)';
+                card.style.animation = 'none'; // FadeUp choca con este eje, lo deshabilitamos
+            } else {
+                card.style.transform = 'translate(-50%, -110%)';
+                card.style.animation = 'fadeUp 0.2s cubic-bezier(0.18, 0.89, 0.32, 1.28)';
+            }
 
             card.style.left = cardX + 'px';
             card.style.top = cardY + 'px';
