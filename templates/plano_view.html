@@ -267,7 +267,7 @@
             <div id="prev-title" style="font-size: 0.8rem; font-weight: 800; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Nombre</div>
             <div id="prev-desc" style="font-size: 0.65rem; color: var(--primary); font-weight: 700; margin-top: 2px;">Cargando...</div>
         </div>
-        <a id="prev-link" href="#" class="btn btn-sm btn-primary" style="font-size: 0.65rem; padding: 5px 12px; border-radius: 50px; width: 100%; font-weight: 600;">Ver Detalles</a>
+        <a id="prev-link" href="#" class="btn btn-sm btn-primary" style="font-size: 0.65rem; padding: 5px 12px; border-radius: 50px; width: 100%; font-weight: 600;">Editar Ubicación</a>
     </div>
 
     <style>
@@ -951,7 +951,10 @@
 
             const count = p.objetos ? p.objetos.length : (p.objetos_count || 0);
             desc.textContent = `${count} objeto${count === 1 ? '' : 's'}`;
-            link.href = `/ubicacion/${p.id}`; // Redirigir a galería de la ubicación
+            
+            // 🚀 REV 126: Acceso instantáneo a edición
+            link.href = `/ubicacion/editar/${p.id}`; 
+            link.textContent = 'Editar Ubicación';
 
             // Posicionar con respecto al mouse/touch
             const viewport = document.getElementById('map-container');
@@ -1031,10 +1034,6 @@
     <style>
         .map-pin {
             position: absolute;
-            width: 32px;
-            height: 32px;
-            margin-left: -16px;
-            margin-top: -32px;
             cursor: grab;
             display: flex;
             flex-direction: column;
@@ -1045,13 +1044,14 @@
         }
 
         .map-pin:hover {
-            transform: scale(1.2) translateY(-4px);
-            z-index: 11;
+            transform: translate(-50%, -50%) scale(1.2) translateY(-4px) !important;
+            z-index: 110;
         }
 
         .pin-head {
             font-size: 1.8rem;
             filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.4));
+            flex-shrink: 0; /* CRÍTICO: Previene el efecto "huevo aplastado" */
         }
 
         .pin-label {
@@ -1113,7 +1113,7 @@
             transition: all 0.2s;
         }
         .obj-dot:hover {
-            transform: translate(-50%, -50%) scale(1.5);
+            transform: translate(-50%, -50%) scale(1.5) !important;
             z-index: 70;
             box-shadow: 0 0 15px var(--primary);
         }
