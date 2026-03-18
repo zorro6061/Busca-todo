@@ -228,36 +228,17 @@
     </div>
 </div>
 
-<!-- Modal Nueva Ubicación (Rápido) -->
-    <div id="modal-nueva"
-        style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 2000; align-items: center; justify-content: center; backdrop-filter: blur(10px);">
-        <div class="card fade-up" style="max-width: 400px; width: 90%; padding: var(--space-xl);">
-            <h3 style="margin-bottom: var(--space-md);">➕ Nueva Ubicación</h3>
-            <p style="color: var(--text-dim); font-size: 0.8rem; margin-bottom: var(--space-lg);">Crea un nuevo espacio
-                para este plano.</p>
-            <!-- CIRUGÍA PATO: Spinner de Carga al subir -->
-            <form action="{{ url_for('upload') }}" method="POST" enctype="multipart/form-data" onsubmit="if(typeof window.showIsland === 'function') window.showIsland('Procesando Foto...', 0, 'loading');">
-                {% if plano %}
-                <input type="hidden" name="plano_id" value="{{ plano.id if plano else 0 }}">
-                <input type="hidden" name="pos_x" id="nueva-pos-x">
-                <input type="hidden" name="pos_y" id="nueva-pos-y">
-                {% endif %}
-                <div style="margin-bottom: var(--space-md);">
-                    <label>Nombre</label>
-                    <input type="text" name="nombre_ubicacion" placeholder="Ej: Cajón 1" required
-                        style="border-radius: 980px;">
-                </div>
-                <div style="margin-bottom: var(--space-lg);">
-                    <label>Foto de referencia</label>
-                    <input type="file" name="file" accept="image/*" capture="environment" required style="font-size: 0.8rem;">
-                </div>
-                <div style="display: flex; gap: 10px;">
-                    <button type="button" onclick="document.getElementById('modal-nueva').style.display='none'"
-                        class="btn btn-secondary" style="flex: 1;">Cancelar</button>
-                    <button type="submit" class="btn btn-primary" style="flex: 1;">Crear</button>
-                </div>
-            </form>
-        </div>
+    <!-- 👻 Formulario Fantasma para Carga Rápida (Rev 120) -->
+    <div id="modal-nueva" style="display: none;">
+        <form action="{{ url_for('upload') }}" method="POST" enctype="multipart/form-data" onsubmit="if(typeof window.showIsland === 'function') window.showIsland('Procesando Foto...', 0, 'loading');">
+            {% if plano %}
+            <input type="hidden" name="plano_id" value="{{ plano.id }}">
+            <input type="hidden" name="pos_x" id="nueva-pos-x">
+            <input type="hidden" name="pos_y" id="nueva-pos-y">
+            {% endif %}
+            <!-- fileInput usado por el bypass auto-submit -->
+            <input type="file" name="file" accept="image/*" capture="environment" style="position: absolute; width:1px; height:1px; opacity:0; pointer-events:none;">
+        </form>
     </div>
 
     <!-- 💡 Banner Guía de Inicio Rápido (Alineación Rafa) -->
