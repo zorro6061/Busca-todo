@@ -133,11 +133,13 @@
                         onerror="if(this.src) { this.style.display='none'; document.getElementById('empty-plano-state-all').style.display='flex'; }">
 
                     <div id="empty-plano-state-all" class="empty-plano-state"
-                        style="width: 800px; height: 800px; display: {{ 'flex' if not (plano and plano.imagen_path) else 'none' }}; flex-direction: column; align-items: center; justify-content: center; background: linear-gradient(135deg, #111 0%, #050505 100%); border: 2px dashed rgba(255,255,255,0.1); border-radius: var(--radius-md);">
-                        <span class="material-symbols-rounded" style="font-size: 80px; color: var(--primary); opacity: 0.5; margin-bottom: 20px;">add_a_photo</span>
-                        <h3 style="margin-bottom: 8px;">Habitación sin Foto Maestra</h3>
-                        <p style="color: var(--text-dim); margin-bottom: 24px; max-width: 300px; text-align: center;">Para navegar al estilo Tesla, necesitamos una foto panorámica o gran angular del espacio.</p>
-                        <label for="file-input-maestro" class="btn btn-primary" id="btn-nueva-foto-maestra" style="cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+                        style="width: 800px; height: 800px; display: {{ 'flex' if not (plano and plano.imagen_path) else 'none' }}; flex-direction: column; align-items: center; justify-content: center; background: #121214; background-image: radial-gradient(rgba(255,255,255,0.05) 1px, transparent 1px); background-size: 20px 20px; border: 1px solid rgba(255,255,255,0.03); border-radius: var(--radius-xl); cursor: crosshair;">
+                        <span class="material-symbols-rounded" style="font-size: 60px; color: var(--primary); opacity: 0.6; margin-bottom: 16px; animation: pulse 2s infinite;">touch_app</span>
+                        <h3 style="margin-bottom: 8px; font-weight: 800; letter-spacing: -0.02em;">Lienzo de Fotos</h3>
+                        <p style="color: var(--text-dim); margin-bottom: 24px; max-width: 320px; text-align: center; font-size: 0.9rem; line-height: 1.5;">Tocá cualquier punto de la grilla para <br><strong>capturar un objeto al instante</strong>.</p>
+                        
+                        <!-- Mini botón discreto por si quieren subir fondo -->
+                        <label for="file-input-maestro" class="btn btn-secondary" id="btn-nueva-foto-maestra" style="cursor: pointer; display: inline-flex; align-items: center; gap: 6px; font-size: 0.8rem; padding: 10px 16px; opacity: 0.5; pointer-events: auto; z-index: 200;">
                             <span class="material-symbols-rounded" style="font-size: 20px; vertical-align: -4px;">add_a_photo</span> Nueva Foto Maestra
                         </label>
                         <input type="file" id="file-input-maestro" accept="image/*" capture="environment" style="position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none;">
@@ -150,7 +152,7 @@
                     <div id="pins-layer" style="position: absolute; inset: 0; pointer-events: none; z-index: 100;"></div>
                     <!-- ESCUDO DESACTIVADO: pointer-events: none por defecto. Solo se activa en modo edición. -->
                     <div id="hotspots-layer"
-                        style="position: absolute; inset: 0; cursor: crosshair; pointer-events: auto; {{ 'display: none;' if not (plano and plano.imagen_path) else '' }}; z-index: 150;">
+                        style="position: absolute; inset: 0; cursor: crosshair; pointer-events: auto; z-index: 150;">
                     </div>
                 </div>
             </div>
@@ -596,6 +598,9 @@
     `;
         document.head.appendChild(style);
 
+        // 🧠 CIRUGÍA PATO: Usar base de Google para thumbnails
+        const GCS_BASE_URL = "{{ gcs_base_url }}";
+
         // ── REACTIVE STATE (Single Source of Truth) ──
         const MapStore = new Proxy({
             pins: JSON.parse('{{ pins|tojson | safe }}') || [],
@@ -652,10 +657,16 @@
                 pin.style.transform = `translate3d(${p.x}%, ${p.y}%, 0) translate(-50%, -50%)`;
                 pin.style.left = '0'; pin.style.top = '0'; // Reset top/left
                 pin.setAttribute('draggable', 'true');
+
+                // 🧠 CIRUGÍA PATO: Render Thumbnail real si existe foto
+                const imageUrl = p.imagen_path ? (p.imagen_path.startsWith('http') ? p.imagen_path : `${GCS_BASE_URL}/${p.imagen_path}`) : '';
+
                 pin.innerHTML = `
-    <div class="pin-head">📍</div>
-    <div class="pin-label">${p.nombre}</div>
-    `;
+                    <div class="pin-head" style="${p.imagen_path ? `background-image: url('${imageUrl}'); background-size: cover; background-position: center; border: 3px solid #fff; box-shadow: 0 4px 15px rgba(0,0,0,0.5); width: 44px; height: 44px; border-radius: 50%; opacity: 0.95; padding: 0 !important;` : ''}">
+                        ${p.imagen_path ? '' : '📍'}
+                    </div>
+                    <div class="pin-label" style="backdrop-filter: blur(4px); font-weight: 700;">${p.nombre}</div>
+                `;
                 pin.ondragstart = (e) => {
                     e.dataTransfer.setData('text/plain', JSON.stringify({ id: p.id, type: 'placed' }));
                 };

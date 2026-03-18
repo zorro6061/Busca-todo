@@ -104,6 +104,14 @@
         <div id="hero-suggestions" class="hero-suggestions-dropdown"></div>
     </div>
 
+    <!-- 🧠 CIRUGÍA PATO: Botón Primario Único de Captura -->
+    <div class="fade-up" style="margin-top: 32px; display: flex; justify-content: center; animation-delay: 0.1s;">
+        <button onclick="window.location='{{ url_for('nuevo_plano') }}'" class="btn btn-primary" style="padding: 16px 36px; border-radius: 980px; font-size: 1.15rem; font-weight: 800; display: flex; align-items: center; gap: 12px; box-shadow: 0 10px 40px var(--primary-glow); border: 1px solid rgba(255,255,255,0.1); transform: scale(1); transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);" onmouseover="this.style.transform='scale(1.04)';" onmouseout="this.style.transform='scale(1)';">
+            <span class="material-symbols-rounded" style="font-size: 24px;">photo_camera</span> 
+            Registrar Objeto en Espacio
+        </button>
+    </div>
+
     <!-- ═══ Contenedor de Resultados (flow normal, no position:absolute) ═══ -->
     <div id="results-container" class="results-container fade-up" style="display: none;">
         <div class="results-header">
@@ -206,8 +214,8 @@
 </section>
 {% endif %}
 
-<!-- ══ ACTION CENTER (One-click jump to Revision 69) ══ -->
-<section class="reveal" style="padding: 20px;">
+<!-- ══ ACTION CENTER (Oculto en Rev 119) ══ -->
+<section class="reveal" style="display: none; padding: 20px;">
     <div class="action-center-grid">
         <!-- Tarjeta 1: Editor Modular -->
         <div class="card action-card hover-glow" onclick="window.location='{{ url_for('list_planos') }}'">
@@ -240,8 +248,8 @@
     </div>
 </section>
 
-<!-- Bento Grid (Solo estadísticas clave) -->
-<section class="stats-section">
+<!-- Bento Grid (Oculto en Rev 119) -->
+<section class="stats-section" style="display: none;">
     <div class="bento-grid-minimal">
         <div class="card glass-card stat-card reveal">
             <span class="material-symbols-rounded stat-icon">inventory_2</span>
@@ -256,8 +264,8 @@
     </div>
 </section>
 
-<!-- ══ SOBRE NOSOTROS & EQUIPO (Validación Google Cloud) ══ -->
-<section class="reveal" style="padding: 80px 20px; background: rgba(255,255,255,0.01); border-top: 1px solid rgba(255,255,255,0.03); text-align: center;">
+<!-- ══ SOBRE NOSOTROS (Oculto en Rev 119) ══ -->
+<section class="reveal" style="display: none; padding: 80px 20px; background: rgba(255,255,255,0.01); border-top: 1px solid rgba(255,255,255,0.03); text-align: center;">
     <div style="max-width: 800px; margin: 0 auto;">
         <h2 style="font-size: 2rem; font-weight: 800; margin-bottom: 16px;">Sobre ApertureZen</h2>
         <p style="color: var(--text-dim); line-height: 1.8; font-size: 1.1rem; margin-bottom: 40px;">
