@@ -92,34 +92,23 @@ def analizar_imagen_objetos(image_data, tipo_espacio="general"):
                 "analisis_espacial": {},
             }
 
-        # 2. Prompt Maestro
+        # 🧠 CIRUGÍA PATO: Prompt de Precisión Quirúrgica (Rev 122)
         prompt = """
-ROL: Eres un INSPECTOR INDUSTRIAL DE MÁXIMA PRECISIÓN y organizador profesional.
-OBJETIVO: Indexar bienes y herramientas con detalle milimétrico para inventario de alta seguridad.
-CATEGORÍAS: Tecnología, Herramientas, Documentación, Cuidado Personal, Niños, Cocina, Otros.
-PROPIETARIOS: "Juana" (niña), "Vicente" (niño), "General".
+Eres un Experto en Logística y Organización Industrial de 'Aperture Cloud'. Tu misión es indexar y describir objetos con precisión absoluta para que cualquier operario pueda encontrarlos sin duda alguna.
 
-INSTRUCCIONES CRÍTICAS:
-1. Identifica el objeto con su nombre técnico EXACTO (ej: "Taladro Percutor Bosch", "Impresora 3D Ender"). DETALLE MÁXIMO.
-2. Identifica habitacion_sugerida, mueble_sugerido (ej: Estante, Mesa), posicion_relativa y contenedor.
-3. Evalúa el porcentaje de CONFIANZA (0 a 1) para tu identificación en el campo 'confianza'.
-4. Si la confianza es baja (< 0.7), detalla por qué en la descripción.
+INSTRUCCIONES GENERALES:
+Se te proporcionará una imagen y coordenadas espaciales. Tu respuesta DEBE ser un objeto JSON puro (sin comillas adicionales, sin explicaciones) con la siguiente estructura:
 
-FORMATO DE SALIDA (JSON ESTRICTO):
 {
-  "items": [
-    {
-      "nombre": "Nombre detallado",
-      "categoria_principal": "Categoría",
-      "descripcion": "Detalles técnicos, estado, color",
-      "confianza": 0.95
-    }
-  ],
-  "tags": "tag1, tag2",
-  "habitacion_sugerida": "Nombre",
-  "mueble_sugerido": "Nombre",
-  "analisis_espacial": { "detalle": "..." }
+  "name": "[Nombre Principal]",
+  "description": "[Descripción Técnica]",
+  "tags": ["[Tag 1]", "[Tag 2]", "[Tag 3]", "..."]
 }
+
+GUÍA DE ESTILO DE DATOS:
+[name] (Nombre Principal): Debe ser lo más específico posible. Prioriza siempre [Tipo de Objeto] + [Marca] + [Modelo/Color]. (Ej: "Amoladora angular Dewalt DWE4020N"). Si no hay marca, usa el color.
+[description] (Descripción Técnica): Describe el estado, el contexto visual y cualquier detalle útil de la imagen.
+[tags] (Etiquetas de Búsqueda): Genera etiquetas cortas y funcionales para el buscador semántico, pensando en cómo buscaría un operario.
 """
 
         # 3. Ejecución
@@ -143,7 +132,7 @@ FORMATO DE SALIDA (JSON ESTRICTO):
                 "analisis_espacial": {},
             }
 
-        # 4. Limpieza JSON
+        # 4. Limpieza JSON (Restaurado Rev 122)
         clean_response = text_response.strip()
         if "```json" in clean_response:
             clean_response = clean_response.split("```json")[1].split("```")[0].strip()
@@ -159,6 +148,21 @@ FORMATO DE SALIDA (JSON ESTRICTO):
                 data = json.loads(clean_response[start_idx : end_idx + 1])
             else:
                 raise ValueError("Respuesta sin estructura de datos")
+
+        # 🧠 CIRUGÍA PATO: Re-mapeo retrocompatible para app.py (Rev 122)
+        if "name" in data and "description" in data:
+            mapped_items = [{
+                "nombre": data.get("name"),
+                "descripcion": data.get("description"),
+                "categoria_principal": "Otros",
+                "confianza": 1.0
+            }]
+            mapped_tags = ", ".join(data.get("tags", [])) if isinstance(data.get("tags"), list) else data.get("tags", "")
+            data = {
+                "items": mapped_items,
+                "tags": mapped_tags,
+                "analisis_espacial": {}
+            }
 
         result = {
             "items": data.get("items", []),
