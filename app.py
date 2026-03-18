@@ -1585,7 +1585,6 @@ def quick_canvas():
 
         new_p = Plano(
             nombre="Lienzo de Fotos",
-            descripcion="Espacio de captura rápida",
             imagen_path=None
         )
         db.session.add(new_p)
