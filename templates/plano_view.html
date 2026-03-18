@@ -165,9 +165,9 @@
                     <!-- Hotspots & Pins Layer -->
                     <div id="pins-layer" style="position: absolute; inset: 0; pointer-events: none; z-index: 100;"></div>
                     <!-- ESCUDO DESACTIVADO: pointer-events: none por defecto. Solo se activa en modo edición. -->
-                    <div id="hotspots-layer"
-                        style="position: absolute; inset: 0; cursor: crosshair; pointer-events: auto; z-index: 150;">
-                    </div>
+                    <label id="hotspots-layer" for="file-input-captura"
+                        style="position: absolute; inset: 0; cursor: crosshair; pointer-events: auto; z-index: 150; display: block; margin: 0; padding: 0;">
+                    </label>
                 </div>
             </div>
 
@@ -251,7 +251,7 @@
             <input type="hidden" name="pos_y" id="nueva-pos-y">
             {% endif %}
             <!-- fileInput usado por el bypass auto-submit -->
-            <input type="file" name="file" accept="image/*" capture="environment" style="position: absolute; width:1px; height:1px; opacity:0; pointer-events:none;">
+            <input type="file" id="file-input-captura" name="file" accept="image/*" capture="environment" style="position: absolute; width:1px; height:1px; opacity:0; pointer-events:none;">
         </form>
     </div>
 
@@ -470,18 +470,17 @@
         }
 
         function handleHotspotClick(e) {
-            if (e.cancelable) e.preventDefault();
+            // ELIMINADO: preventDefault. Permitir flujo nativo del <label> hacia el input.
             const rect = hotspotsLayerEl.getBoundingClientRect();
-            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            const clientX = e.clientX;
+            const clientY = e.clientY;
             const x = ((clientX - rect.left) / rect.width) * 100;
             const y = ((clientY - rect.top) / rect.height) * 100;
 
             // Feedback immediato ANTES de cualquier otra acción
             showTapRipple(clientX, clientY);
 
-            // Si hay un pin sin ubicar lo posicionamos
-            // Nueva Ubicación en Punto Vacío (Alineación Rafa)
+            // Guardar posición en inputs ocultos instantes antes que abra la cámara nativa
             const posXInput = document.getElementById('nueva-pos-x');
             const posYInput = document.getElementById('nueva-pos-y');
             if (posXInput && posYInput) {
@@ -490,28 +489,25 @@
                 
                 // 🧠 CIRUGÍA PATO: 1. Crear Placeholder Pin (Prioridad Coordenadas)
                 crearPinPlaceholder(x, y);
-
-                // 2. Bypass del Modal (Se mantiene oculto)
-                document.getElementById('modal-nueva').style.display = 'none';
-                
-                const fileInput = document.querySelector('#modal-nueva input[name="file"]');
-                if (fileInput) {
-                    // 3. Auto-Submit Inteligente al obtener el Blob
-                    fileInput.onchange = function() {
-                        if (this.files && this.files.length > 0) {
-                            if (typeof window.showIsland === 'function') {
-                                window.showIsland('💡 IA Analizando Espacio...', 0, 'loading');
-                            }
-                            this.form.submit(); // Disparar Solo!
-                        }
-                    };
-                    fileInput.click(); // Abrir cámara directo en el mismo hilo
-                }
             }
         }
 
         hotspotsLayerEl.addEventListener('click', handleHotspotClick);
-        hotspotsLayerEl.addEventListener('touchend', handleHotspotClick, { passive: false });
+        
+        // Auto-submit interceptor (Rev 124)
+        document.addEventListener('DOMContentLoaded', () => {
+            const fileInputCaptura = document.getElementById('file-input-captura');
+            if (fileInputCaptura) {
+                fileInputCaptura.addEventListener('change', function() {
+                    if (this.files && this.files.length > 0) {
+                        if (typeof window.showIsland === 'function') {
+                            window.showIsland('💡 IA Analizando...', 0, 'loading');
+                        }
+                        this.form.submit();
+                    }
+                });
+            }
+        });
 
 
         function cerrarModalHotspot() {
