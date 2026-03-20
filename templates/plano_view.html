@@ -663,12 +663,14 @@
                     <div class="pin-label" style="backdrop-filter: blur(4px); font-weight: 700;">${p.nombre}</div>
                 `;
 
-                // 🚀 REV 130: Drag & Drop Unificado (Pointer Events) con Auto-Guardado
+                // 🚀 REV 131: Drag & Drop Unificado (Pointer Events) con Bloqueo de Click
                 let isDragging = false;
+                let isPointerDown = false; /* 🚀 CRITICAL FIX FOR DESKTOP */
                 let startX, startY;
 
                 pin.addEventListener('pointerdown', (e) => {
                     if (e.pointerType === 'mouse' && e.button !== 0) return; // Solo click izquierdo
+                    isPointerDown = true;
                     isDragging = false;
                     startX = e.clientX;
                     startY = e.clientY;
@@ -676,6 +678,8 @@
                 });
 
                 pin.addEventListener('pointermove', (e) => {
+                    if (!isPointerDown) return; /* 🚀 No mover si el click fue soltado */
+                    
                     if (Math.abs(e.clientX - startX) > 10 || Math.abs(e.clientY - startY) > 10) {
                         isDragging = true;
                         e.preventDefault(); 
@@ -694,8 +698,11 @@
                     }
                 });
 
-                pin.addEventListener('pointerup', (e) => {
-                    pin.releasePointerCapture(e.pointerId);
+                const endDrag = (e) => {
+                    isPointerDown = false;
+                    if (pin.hasPointerCapture(e.pointerId)) {
+                        pin.releasePointerCapture(e.pointerId);
+                    }
                     if (isDragging) {
                         e.stopPropagation();
                         // 🚀 Auto-Guardado Silencioso via debouncedSync/guardarPosiciones
@@ -703,7 +710,10 @@
                         document.getElementById('save-panel').style.display = 'block';
                         debouncedSync(); 
                     }
-                });
+                };
+
+                pin.addEventListener('pointerup', endDrag);
+                pin.addEventListener('pointercancel', endDrag);
 
                 pin.onclick = (e) => { 
                     if (isDragging) return;
