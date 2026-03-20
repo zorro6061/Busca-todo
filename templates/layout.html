@@ -2,6 +2,7 @@
 <html lang="es">
 
 <head>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
     {% if request.path == '/' %}
     <link rel="canonical" href="https://www.aperturezen.com/">
     {% endif %}
@@ -460,10 +461,105 @@
             window.dispatchEvent(new CustomEvent('debugModeChanged', { detail: { active } }));
         }
         // Initialize from storage
+        const debugConsole = document.getElementById('debug-log-console');
         if (localStorage.getItem('appDebugMode') === 'true') {
             document.body.classList.add('debug-active');
+            if (debugConsole) {
+                debugConsole.style.display = 'flex';
+                setupConsoleLogHook();
+            }
+        }
+
+        window.addEventListener('debugModeChanged', (e) => {
+            if (debugConsole) {
+                debugConsole.style.display = e.detail.active ? 'flex' : 'none';
+                if (e.detail.active) setupConsoleLogHook();
+            }
+        });
+
+        function setupConsoleLogHook() {
+             if (window.consoleHooked) return;
+             window.consoleHooked = true;
+             
+             const originalLog = console.log;
+             const originalError = console.error;
+             const listEl = document.getElementById('debug-log-list');
+
+             function appendLog(args, color) {
+                 if (!listEl) return;
+                 const item = document.createElement('div');
+                 item.style.color = color;
+                 item.textContent = `> ${args.join(' ')}`;
+                 listEl.appendChild(item);
+                 listEl.scrollTop = listEl.scrollHeight;
+             }
+
+             console.log = function(...args) {
+                 originalLog.apply(console, args);
+                 appendLog(args, '#00ff66'); // Verde Terminal
+             };
+
+             console.error = function(...args) {
+                 originalError.apply(console, args);
+                 appendLog(args, '#ff4444'); // Rojo Alerta
+                 
+                 // Feedback háptico y sonoro
+                 try { navigator.vibrate([200]); } catch(e){}
+                 try {
+                      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                      const osc = audioCtx.createOscillator();
+                      osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+                      osc.connect(audioCtx.destination);
+                      osc.start();
+                      setTimeout(() => osc.stop(), 150);
+                 } catch(e){}
+             };
+        }
+
+        window.clearAppCache = async () => {
+            if (!confirm('¿Fuerza bruta? Se borrarán cachés, IndexedDB y SW. ¿Estás seguro de continuar?')) return;
+            try {
+                // 1. Caches
+                const cacheNames = await caches.keys();
+                await Promise.all(cacheNames.map(name => caches.delete(name)));
+                
+                // 2. Service Workers
+                const regs = await navigator.serviceWorker.getRegistrations();
+                await Promise.all(regs.map(r => r.unregister()));
+
+                // 3. IndexedDB
+                if (window.indexedDB) {
+                     indexedDB.deleteDatabase('busca_todo_offline'); 
+                }
+                
+                // 4. Storages
+                localStorage.clear();
+                sessionStorage.clear();
+                
+                alert('Caché purgado con éxito. Reiniciando...');
+                window.location.href = '/';
+            } catch (e) {
+                alert('Error al purgar caché: ' + e);
+            }
         }
     </script>
+
+    <!-- 🦊 Consola Debug (Modo Zorro) -->
+    <div id="debug-log-console" style="
+        display: none; position: fixed; bottom: 85px; right: 20px;
+        width: 320px; height: 180px; background: rgba(5,5,5,0.85);
+        backdrop-filter: blur(20px); border: 2.5px solid #ff9100;
+        border-radius: 16px; padding: 12px; z-index: 9999;
+        box-shadow: 0 20px 50px rgba(0,0,0,0.9);
+        flex-direction: column; overflow: hidden;
+    ">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,145,0,0.3); padding-bottom: 6px; margin-bottom: 8px;">
+            <span style="color: #ff9100; font-size: 0.75rem; font-weight: 800; letter-spacing: 0.5px; display: flex; align-items: center; gap: 4px;">🦊 CONSOLA ZORRO</span>
+            <button onclick="window.clearAppCache()" style="background: rgba(239, 68, 68, 0.2); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.5); font-size: 0.65rem; padding: 3px 8px; border-radius: 8px; cursor: pointer; font-weight: 800; transition: all 0.2s;" onmouseover="this.style.background='#ef4444'; this.style.color='#fff'" onmouseout="this.style.background='rgba(239, 68, 68, 0.2)'; this.style.color='#ef4444'">Vaciar Todo</button>
+        </div>
+        <div id="debug-log-list" style="flex: 1; overflow-y: auto; font-family: 'Courier New', Courier, monospace; font-size: 0.65rem; color: #00ff66; display: flex; flex-direction: column; gap: 4px; padding-right: 4px;">
+        </div>
+    </div>
 </body>
 
 </html>

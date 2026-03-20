@@ -51,7 +51,7 @@
         .text-glow {
             text-shadow: 0 0 40px rgba(14, 165, 233, 0.3);
         }
-    </style>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
 </head>
 <body class="bg-zen-dark text-slate-100 font-sans antialiased overflow-x-hidden">
 
@@ -73,8 +73,9 @@
             </div>
 
             <div class="flex items-center gap-4">
-                <a href="https://app.aperturezen.com" class="hidden sm:inline-flex px-4 py-2 rounded-full text-sm font-semibold bg-white/10 hover:bg-white/20 text-white border border-white/10 transition">
-                    Ver Demo
+                <!-- ⚠️ REEMPLAZAR CON TU URL DE YOUTUBE RAFA ⚠️ -->
+                <a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ" target="_blank" class="hidden sm:inline-flex px-4 py-2 rounded-full text-sm font-semibold bg-white/10 hover:bg-white/20 text-white border border-white/10 transition">
+                    Ver Demo <i class="fa-solid fa-circle-play ml-1 text-xs"></i>
                 </a>
                 <a href="https://app.aperturezen.com/login" class="px-5 py-2 rounded-full text-sm font-bold bg-gradient-to-r from-zen-500 to-zen-600 hover:from-zen-400 hover:to-zen-500 text-white shadow-lg shadow-zen-500/25 transition transform hover:scale-105">
                     Entrar <i class="fa-solid fa-arrow-right ml-1 text-xs"></i>
@@ -280,8 +281,12 @@
     </section>
 
     <!-- Footer -->
-    <footer class="border-t border-white/5 py-8 text-center">
+    <footer class="border-t border-white/5 py-8 text-center flex flex-col md:flex-row items-center justify-between max-w-6xl mx-auto px-6">
         <p class="text-slate-500 text-xs">&copy; 2026 ApertureZen Corporation. Todos los derechos reservados.</p>
+        <div class="flex gap-4 mt-4 md:mt-0">
+            <a href="/privacidad" class="text-slate-500 hover:text-white text-xs transition">Privacidad</a>
+            <a href="/terminos" class="text-slate-500 hover:text-white text-xs transition">Términos de Servicio</a>
+        </div>
     </footer>
 
 </body>

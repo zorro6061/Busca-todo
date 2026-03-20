@@ -910,6 +910,16 @@ def contacto():
     return redirect(url_for("index") + "?landing=1#contacto")
 
 
+@app.route("/privacidad")
+def privacidad():
+    return render_template("privacidad.html")
+
+
+@app.route("/terminos")
+def terminos():
+    return render_template("terminos.html")
+
+
 @app.after_request
 def add_cache_control(response):
     """Optimización de cache para archivos estáticos."""
