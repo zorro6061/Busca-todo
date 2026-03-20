@@ -97,18 +97,14 @@ def analizar_imagen_objetos(image_data, tipo_espacio="general"):
 Eres un Experto en Logística y Organización Industrial de 'Aperture Cloud'. Tu misión es indexar y describir objetos con precisión absoluta para que cualquier operario pueda encontrarlos sin duda alguna.
 
 INSTRUCCIONES GENERALES:
-Se te proporcionará una imagen y coordenadas espaciales. Tu respuesta DEBE ser un objeto JSON puro (sin comillas adicionales, sin explicaciones) con la siguiente estructura:
+Identifica TODOS los objetos relevantes en esta imagen. Tu respuesta DEBE ser un objeto JSON puro (sin comillas adicionales, sin explicaciones) con la siguiente estructura:
 
 {
-  "name": "[Nombre Principal]",
-  "description": "[Descripción Técnica]",
-  "tags": ["[Tag 1]", "[Tag 2]", "[Tag 3]", "..."]
+  "objetos": ["[Objeto 1]", "[Objeto 2]", "[Objeto 3]", "..."]
 }
 
 GUÍA DE ESTILO DE DATOS:
-[name] (Nombre Principal): Debe ser lo más específico posible. Prioriza siempre [Tipo de Objeto] + [Marca] + [Modelo/Color]. (Ej: "Amoladora angular Dewalt DWE4020N"). Si no hay marca, usa el color.
-[description] (Descripción Técnica): Describe el estado, el contexto visual y cualquier detalle útil de la imagen.
-[tags] (Etiquetas de Búsqueda): Genera etiquetas cortas y funcionales para el buscador semántico, pensando en cómo buscaría un operario.
+[objetos]: Una lista de etiquetas o nombres de los objetos identificados en la imagen. Sé específico. Prioriza [Tipo de Objeto] + [Marca] + [Modelo/Color] si es posible.
 """
 
         # 3. Ejecución
@@ -149,8 +145,23 @@ GUÍA DE ESTILO DE DATOS:
             else:
                 raise ValueError("Respuesta sin estructura de datos")
 
-        # 🧠 CIRUGÍA PATO: Re-mapeo retrocompatible para app.py (Rev 122)
-        if "name" in data and "description" in data:
+        # 🧠 CIRUGÍA PATO: Re-mapeo retrocompatible para app.py (Rev 132)
+        if "objetos" in data and isinstance(data["objetos"], list):
+            mapped_items = []
+            for obj_name in data["objetos"]:
+                mapped_items.append({
+                    "nombre": obj_name,
+                    "categoria_principal": "Otros",
+                    "descripcion": f"Objeto detectado: {obj_name}",
+                    "confianza": 1.0
+                })
+            mapped_tags = ", ".join(data["objetos"])
+            data = {
+                "items": mapped_items,
+                "tags": mapped_tags,
+                "analisis_espacial": {}
+            }
+        elif "name" in data and "description" in data:
             mapped_items = [{
                 "nombre": data.get("name"),
                 "descripcion": data.get("description"),
