@@ -814,6 +814,12 @@ def test_health():
 
 @app.route("/")
 def index():
+    # 🧠 CIRUGÍA PATO: Ruteo por Host para Landing vs App (Rev 145)
+    host = request.headers.get("Host", "")
+    
+    # QA/Local Bypass or Root Apex traffic goes to Landing
+    if (not host.startswith("app.") and not app.debug) or "landing" in request.args:
+        return render_template("landing.html")
 
     try:
         from sqlalchemy import func
@@ -888,6 +894,20 @@ def index():
                 f"<pre>TOTAL COLLAPSE (Index + Fallback Failed):\n{traceback.format_exc()}</pre>",
                 500,
             )
+
+
+@app.route("/contacto", methods=["POST"])
+def contacto():
+    # 🧠 CIRUGÍA PATO: Formulario de Leads (Rev 145)
+    nombre = request.form.get("nombre")
+    email = request.form.get("email")
+    mensaje = request.form.get("mensaje")
+    
+    # Registrar Lead en Logs y Consola
+    vanguard_log(f"🚨 [NUEVO LEAD] De: {nombre} <{email}> | Mensaje: {mensaje}", level="INFO")
+    
+    flash("¡Mensaje enviado con éxito! Nos pondremos en contacto pronto.")
+    return redirect(url_for("index") + "?landing=1#contacto")
 
 
 @app.after_request
