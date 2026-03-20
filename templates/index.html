@@ -105,11 +105,14 @@
     </div>
 
     <!-- 🧠 CIRUGÍA PATO: Botón Primario Único de Captura -->
-    <div class="fade-up" style="margin-top: 32px; display: flex; justify-content: center; animation-delay: 0.1s;">
+    <div class="fade-up" style="margin-top: 32px; display: flex; flex-direction: column; align-items: center; gap: 12px; animation-delay: 0.1s;">
         <button onclick="startQuickCapture()" class="btn btn-primary" style="padding: 16px 36px; border-radius: 980px; font-size: 1.15rem; font-weight: 800; display: flex; align-items: center; gap: 12px; box-shadow: 0 10px 40px var(--primary-glow); border: 1px solid rgba(255,255,255,0.1); transform: scale(1); transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);" onmouseover="this.style.transform='scale(1.04)';" onmouseout="this.style.transform='scale(1)';">
             <span class="material-symbols-rounded" style="font-size: 24px;">photo_camera</span> 
             Registrar Objeto en Espacio
         </button>
+        <a href="{{ url_for('nuevo_plano') }}" style="color: rgba(255,255,255,0.4); font-size: 0.85rem; text-decoration: none; border-bottom: 1px dashed rgba(255,255,255,0.15); padding-bottom: 2px; transition: all 0.2s;" onmouseover="this.style.color='#fff'; this.style.borderBottomColor='rgba(255,255,255,0.4)'" onmouseout="this.style.color='rgba(255,255,255,0.4)'; this.style.borderBottomColor='rgba(255,255,255,0.15)'">
+            o crear un lienzo nuevo desde cero
+        </a>
     </div>
 
     <!-- ═══ Contenedor de Resultados (flow normal, no position:absolute) ═══ -->

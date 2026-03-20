@@ -1773,7 +1773,7 @@ def nuevo_plano():
             flash(f'✓ Plano "{nombre}" creado en la nube con éxito.')
             if metodo == "template":
                 return redirect(url_for("modular_editor", plano_id=nuevo.id))
-            return redirect(url_for("list_planos"))
+            return redirect(url_for("ver_plano", plano_id=nuevo.id))
 
     return render_template("plano_form.html")
 
