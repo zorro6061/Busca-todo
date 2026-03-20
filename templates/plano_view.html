@@ -651,7 +651,7 @@
                 pin.style.left = `${p.x}%`;
                 pin.style.top = `${p.y}%`;
                 pin.style.transform = `translate(-50%, -50%)`;
-                pin.setAttribute('draggable', 'true');
+                pin.setAttribute('draggable', 'false'); /* 🚀 REV 130: Desactiva arrastre nativo en PC */
 
                 // 🧠 CIRUGÍA PATO: Render Thumbnail real si existe foto
                 const imageUrl = p.imagen_path ? (p.imagen_path.startsWith('http') ? p.imagen_path : `${GCS_BASE_URL}/${p.imagen_path}`) : '';
@@ -663,23 +663,26 @@
                     <div class="pin-label" style="backdrop-filter: blur(4px); font-weight: 700;">${p.nombre}</div>
                 `;
 
-                // 🚀 REV 128: Drag & Drop Táctil con Auto-Guardado
+                // 🚀 REV 130: Drag & Drop Unificado (Pointer Events) con Auto-Guardado
                 let isDragging = false;
                 let startX, startY;
-                pin.addEventListener('touchstart', (e) => {
-                    isDragging = false;
-                    startX = e.touches[0].clientX;
-                    startY = e.touches[0].clientY;
-                }, { passive: true });
 
-                pin.addEventListener('touchmove', (e) => {
-                    if (Math.abs(e.touches[0].clientX - startX) > 10 || Math.abs(e.touches[0].clientY - startY) > 10) {
+                pin.addEventListener('pointerdown', (e) => {
+                    if (e.pointerType === 'mouse' && e.button !== 0) return; // Solo click izquierdo
+                    isDragging = false;
+                    startX = e.clientX;
+                    startY = e.clientY;
+                    pin.setPointerCapture(e.pointerId); // Captura el puntero para que no se pierda el foco
+                });
+
+                pin.addEventListener('pointermove', (e) => {
+                    if (Math.abs(e.clientX - startX) > 10 || Math.abs(e.clientY - startY) > 10) {
                         isDragging = true;
-                        e.preventDefault(); // Evitar scroll mientras se mueve el pin
+                        e.preventDefault(); 
                         const viewport = document.getElementById('map-inner');
                         const rect = viewport.getBoundingClientRect();
-                        let newX = ((e.touches[0].clientX - rect.left) / rect.width) * 100;
-                        let newY = ((e.touches[0].clientY - rect.top) / rect.height) * 100;
+                        let newX = ((e.clientX - rect.left) / rect.width) * 100;
+                        let newY = ((e.clientY - rect.top) / rect.height) * 100;
                         
                         newX = Math.max(0, Math.min(100, newX));
                         newY = Math.max(0, Math.min(100, newY));
@@ -689,9 +692,10 @@
                         p.x = newX;
                         p.y = newY;
                     }
-                }, { passive: false });
+                });
 
-                pin.addEventListener('touchend', (e) => {
+                pin.addEventListener('pointerup', (e) => {
+                    pin.releasePointerCapture(e.pointerId);
                     if (isDragging) {
                         e.stopPropagation();
                         // 🚀 Auto-Guardado Silencioso via debouncedSync/guardarPosiciones
